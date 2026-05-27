@@ -11,14 +11,14 @@ const monitor = require('../monitor');
 /**
  * Bootstrap all IPC routes.
  *
- * Route map (matches preload.js bridge):
+ * Route map:
  *   monitor:health      — System health check
  *
- *   agents:list         — List all agents
- *   agents:create       — Register a new agent
- *   agents:update       — Update agent config/status
- *   agents:delete       — Remove an agent
- *   agents:health-check — Check agent connectivity
+ *   agents:list         — List all agent sessions
+ *   agents:spawn        — Spawn a CLI agent process
+ *   agents:status       — Get agent session status
+ *   agents:kill         — Kill an agent session
+ *   agents:health-check — Validate agent executable
  *
  *   goals:list          — List all goals
  *   goals:create        — Create a goal
@@ -26,7 +26,7 @@ const monitor = require('../monitor');
  *   goals:delete        — Delete a goal
  *
  *   tasks:list          — List all tasks
- *   tasks:create        — Create a task (optionally linked to a goal)
+ *   tasks:create        — Create a task
  *   tasks:update        — Update task status/assignee
  *   tasks:delete        — Delete a task
  *
@@ -36,7 +36,6 @@ const monitor = require('../monitor');
  *   stats:summary       — Aggregated dashboard stats
  */
 function bootstrapRoutes(mainWindow) {
-  // Set main window reference for log push
   logController.setMainWindow(mainWindow);
 
   const router = new IpcRouter();
@@ -44,12 +43,12 @@ function bootstrapRoutes(mainWindow) {
   // ── Monitoring ──
   router.register('monitor:health', () => monitor.getHealth());
 
-  // ── Agents ──
+  // ── Agents (real process management) ──
   router.register('agents:list', agentController.list);
-  router.register('agents:create', agentController.create, { schema: agentController.schemas.create });
-  router.register('agents:update', agentController.update, { schema: agentController.schemas.update });
-  router.register('agents:delete', agentController.delete);
-  router.register('agents:health-check', agentController.healthCheck);
+  router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn });
+  router.register('agents:status', agentController.status, { schema: agentController.schemas.status });
+  router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill });
+  router.register('agents:health-check', agentController.healthCheck, { schema: agentController.schemas.status });
 
   // ── Goals ──
   router.register('goals:list', goalController.list);
@@ -64,7 +63,7 @@ function bootstrapRoutes(mainWindow) {
   router.register('tasks:delete', taskController.delete);
 
   // ── Logs ──
-  router.register('logs:list', logController.list);
+  router.register('logs:list', logController.list, { schema: logController.schemas.list });
   router.register('logs:append', logController.append, { schema: logController.schemas.append });
 
   // ── Stats ──

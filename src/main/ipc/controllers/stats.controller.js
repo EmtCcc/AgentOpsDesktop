@@ -4,13 +4,13 @@
  * Stats controller — aggregated metrics for the dashboard.
  */
 
-const agents = require('./agent.controller');
-const tasks = require('./task.controller');
+const agentController = require('./agent.controller');
+const taskController = require('./task.controller');
 
 const statsController = {
   async summary() {
-    const agentList = await agents.list();
-    const taskList = await tasks.list();
+    const agentList = Array.from(agentController.store.values());
+    const taskList = Array.from(taskController.store.values());
 
     return {
       agents: {

@@ -2,24 +2,37 @@
 
 AgentOps Desktop lets you connect, orchestrate, and monitor multiple AI agents from a single desktop app. No cloud account required — everything runs locally.
 
+> **Note:** The UI described below reflects the target workflow. The current renderer is a placeholder welcome screen. The IPC backend and agent runtime are functional — see [API.md](API.md) for programmatic usage.
+
 ## Prerequisites
 
-- macOS (Windows and Linux support coming later)
+- macOS (Windows and Linux support planned)
 - Node.js 20+
 - At least one CLI agent installed (e.g. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli))
 
 ## Install
 
 ```bash
-git clone https://github.com/<your-org>/AgentOpsDesktop.git
+git clone https://github.com/EmtCcc/AgentOpsDesktop.git
 cd AgentOpsDesktop
 npm install
 npm start
 ```
 
-## Core Workflow
+## Current Capabilities
 
-AgentOps Desktop follows a simple loop: **connect agents → define tasks → run & monitor → review results**.
+What works today:
+
+- **Electron shell** — launches a desktop window with DevTools support (`npm run dev`)
+- **IPC handlers** — full CRUD for agents, goals, tasks, and logs via `window.agentOps`
+- **Agent runtime** — spawn, monitor, and kill CLI agent processes (`src/main/agent-runtime.js`)
+- **Data persistence** — JSON file store at `~/.agentops/data.json` (`src/main/store.js`)
+- **Health monitoring** — system metrics, IPC latency tracking, alert thresholds (`src/main/monitor.js`)
+- **Structured logging** — JSONL log files in the app's user data directory (`src/main/logger.js`)
+
+## Target Workflow
+
+The planned user experience follows this loop: **connect agents → define tasks → run & monitor → review results**.
 
 ### Step 1 — Connect an Agent
 
@@ -72,6 +85,6 @@ Review the output, then click **Confirm Delivery** to mark the Goal as done.
 
 ## What's Next
 
-- [Vision & Roadmap](VISION.md) — where AgentOps Desktop is headed
-- [MVP Scope](MVP-SCOPE.md) — detailed feature specs and acceptance criteria
-- [Design System](DESIGN-SYSTEM.md) — UI components and tokens
+- [Architecture](ARCHITECTURE.md) — target system design and data model
+- [API Reference](API.md) — current IPC channels and agent runtime
+- [Roadmap](../ROADMAP.md) — milestone plan and phase progression

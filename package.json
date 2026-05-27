@@ -28,12 +28,10 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
-    "better-sqlite3": "^11.9.1",
-    "electron-updater": "^6.3.9",
-    "uuid": "^11.1.0"
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.60.0",
     "electron": "^42.3.0",
     "electron-builder": "^25.1.8",
     "eslint": "^9.14.0",
@@ -52,14 +50,25 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ]
     },
     "dmg": {
       "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "directories": {

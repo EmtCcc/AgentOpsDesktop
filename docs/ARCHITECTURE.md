@@ -1,5 +1,8 @@
 # Architecture — AgentOps Desktop
 
+> **This document describes the target architecture for the MVP release.**
+> The current implementation (v0.1, Foundation phase) uses plain JavaScript, in-memory stores, and a static HTML renderer. Components marked ✅ below are implemented; others are planned. See [API.md](API.md) for the live API surface.
+
 > 版本：MVP (v0.1) | 最后更新：2026-05-28
 
 ## 实现状态

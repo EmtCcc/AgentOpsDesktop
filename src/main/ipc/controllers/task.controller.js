@@ -60,4 +60,6 @@ taskController.schemas = {
   },
 };
 
+taskController.store = tasks;
+
 module.exports = taskController;

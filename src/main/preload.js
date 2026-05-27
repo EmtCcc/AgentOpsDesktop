@@ -3,6 +3,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('agentOps', {
   platform: process.platform,
 
+  // ── Auth ──
+  auth: {
+    login: () => ipcRenderer.invoke('auth:login'),
+    logout: () => ipcRenderer.invoke('auth:logout'),
+    status: () => ipcRenderer.invoke('auth:status'),
+    rotate: () => ipcRenderer.invoke('auth:rotate'),
+  },
+
   agents: {
     list: () => ipcRenderer.invoke('agents:list'),
     create: (agent) => ipcRenderer.invoke('agents:create', agent),
