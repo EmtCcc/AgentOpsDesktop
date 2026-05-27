@@ -34,30 +34,19 @@ When an IPC handler throws an `IpcError`, the router catches it and returns a st
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `agents.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `PaginatedResult<Agent>` | List agents with pagination |
+| `agents.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `Agent[]` | List agents (paginated internally) |
 | `agents.get(id)` | `id: string` | `Agent` | Get a single agent by ID |
 | `agents.create(agent)` | `{ name, type?, command?, execPath?, cwd? }` | `Agent` | Register a new agent |
 | `agents.update(id, updates)` | `id: string`, `updates: object` | `Agent` | Update agent fields |
 | `agents.delete(id)` | `id: string` | `{ deleted: true, id }` | Remove an agent |
 | `agents.healthCheck(id)` | `id: string` | `{ ok, execValid, processAlive, status }` | Check if agent executable is reachable |
 
-**Pagination params:**
+**Pagination params (for list):**
 - `offset` (number, default 0) — items to skip
 - `limit` (number, default 20, max 100) — items per page
 - `status` (string) — filter by status: `idle`, `running`, `error`
 - `sortBy` (string) — field to sort: `createdAt`, `updatedAt`, `name`, `status`
 - `sortOrder` (string) — `asc` or `desc` (default `desc`)
-
-**PaginatedResult shape:**
-```js
-{
-  items: Agent[],
-  total: number,
-  offset: number,
-  limit: number,
-  hasMore: boolean
-}
-```
 
 **Agent object shape:**
 ```js

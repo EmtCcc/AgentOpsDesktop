@@ -212,10 +212,11 @@ function renderAgents(container) {
           <div>
             <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Type</label>
             <select id="agent-type" style="width:100%;">
-              <option value="claude-code">Claude Code</option>
+              <option value="claude">Claude Code</option>
               <option value="codex">Codex</option>
-              <option value="gemini-cli">Gemini CLI</option>
+              <option value="gemini">Gemini CLI</option>
               <option value="opencode">OpenCode</option>
+              <option value="cursor">Cursor</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -293,7 +294,7 @@ function bindAgentActions(container) {
       const cwd = container.querySelector('#agent-cwd')?.value?.trim();
       if (!name) return;
       try {
-        await window.agentOps.agents.create({ name, type, executablePath: path, workingDir: cwd });
+        await window.agentOps.agents.create({ name, type, execPath: path, cwd });
         hideModal();
         loadAgents();
       } catch { /* ignore */ }

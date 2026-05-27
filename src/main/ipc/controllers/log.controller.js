@@ -8,6 +8,8 @@
 
 let mainWindow = null;
 const globalLogs = [];
+const LOG_HARD_LIMIT = 10000;
+const LOG_TRIM_TARGET = 8000;
 
 function setMainWindow(win) {
   mainWindow = win;
