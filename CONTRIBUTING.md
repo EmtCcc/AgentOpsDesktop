@@ -3,16 +3,15 @@
 ## Prerequisites
 
 - Node.js >= 20
-- pnpm >= 9
 - Git
 
 ## Setup
 
 ```bash
-git clone https://github.com/your-org/AgentOpsDesktop.git
+git clone https://github.com/EmtCcc/AgentOpsDesktop.git
 cd AgentOpsDesktop
-pnpm install
-pnpm dev
+npm install
+npm start
 ```
 
 ## Development Workflow
@@ -63,46 +62,31 @@ Example: `cmpaa-13/add-readme`
 
 1. Create a branch from main
 2. Make changes and commit
-3. Open a PR with this template:
-
-```markdown
-## What changed
-<Brief description>
-
-## Why
-<Motivation and context>
-
-## How to test
-<Steps to verify>
-
-## Related
-Closes [CMPAA-N]
-```
-
+3. Open a PR using the template in `.github/pull_request_template.md`
 4. Apply one primary label: `feature`, `bug`, `docs`, `chore`, `infra`
 5. Request review from Code Reviewer and Product Owner
 6. Merge when both approve and CI passes
 
 ## Code Style
 
-- TypeScript with strict mode
-- ESLint for linting (run `pnpm lint`)
-- Prettier for formatting (run `pnpm format`)
+- JavaScript (ESLint for linting — run `npm run lint`)
+- Strict mode (`'use strict'`)
 - No unused variables or imports
 
 ## Testing
 
 ```bash
-pnpm test          # Run all tests
-pnpm test:watch    # Watch mode
-pnpm test:coverage # With coverage report
+npm test              # Unit tests (Vitest)
+npm run test:e2e      # E2E tests (Playwright — all browsers)
+npm run test:e2e:chromium  # E2E tests (Chromium only)
+npm run test:report   # Open Playwright HTML report
 ```
 
 Write tests for:
-- Agent adapter logic
+- Agent runtime logic (spawn, kill, health check)
 - IPC message handling
-- Workflow engine state transitions
-- Paperclip API client
+- Store CRUD operations
+- Monitor metrics and alerts
 
 ## Project Conventions
 

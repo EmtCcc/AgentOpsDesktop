@@ -6,7 +6,7 @@
  * Maintains bidirectional link with goals via goalId.
  */
 
-const goals = require('./goal.controller');
+const goalController = require('./goal.controller');
 
 const tasks = new Map();
 let nextId = 1;
@@ -23,10 +23,11 @@ const taskController = {
 
     // Link task to parent goal
     if (task.goalId) {
-      const goal = goals.get(task.goalId);
+      const goalStore = goalController.store;
+      const goal = goalStore.get(task.goalId);
       if (goal) {
         goal.taskIds = [...(goal.taskIds || []), id];
-        goals.set(task.goalId, goal);
+        goalStore.set(task.goalId, goal);
       }
     }
 

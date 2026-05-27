@@ -80,16 +80,16 @@
 
 | 层 | 选型 | 理由 |
 |----|------|------|
-| **桌面框架** | Electron 35 | 跨平台（macOS/Win/Linux），成熟生态，原生 IPC |
-| **UI 框架** | React + TypeScript | 复杂交互 UI（看板、日志流），类型安全 |
-| **状态管理** | Zustand | 轻量、无 boilerplate、原生支持 subscription |
-| **终端渲染** | xterm.js + xterm-addon-fit | 浏览器端终端模拟，支持 ANSI 色彩和滚动 |
-| **进程管理** | node-pty | 伪终端支持，CLI Agent 需要 TTY 环境 |
-| **数据库** | better-sqlite3 (WAL mode) | 同步 API、零配置、单文件、崩溃恢复 |
-| **构建** | electron-builder | 平台安装器生成，自动更新 |
-| **测试** | Jest (unit) + Playwright (E2E) | 单元测试快速反馈，E2E 覆盖关键路径 |
-| **Lint** | ESLint + @typescript-eslint | 代码风格统一 |
-| **打包** | Vite (renderer) + tsc (main) | 快速 HMR（开发），可靠构建（生产） |
+| **桌面框架** | Electron 42 | 跨平台（macOS/Win/Linux），成熟生态，原生 IPC |
+| **UI 框架** | React + TypeScript（计划） | 复杂交互 UI（看板、日志流），类型安全 |
+| **状态管理** | Zustand（计划） | 轻量、无 boilerplate、原生支持 subscription |
+| **终端渲染** | xterm.js（计划） | 浏览器端终端模拟，支持 ANSI 色彩和滚动 |
+| **进程管理** | node-pty（计划） | 伪终端支持，CLI Agent 需要 TTY 环境 |
+| **数据库** | better-sqlite3（计划） | 同步 API、零配置、单文件、崩溃恢复 |
+| **构建** | electron-builder 25 | 平台安装器生成，自动更新 |
+| **测试** | Vitest (unit) + Playwright (E2E) | 单元测试快速反馈，E2E 覆盖关键路径 |
+| **Lint** | ESLint 9 | 代码风格统一 |
+| **自动更新** | electron-updater | 应用内更新 |
 
 ---
 
@@ -99,66 +99,41 @@
 AgentOpsDesktop/
 ├── src/
 │   ├── main/                       # Electron 主进程
-│   │   ├── index.ts                # 入口：窗口创建、应用生命周期
-│   │   ├── preload.ts              # contextBridge 安全暴露 IPC
-│   │   ├── ipc/                    # IPC 处理器
-│   │   │   ├── index.ts            # 注册所有 handler
-│   │   │   ├── agent.ts            # agent:* 频道
-│   │   │   ├── task.ts             # task:* / goal:* 频道
-│   │   │   └── log.ts              # log:* 频道
-│   │   ├── agent/                  # Agent 运行时管理
-│   │   │   ├── registry.ts         # Agent 配置 CRUD（读写 SQLite）
-│   │   │   ├── runtime.ts          # PTY 进程池：spawn / kill / stream
-│   │   │   └── health.ts           # 健康检查（--version 探测）
-│   │   ├── db/                     # 数据层
-│   │   │   ├── connection.ts       # SQLite 连接（WAL mode）
-│   │   │   ├── schema.ts           # 建表 DDL
-│   │   │   ├── migrations.ts       # Schema 版本迁移
-│   │   │   └── repositories/       # 数据访问对象
-│   │   │       ├── agentRepo.ts
-│   │   │       ├── goalRepo.ts
-│   │   │       ├── taskRepo.ts
-│   │   │       └── logRepo.ts
-│   │   └── errors.ts               # 错误类型定义与处理
+│   │   ├── index.js                # 入口：窗口创建、应用生命周期、内存数据存储
+│   │   ├── preload.js              # contextBridge 安全暴露 window.agentOps
+│   │   ├── logger.js               # 结构化 JSONL 日志（文件 + 控制台）
+│   │   ├── monitor.js              # 健康监控、指标采集、告警阈值
+│   │   └── ipc/
+│   │       ├── index.js            # bootstrapRoutes() — 注册所有 handler
+│   │       ├── router.js           # IpcRouter 类 — 验证 + 错误处理包装
+│   │       ├── middleware/
+│   │       │   └── validate.js     # Schema 验证器（类型、必填、枚举、长度）
+│   │       └── controllers/
+│   │           ├── agent.controller.js    # agent:* 频道
+│   │           ├── task.controller.js     # task:* 频道
+│   │           ├── governance.controller.js  # governance:* 频道
+│   │           └── system.controller.js   # system:* 频道
 │   │
-│   ├── renderer/                   # 渲染进程（React SPA）
-│   │   ├── index.html              # HTML 入口
-│   │   ├── main.tsx                # React 根挂载
-│   │   ├── App.tsx                 # 路由 + 布局壳
-│   │   ├── components/
-│   │   │   ├── layout/             # Sidebar, Header, StatusBar
-│   │   │   ├── agents/             # AgentList, AgentConfig, AgentStatusBadge
-│   │   │   ├── goals/              # GoalBoard, GoalForm
-│   │   │   ├── tasks/              # TaskBoard, TaskCard, TaskForm
-│   │   │   ├── logs/               # LogViewer (xterm.js), LogFilter
-│   │   │   └── shared/             # Button, Input, Card, Modal, Badge
-│   │   ├── hooks/                  # 自定义 hooks
-│   │   │   ├── useAgents.ts
-│   │   │   ├── useTasks.ts
-│   │   │   ├── useGoals.ts
-│   │   │   └── useLogs.ts
-│   │   ├── stores/                 # Zustand stores
-│   │   │   ├── agentStore.ts
-│   │   │   ├── taskStore.ts
-│   │   │   └── logStore.ts
-│   │   └── styles/                 # 全局样式 + CSS 变量
-│   │       └── globals.css
+│   ├── renderer/                   # 渲染进程（当前为静态 HTML）
+│   │   ├── index.html              # HTML 入口 + CSP + 内联样式
+│   │   ├── routes.ts               # 路由定义（待实现）
+│   │   ├── redirects.json          # URL redirect map
+│   │   └── styles/                 # CSS tokens、基础样式、组件样式
+│   │       ├── tokens.css
+│   │       ├── base.css
+│   │       ├── layout.css
+│   │       ├── components.css
+│   │       └── pages.css
 │   │
-│   └── shared/                     # 主进程 / 渲染进程共享
-│       ├── types.ts                # Agent, Goal, Task, LogEntry 类型定义
-│       ├── constants.ts            # IPC 频道名、状态枚举、默认值
-│       └── ipc-contracts.ts        # 类型安全的 IPC 请求/响应签名
+│   └── shared/                     # 主进程 / 渲染进程共享（待实现）
 │
-├── assets/                         # 图标、字体、音效
+├── assets/                         # 图标、字体
+├── build/                          # Electron builder 配置（entitlements）
 ├── tests/
-│   ├── unit/                       # Jest 单元测试
 │   └── e2e/                        # Playwright E2E 测试
-├── docs/                           # 文档
+├── docs/                           # 项目文档
 ├── package.json
-├── tsconfig.json
-├── vite.config.ts                  # Renderer 构建配置
-├── electron-builder.yml            # 打包配置
-├── .eslintrc.cjs
+├── playwright.config.ts            # E2E 测试配置
 └── .gitignore
 ```
 
@@ -261,28 +236,43 @@ CREATE INDEX idx_task_logs_task ON task_logs(task_id);
 
 通过 `contextBridge` 在 preload 脚本中安全暴露 API，渲染进程不直接访问 Node.js。
 
+所有 IPC 处理器通过 `IpcRouter` 注册，自动包装验证和错误处理。返回格式统一为 `{ ok: true, data }` 或 `{ ok: false, error: { code, message } }`。
+
 ### 渲染进程 → 主进程（请求/响应）
+
+#### 系统
 
 | 频道 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `agent:list` | — | `Agent[]` | 获取所有已配置 Agent |
-| `agent:create` | `AgentConfig` | `Agent` | 新增 Agent 配置 |
-| `agent:update` | `id, Partial<AgentConfig>` | `Agent` | 更新 Agent 配置 |
-| `agent:delete` | `id` | `void` | 删除 Agent（运行中则先 kill） |
-| `agent:health-check` | `id` | `HealthResult` | 探测 Agent 可执行文件是否可用 |
-| `goal:list` | — | `Goal[]` | 获取所有目标 |
-| `goal:create` | `GoalInput` | `Goal` | 创建目标 |
-| `goal:update` | `id, Partial<GoalInput>` | `Goal` | 更新目标 |
-| `goal:delete` | `id` | `void` | 删除目标（级联删除任务） |
-| `task:list` | `goalId?` | `Task[]` | 获取任务（可按目标筛选） |
+| `system:health` | — | `HealthSnapshot` | 应用健康检查（内存、IPC、系统资源） |
+| `system:routes` | — | `string[]` | 列出所有已注册的 IPC 频道 |
+
+#### Agent 生命周期
+
+| 频道 | 参数 | 返回值 | 说明 |
+|------|------|--------|------|
+| `agent:spawn` | `SpawnConfig` | `{ pid, sessionId }` | 启动 CLI Agent 进程 |
+| `agent:status` | `{ sessionId }` | `AgentStatus` | 查询 Agent 会话状态 |
+| `agent:kill` | `{ sessionId, signal? }` | `void` | 终止 Agent 进程 |
+| `agent:list` | — | `AgentSession[]` | 列出活跃会话 |
+
+#### 任务管理
+
+| 频道 | 参数 | 返回值 | 说明 |
+|------|------|--------|------|
 | `task:create` | `TaskInput` | `Task` | 创建任务 |
-| `task:update` | `id, Partial<TaskInput>` | `Task` | 更新任务 |
-| `task:delete` | `id` | `void` | 删除任务 |
-| `task:assign` | `taskId, agentId` | `Task` | 分配任务给 Agent |
-| `task:start` | `taskId` | `void` | 启动任务执行 |
-| `task:stop` | `taskId` | `void` | 停止任务（kill agent 进程） |
-| `log:get` | `taskId, offset?, limit?` | `LogEntry[]` | 获取任务日志（分页） |
-| `log:clear` | `taskId` | `void` | 清除任务日志 |
+| `task:get` | `{ taskId }` | `Task` | 获取单个任务 |
+| `task:list` | `{ goalId? }` | `Task[]` | 列出任务（可按目标筛选） |
+| `task:update` | `{ taskId, status?, assigneeAgentId?, metadata? }` | `Task` | 更新任务 |
+| `task:remove` | `{ taskId }` | `{ deleted, taskId }` | 删除任务 |
+
+#### 治理
+
+| 频道 | 参数 | 返回值 | 说明 |
+|------|------|--------|------|
+| `governance:approve` | `{ gateId, decision, comment? }` | `void` | 响应审批门禁 |
+| `governance:list` | — | `Gate[]` | 列出待处理门禁 |
+| `governance:register` | `GateConfig` | `Gate` | 注册新门禁 |
 
 ### 主进程 → 渲染进程（推送事件）
 
@@ -292,6 +282,21 @@ CREATE INDEX idx_task_logs_task ON task_logs(task_id);
 | `task:status` | `{ taskId, status, timestamp }` | 任务状态变更 |
 | `task:log` | `{ taskId, stream, content, timestamp }` | 实时日志条目 |
 | `task:output` | `{ taskId, summary }` | 任务完成后的产出摘要 |
+| `logs:new` | `LogEntry` | 新日志条目（广播） |
+
+### IPC 响应格式
+
+```typescript
+// 成功
+{ ok: true, data: T }
+
+// 失败
+{ ok: false, error: { code: string, message: string, field?: string } }
+```
+
+错误码：
+- `VALIDATION_ERROR` — 请求参数不符合 schema
+- `INTERNAL_ERROR` — 未预期的服务器错误
 
 ---
 
@@ -432,6 +437,38 @@ task:stop 触发：
 - Linux: `~/.config/agentops-desktop/`
 
 包含：`data.db`（SQLite）、`logs/`（应用日志）、`crash.log`
+
+---
+
+## 监控与告警
+
+应用内置健康监控模块 (`src/main/monitor.js`)，每 30 秒采集一次指标。
+
+### 采集指标
+
+| 指标 | 说明 |
+|------|------|
+| IPC 调用次数 / 错误数 / 平均延迟 | 主进程 ↔ 渲染进程通信质量 |
+| 堆内存使用量 | V8 堆健康度 |
+| 系统空闲内存 / CPU 负载 | 宿主机资源压力 |
+| 渲染进程崩溃 / 无响应次数 | Electron 窗口健康度 |
+| 未捕获异常 / 未处理拒绝 | 全局错误计数 |
+
+### 告警阈值
+
+| 告警 ID | 条件 | 级别 |
+|---------|------|------|
+| `high_heap` | 堆使用率 > 85% | warn |
+| `high_ipc_error_rate` | IPC 错误率 > 5%（调用 > 10 次后） | error |
+| `high_ipc_latency` | 平均 IPC 延迟 > 500ms | warn |
+| `low_system_memory` | 系统空闲内存 < 10% | warn |
+| `high_cpu_load` | 单核负载 > 2.0 | warn |
+
+告警去重：同一告警仅首次触发时写入日志，恢复后清除状态。
+
+### 健康检查端点
+
+通过 IPC `system:health` 频道返回完整健康快照，包含内存、IPC、渲染进程、系统资源指标。
 
 ---
 

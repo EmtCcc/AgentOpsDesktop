@@ -27,9 +27,10 @@
   "author": "",
   "license": "UNLICENSED",
   "private": true,
-  "type": "module",
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "better-sqlite3": "^11.9.1",
+    "electron-updater": "^6.3.9",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

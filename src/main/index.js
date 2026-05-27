@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const logger = require('./logger');
 const monitor = require('./monitor');
+const { bootstrapRoutes, tokenManager } = require('./ipc');
 
 // Install global error handlers before anything else
 monitor.installGlobalHandlers();
@@ -59,6 +60,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   monitor.startHealthLoop();
+  bootstrapRoutes();
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
 });

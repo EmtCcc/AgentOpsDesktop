@@ -44,4 +44,6 @@ goalController.schemas = {
   },
 };
 
+goalController.store = goals;
+
 module.exports = goalController;

@@ -52,17 +52,38 @@
 
 ## Competitive Landscape
 
+### How Users Solve This Today
+
+Before AgentOps Desktop, users cobble together solutions from:
+
+| Approach | Who uses it | What works | What breaks |
+|----------|-------------|------------|-------------|
+| **tmux + manual orchestration** | Power users | Full control, zero dependency | Context copying is manual, no cost visibility, no retry logic |
+| **Shell wrapper scripts** | Automation builders | Scriptable, composable | Brittle (output format changes), no error recovery, maintenance burden |
+| **Cursor's built-in agents** | Single-IDE users | Seamless within Cursor | Can't orchestrate Claude Code or Codex; vendor lock-in |
+| **Multica self-hosted** | Teams with infra capacity | Agent-as-teammate model, skill reuse | Requires server setup, no desktop UX, no governance |
+| **Paperclip governance** | Org-oriented teams | Goals, budgets, approval flows | No terminal interaction, no parallel execution view |
+| **Just using one agent** | Most developers | Simple, no coordination needed | Hits ceiling on complex tasks; context limits |
+
+### Competitor Matrix
+
 | Competitor | Type | Strengths | Weaknesses | Differentiation |
 |---|---|---|---|---|
 | **Multica** (33.6k stars) | Open-source, self-hosted | Agent-as-teammate paradigm; squads; reusable skills; supports 10+ agent CLIs; Go+Next.js stack | Server-centric (not desktop-first); no built-in goal governance or org chart; requires self-hosting | AgentOps Desktop borrows its runtime-agnostic CLI support and skill system, but adds desktop UX and governance |
 | **Paperclip** (67.9k stars) | Open-source, self-hosted | Org chart, budgets, approval workflows, heartbeat execution, multi-company; MIT license | Not a desktop app; no terminal/UI for agent interaction; no parallel execution visualization | AgentOps Desktop borrows its goal/budget governance model, but delivers it in a desktop shell with live terminals |
-| **Cursor** | Commercial SIDE | Best-in-class single-agent IDE; cloud agents run in parallel; Fortune 500 adoption; multi-model | Single-agent focus; no orchestration across external CLIs; vendor lock-in to Cursor ecosystem | AgentOps Desktop is agent-agnostic — orchestrates Cursor alongside Claude Code, Codex, etc. |
+| **Cursor** | Commercial IDE | Best-in-class single-agent IDE; cloud agents run in parallel; Fortune 500 adoption; multi-model | Single-agent focus; no orchestration across external CLIs; vendor lock-in to Cursor ecosystem | AgentOps Desktop is agent-agnostic — orchestrates Cursor alongside Claude Code, Codex, etc. |
 | **Windsurf** | Commercial IDE | Local+cloud dual agent; desktop native | Single-agent IDE; no multi-agent orchestration; limited CLI integration | Same as Cursor — AgentOps Desktop is a meta-layer, not a replacement IDE |
 | **Devin** (Cognition) | Commercial cloud agent | Autonomous multi-step engineering; multi-agent fleets for migrations; enterprise integrations | Cloud-only; expensive; opaque; not user-controllable at terminal level | AgentOps Desktop gives users direct terminal access + governance over their own agents |
 | **OpenHands** (75k stars) | Open-source agent platform | SDK, CLI, local GUI, cloud; SWE-bench 77.6%; MIT license | Framework for building agents, not orchestrating existing ones; no desktop app; no governance | AgentOps Desktop uses OpenHands-compatible agents but focuses on orchestration, not agent building |
 | **Aider** (45.4k stars) | Open-source CLI | Surgical code edits; 100+ languages; git-native; voice-to-code; runs locally | Single-agent CLI tool; no orchestration, no UI, no budget control | AgentOps Desktop can embed Aider as one of its managed runtimes |
 | **Claude Code** | Commercial CLI | Best-in-class agentic coding; MCP support; deep reasoning | Single-agent; no built-in orchestration of other agents | AgentOps Desktop wraps Claude Code as a first-class runtime |
 | **Codex** (OpenAI) | Commercial CLI | Cloud-based autonomous coding; parallel task execution | Cloud-only; limited transparency; early stage | AgentOps Desktop can manage Codex alongside other agents |
+
+### Competitive Gaps We Exploit
+
+1. **No one owns the "multi-CLI desktop" niche**: Multica is server-side, Paperclip has no UI, Cursor/Windsurf are single-agent IDEs. The desktop + multi-agent + governance combination is open.
+2. **Governance is an afterthought everywhere else**: Paperclip has it, but no terminal. Multica has skills, but no budgets. IDEs have neither. AgentOps Desktop is the first to combine live terminals with organizational governance.
+3. **The tmux incumbent is fragile**: Every power user's tmux setup is unique, undocumented, and breaks on agent CLI updates. A purpose-built tool that's 2x better than tmux will convert these users.
 
 ## Positioning
 
@@ -77,11 +98,14 @@
 
 ## Risks
 
-- **Market timing risk**: The multi-agent orchestration niche is pre-chasm. Most developers still use a single agent. AgentOps Desktop needs to ride the adoption wave as users naturally add 2nd/3rd agents.
-- **Platform risk**: Cursor, Claude Code, and others may add multi-agent features natively, shrinking the orchestration gap. Mitigation: stay agent-agnostic and move faster on governance/workflow features that IDEs won't prioritize.
-- **Adoption barrier**: Developers are habituated to tmux + shell scripts for multi-agent work. The desktop app must be dramatically better to justify switching. Mitigation: offer a CLI mode for power users who resist GUIs.
-- **Fragmentation risk**: The AI agent landscape changes monthly. New agents, new APIs, deprecations. AgentOps Desktop must treat agent adapters as plugins, not hard-coded integrations.
-- **Open-source competition**: Multica (33.6k stars) and Paperclip (67.9k stars) are the closest open-source comparables. If either adds a desktop shell, the positioning narrows. Mitigation: ship fast, focus on the unique combination of desktop UX + governance + multi-runtime.
+| Risk | User behavior basis | Impact | Mitigation |
+|------|---------------------|--------|------------|
+| **Market timing** | Most developers still use a single agent; the "second agent moment" hasn't hit mass adoption yet | Low initial demand; slow growth until multi-agent usage becomes mainstream | Target the 200K–500K users who already run 2+ agents; build for the wave, not ahead of it |
+| **Platform encroachment** | Cursor/Claude Code may add multi-agent features, reducing the orchestration gap | Core value proposition erodes if IDEs handle coordination natively | Stay agent-agnostic; focus on governance features (budgets, approvals, audit) that IDEs won't prioritize |
+| **tmux habit inertia** | Power users have invested years in tmux workflows; switching cost is emotional, not just technical | Users try AgentOps Desktop but revert to tmux out of habit | Offer CLI mode for gradual migration; make the "aha moment" (unified context view) visible in first 5 minutes |
+| **Agent landscape fragmentation** | New agents launch monthly; existing ones change CLI formats, break parsers | Adapter maintenance burden; broken integrations frustrate users | Plugin architecture from day one; community-contributed adapters; structured output abstraction layer |
+| **Open-source competition** | Multica and Paperclip are closest comparables; either could add a desktop shell | Positioning narrows if a well-funded OSS project ships desktop UX | Ship fast; combine desktop + governance + multi-runtime as a unique bundle that's hard to replicate |
+| **Cost visibility backlash** | Users don't track agent costs today; showing them real numbers may cause sticker shock | Users blame AgentOps Desktop for costs it merely reveals | Frame cost visibility as empowerment, not alarm; provide cost optimization suggestions alongside dashboards |
 
 ## Recommendations
 
@@ -90,3 +114,11 @@
 3. **Borrow governance from Paperclip, UX from Multica**: The goal/budget/approval model is the moat. The agent-as-teammate UX is the hook. Combine them in a desktop shell that neither offers.
 4. **CLI-first, GUI-second**: Ship a CLI that power users can adopt immediately, then wrap it in the desktop app. This de-risks the "tmux habit" adoption barrier.
 5. **Watch for the "second agent moment"**: Market timing depends on when developers start needing a 2nd agent. Monitor Claude Code, Cursor, and Codex adoption curves. When users start asking "how do I run these together?" — that's the signal.
+
+## Next Steps
+
+- [ ] Validate user profiles with 3–5 interviews from each primary segment
+- [ ] Quantify the "second agent moment" trigger — survey Claude Code users on when they added a 2nd agent
+- [ ] Benchmark tmux workflow pain points — observe 3 power users managing 2+ agents in their current setup
+- [ ] Track competitor moves: Multica desktop shell rumors, Cursor multi-agent features, Paperclip UI updates
+- [ ] Revisit market size estimates as AI agent adoption data becomes available (GitHub Copilot, Cursor, Codex user counts)
