@@ -86,6 +86,31 @@ const migrations = [
       );
     `,
   },
+  {
+    version: 6,
+    name: 'align_schema_with_repositories',
+    up: `
+      -- Add columns that repositories expect but schema v1 didn't define.
+      -- SQLite ALTER TABLE only supports ADD COLUMN, so we add missing ones
+      -- and let the repository layer handle the renamed semantics:
+      --   v1 'agent_type'        → repository reads/writes 'type'        (new column)
+      --   v1 'executable_path'   → repository reads/writes 'exec_path'   (new column)
+      --   v1 'working_directory' → repository reads/writes 'cwd'         (new column)
+      --   'command'              → never existed in v1, repository needs it
+
+      ALTER TABLE agents ADD COLUMN type       TEXT NOT NULL DEFAULT 'custom';
+      ALTER TABLE agents ADD COLUMN command    TEXT;
+      ALTER TABLE agents ADD COLUMN exec_path  TEXT;
+      ALTER TABLE agents ADD COLUMN cwd        TEXT;
+
+      -- Indexes for common query patterns used by repositories
+      CREATE INDEX IF NOT EXISTS idx_agents_type   ON agents(type);
+      CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
+      CREATE INDEX IF NOT EXISTS idx_goals_status  ON goals(status);
+      CREATE INDEX IF NOT EXISTS idx_tasks_status  ON tasks(status);
+      CREATE INDEX IF NOT EXISTS idx_tasks_goal_status ON tasks(goal_id, status);
+    `,
+  },
 ];
 
 module.exports = { migrations };

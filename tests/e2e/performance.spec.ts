@@ -3,13 +3,10 @@ import { test, expect } from './fixtures/app.fixture';
 /**
  * Performance and Core Web Vitals tests for AgentOps Desktop renderer.
  *
- * Electron apps don't have traditional Core Web Vitals (no Lighthouse
- * field data), but the same metrics apply to renderer performance:
- * - LCP (Largest Contentful Paint) → main content render time
- * - FID/INP (Interaction to Next Paint) → input responsiveness
- * - CLS (Cumulative Layout Shift) → visual stability
- *
- * These tests measure renderer performance using the Web APIs directly.
+ * Electron's renderer is Chromium-based, but the same Web APIs apply:
+ * - LCP → main content render time
+ * - CLS → visual stability
+ * - FCP → first paint
  *
  * To run: npx playwright test performance
  */
@@ -24,7 +21,6 @@ test.describe('Core Web Vitals — Renderer', () => {
           resolve(last.startTime);
         }).observe({ type: 'largest-contentful-paint', buffered: true });
 
-        // Fallback: resolve after 5s if no LCP entry
         setTimeout(() => resolve(0), 5000);
       });
     });
@@ -35,7 +31,6 @@ test.describe('Core Web Vitals — Renderer', () => {
   });
 
   test('CLS under 0.1', async ({ mainPage }) => {
-    // Let the page settle
     await mainPage.waitForTimeout(2000);
 
     const cls = await mainPage.evaluate(() => {
@@ -54,6 +49,17 @@ test.describe('Core Web Vitals — Renderer', () => {
     });
 
     expect(cls).toBeLessThan(0.1);
+  });
+
+  test('FCP under 1.5s', async ({ mainPage }) => {
+    const fcp = await mainPage.evaluate(() => {
+      const entries = performance.getEntriesByName('first-contentful-paint');
+      return entries[0]?.startTime;
+    });
+
+    if (fcp > 0) {
+      expect(fcp).toBeLessThan(1500);
+    }
   });
 });
 
@@ -80,8 +86,23 @@ test.describe('Resource Performance', () => {
       return entries.reduce((sum, e) => sum + (e.transferSize || 0), 0);
     });
 
-    // 5MB generous limit for desktop app
     expect(totalSize).toBeLessThan(5 * 1024 * 1024);
+  });
+
+  test('CSS files load efficiently', async ({ mainPage }) => {
+    await mainPage.waitForLoadState('networkidle');
+
+    const cssResources = await mainPage.evaluate(() => {
+      const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      return entries
+        .filter((e) => e.initiatorType === 'link' && e.name.endsWith('.css'))
+        .map((e) => ({ name: e.name, duration: e.duration, size: e.transferSize }));
+    });
+
+    // Each CSS file should load in under 500ms
+    for (const css of cssResources) {
+      expect(css.duration).toBeLessThan(500);
+    }
   });
 
   test('no memory leaks after navigation', async ({ mainPage }) => {
@@ -94,11 +115,9 @@ test.describe('Resource Performance', () => {
       return (performance as any).memory.usedJSHeapSize;
     });
 
-    // Simulate navigation
     await mainPage.reload();
     await mainPage.waitForLoadState('networkidle');
 
-    // Force GC if available
     await mainPage.evaluate(() => {
       if ((globalThis as any).gc) (globalThis as any).gc();
     });
@@ -107,7 +126,6 @@ test.describe('Resource Performance', () => {
       return (performance as any).memory.usedJSHeapSize;
     });
 
-    // Allow 20% growth (generous for initial load)
     expect(memAfter).toBeLessThan(memBefore * 1.2);
   });
 });
@@ -138,7 +156,6 @@ test.describe('Startup Performance', () => {
 
 test.describe('Animation Performance', () => {
   test('no janky animations (60fps target)', async ({ mainPage }) => {
-    // Measure frame timing during a scroll
     const frameMetrics = await mainPage.evaluate(async () => {
       return new Promise<{ avgFrame: number; maxFrame: number }>((resolve) => {
         const frames: number[] = [];
@@ -162,8 +179,37 @@ test.describe('Animation Performance', () => {
       });
     });
 
-    // 60fps = 16.67ms per frame
     expect(frameMetrics.avgFrame).toBeLessThan(20);
     expect(frameMetrics.maxFrame).toBeLessThan(50);
+  });
+});
+
+test.describe('DOM Efficiency', () => {
+  test('reasonable DOM size', async ({ mainPage }) => {
+    const nodeCount = await mainPage.evaluate(() => {
+      return document.querySelectorAll('*').length;
+    });
+    // Desktop app should keep DOM lean
+    expect(nodeCount).toBeLessThan(1000);
+  });
+
+  test('no excessive inline styles', async ({ mainPage }) => {
+    const inlineStyleCount = await mainPage.evaluate(() => {
+      const all = document.querySelectorAll('[style]');
+      return all.length;
+    });
+    // Some inline styles are acceptable for dynamic content
+    expect(inlineStyleCount).toBeLessThan(100);
+  });
+
+  test('no duplicate IDs', async ({ mainPage }) => {
+    const duplicates = await mainPage.evaluate(() => {
+      const ids = new Map<string, number>();
+      document.querySelectorAll('[id]').forEach((el) => {
+        ids.set(el.id, (ids.get(el.id) || 0) + 1);
+      });
+      return Array.from(ids.entries()).filter(([, count]) => count > 1);
+    });
+    expect(duplicates).toHaveLength(0);
   });
 });

@@ -838,37 +838,45 @@ function buildSpec() {
 
 // ── YAML serialization (minimal, no dependency) ──
 
-function yamlScalar(value, pad) {
+function needsQuoting(s) {
+  return s === '' || /[:#'"{}\[\],&*?|->!%@`]/.test(s) || /^\d/.test(s) ||
+    /^(true|false|null|yes|no|on|off)$/i.test(s);
+}
+
+function formatScalar(value, pad) {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'boolean') return String(value);
   if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') {
-    if (value.includes('\n')) {
-      // YAML literal block scalar
-      const lines = value.split('\n');
-      let result = '|\n';
-      for (const line of lines) {
-        result += `${pad}  ${line}\n`;
-      }
-      return result.trimEnd();
-    }
-    // Quote strings with special YAML chars
-    if (value.includes(': ') || value.includes('#') || value.includes('"') ||
-        value.includes("'") || value === '' || /^\d/.test(value) ||
-        /^(true|false|null|yes|no|on|off)$/i.test(value)) {
-      return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-    }
-    return value;
+  if (typeof value !== 'string') return JSON.stringify(value);
+  if (!value.includes('\n')) {
+    return needsQuoting(value) ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : value;
   }
-  return JSON.stringify(value);
+  // Multiline: return as YAML block scalar lines (caller handles indentation)
+  return value;
 }
 
-function toYAML(obj, indent = 0) {
-  const pad = '  '.repeat(indent);
+function writeValue(key, value, pad) {
+  if (value === null || value === undefined) return `${pad}${key}: null\n`;
+  if (typeof value !== 'object') {
+    const formatted = formatScalar(value, pad);
+    if (value !== null && typeof value === 'string' && value.includes('\n')) {
+      // Block scalar
+      let out = `${pad}${key}:\n`;
+      for (const line of value.split('\n')) {
+        out += `${pad}  ${line}\n`;
+      }
+      return out;
+    }
+    return `${pad}${key}: ${formatted}\n`;
+  }
+  // value is object or array — delegate
+  let out = `${pad}${key}:\n`;
+  out += serialize(value, pad + '  ');
+  return out;
+}
 
-  // Primitives
+function serialize(obj, pad) {
   if (obj === null || obj === undefined) return `${pad}null\n`;
-  if (typeof obj !== 'object') return `${pad}${yamlScalar(obj, pad)}\n`;
 
   // Array
   if (Array.isArray(obj)) {
@@ -876,48 +884,40 @@ function toYAML(obj, indent = 0) {
     let out = '';
     for (const item of obj) {
       if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-        // Array of objects: "- key: val" on first line, rest indented
         const entries = Object.entries(item).filter(([, v]) => v !== undefined);
         if (entries.length === 0) {
           out += `${pad}- {}\n`;
         } else {
+          // First key on same line as dash
           const [firstKey, firstVal] = entries[0];
-          const scalar = yamlScalar(firstVal, pad);
-          if (scalar.includes('\n')) {
-            // Multiline first value
-            const [firstLine, ...rest] = scalar.split('\n');
-            out += `${pad}- ${firstKey}: ${firstLine}\n`;
-            for (const line of rest) {
-              out += `${pad}  ${line}\n`;
+          const formatted = formatScalar(firstVal, pad + '  ');
+          if (typeof firstVal === 'string' && firstVal.includes('\n')) {
+            out += `${pad}- ${firstKey}:\n`;
+            for (const line of firstVal.split('\n')) {
+              out += `${pad}    ${line}\n`;
             }
           } else {
-            out += `${pad}- ${firstKey}: ${scalar}\n`;
+            out += `${pad}- ${firstKey}: ${formatted}\n`;
           }
+          // Remaining keys
           for (let i = 1; i < entries.length; i++) {
             const [k, v] = entries[i];
-            const s = yamlScalar(v, `${pad}  `);
-            if (s.includes('\n')) {
-              const [firstLine, ...rest] = s.split('\n');
-              out += `${pad}  ${k}: ${firstLine}\n`;
-              for (const line of rest) {
-                out += `${pad}    ${line}\n`;
+            const f = formatScalar(v, pad + '  ');
+            if (typeof v === 'string' && v.includes('\n')) {
+              out += `${pad}  ${k}:\n`;
+              for (const line of v.split('\n')) {
+                out += `${pad}      ${line}\n`;
               }
             } else {
-              out += `${pad}  ${k}: ${s}\n`;
+              out += `${pad}  ${k}: ${f}\n`;
             }
           }
         }
+      } else if (typeof item === 'object' && item !== null) {
+        out += `${pad}-\n`;
+        out += serialize(item, pad + '  ');
       } else {
-        const s = yamlScalar(item, pad);
-        if (s.includes('\n')) {
-          const [firstLine, ...rest] = s.split('\n');
-          out += `${pad}- ${firstLine}\n`;
-          for (const line of rest) {
-            out += `${pad}  ${line}\n`;
-          }
-        } else {
-          out += `${pad}- ${s}\n`;
-        }
+        out += `${pad}- ${formatScalar(item, pad)}\n`;
       }
     }
     return out;
@@ -928,19 +928,9 @@ function toYAML(obj, indent = 0) {
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue;
     if (typeof value === 'object' && value !== null) {
-      out += `${pad}${key}:\n`;
-      out += toYAML(value, indent + 1);
+      out += writeValue(key, value, pad);
     } else {
-      const s = yamlScalar(value, pad);
-      if (s.includes('\n')) {
-        const [firstLine, ...rest] = s.split('\n');
-        out += `${pad}${key}: ${firstLine}\n`;
-        for (const line of rest) {
-          out += `${pad}  ${line}\n`;
-        }
-      } else {
-        out += `${pad}${key}: ${s}\n`;
-      }
+      out += writeValue(key, value, pad);
     }
   }
   return out;
@@ -1031,7 +1021,7 @@ function main() {
 
   // Generate spec
   const spec = buildSpec();
-  const yamlContent = toYAML(spec);
+  const yamlContent = serialize(spec, '');
   const specPath = path.join(docsDir, 'openapi.yaml');
   fs.writeFileSync(specPath, yamlContent, 'utf8');
   console.log(`Generated: ${specPath}`);

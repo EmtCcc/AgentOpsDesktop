@@ -13,9 +13,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const appPath =
-  process.argv[2] ||
-  path.join(__dirname, '..', 'release', 'mac-arm64', 'AgentOps.app');
+function findApp() {
+  if (process.argv[2]) return process.argv[2];
+  const releaseDir = path.join(__dirname, '..', 'release');
+  // Auto-detect: release/mac-arm64/AgentOps.app or release/mac/AgentOps.app
+  for (const sub of ['mac-arm64', 'mac']) {
+    const p = path.join(releaseDir, sub, 'AgentOps.app');
+    if (fs.existsSync(p)) return p;
+  }
+  // Fallback to default
+  return path.join(releaseDir, 'mac-arm64', 'AgentOps.app');
+}
+
+const appPath = findApp();
 
 let failures = 0;
 

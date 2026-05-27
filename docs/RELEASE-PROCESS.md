@@ -252,10 +252,10 @@ If a stable release has a critical issue, use the rollback workflow to revert al
 The workflow will:
 - Check out the target version's code
 - Rebuild signed + notarized DMGs from that version
-- Re-publish to GitHub Releases (updating `latest-mac.yml`)
-- Create a tagged rollback release with the reason documented
+- Replace the DMGs and `latest-mac.yml` on the existing GitHub Release
+- Update the release notes with the rollback reason and timestamp
 
-Users' `electron-updater` clients will detect the older version in `latest-mac.yml` on their next launch and auto-update back to it.
+Users' `electron-updater` clients will detect the re-published `latest-mac.yml` on their next launch and auto-update back to that version.
 
 ### Manual Rollback (Emergency)
 
@@ -265,17 +265,14 @@ If the workflow is unavailable, roll back manually:
 # 1. Check out the last good version
 git checkout v0.1.0
 
-# 2. Install and build
+# 2. Install and build (no publish)
 npm ci
-npm run build
+npx electron-builder --mac --publish never
 
-# 3. Re-publish (updates latest-mac.yml)
-gh release create "rollback-manual-$(date +%s)" \
-  release/AgentOps-*.dmg \
-  release/latest-mac.yml \
-  --title "Emergency Rollback to v0.1.0" \
-  --notes "Emergency rollback — <describe issue>" \
-  --latest
+# 3. Replace assets on the existing release
+gh release delete-asset v0.1.0 "latest-mac.yml" --yes 2>/dev/null || true
+gh release upload v0.1.0 release/AgentOps-*.dmg release/latest-mac.yml --clobber
+gh release edit v0.1.0 --latest
 
 # 4. Clean up
 git checkout main

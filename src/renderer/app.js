@@ -3,6 +3,40 @@
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 
+// ── Performance Utilities ──
+
+const escapeHtmlCache = new Map();
+function escapeHtml(str) {
+  if (!str) return '';
+  if (escapeHtmlCache.has(str)) return escapeHtmlCache.get(str);
+  const result = str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  if (escapeHtmlCache.size > 500) escapeHtmlCache.clear();
+  escapeHtmlCache.set(str, result);
+  return result;
+}
+
+function debounce(fn, ms = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
+let _rafScroll = null;
+function scheduleScroll(el) {
+  if (_rafScroll) cancelAnimationFrame(_rafScroll);
+  _rafScroll = requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;
+    _rafScroll = null;
+  });
+}
+
 // ── SVG Icons ──
 
 const icons = {
@@ -628,7 +662,7 @@ async function loadLogs() {
     if (!logs || logs.length === 0) return;
     const filtered = logsFilterLevel ? logs.filter((l) => l.level === logsFilterLevel) : logs;
     viewer.innerHTML = filtered.map((l) => logEntryHtml(l)).join('');
-    viewer.scrollTop = viewer.scrollHeight;
+    scheduleScroll(viewer);
   } catch { /* IPC not available */ }
 }
 
@@ -653,9 +687,9 @@ function appendLogEntry(entry) {
   const empty = viewer.querySelector('.empty-state');
   if (empty) empty.remove();
   viewer.insertAdjacentHTML('beforeend', logEntryHtml(entry));
-  // Auto-scroll if near bottom
+  // Auto-scroll if near bottom (batched with rAF)
   if (viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 80) {
-    viewer.scrollTop = viewer.scrollHeight;
+    scheduleScroll(viewer);
   }
 }
 
@@ -690,12 +724,6 @@ function bindLogActions(container) {
 }
 
 // ── Utilities ──
-
-function escapeHtml(str) {
-  const el = document.createElement('span');
-  el.textContent = str || '';
-  return el.innerHTML;
-}
 
 function showToast(message, type = 'error') {
   let container = document.getElementById('toast-container');
