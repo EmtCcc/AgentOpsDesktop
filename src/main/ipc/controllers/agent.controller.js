@@ -124,7 +124,7 @@ const agentController = {
     return { deleted: true, id };
   },
 
-  async healthCheck(_event, id) {
+  async healthCheck(_event, { id }) {
     // Try live session first
     const session = sessions.get(id);
     if (session) {
@@ -143,7 +143,7 @@ const agentController = {
       const check = await _validateExecPath(config.execPath || config.command);
       return { ok: check.ok, execValid: check.ok, processAlive: false, status: 'idle' };
     }
-    return { ok: false, error: 'Agent not found' };
+    throw IpcError.notFound('Agent', id);
   },
 
   // ── Live process management ──
@@ -263,16 +263,47 @@ const agentController = {
 };
 
 agentController.schemas = {
+  list: {
+    offset: { type: 'number' },
+    limit: { type: 'number' },
+    status: { type: 'string', enum: ['idle', 'running', 'error'] },
+    sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'name', 'status'] },
+    sortOrder: { type: 'string', enum: ['asc', 'desc'] },
+  },
+  get: {
+    id: { type: 'string', required: true },
+  },
   create: {
     name: { type: 'string', required: true, minLength: 1, maxLength: 200 },
-    type: { type: 'string' },
-    command: { type: 'string' },
-    execPath: { type: 'string' },
-    cwd: { type: 'string' },
+    type: { type: 'string', enum: ['claude', 'codex', 'gemini', 'opencode', 'cursor', 'custom'] },
+    command: { type: 'string', maxLength: 1000 },
+    execPath: { type: 'string', maxLength: 1000 },
+    cwd: { type: 'string', maxLength: 500 },
   },
   update: {
     id: { type: 'string', required: true },
-    updates: { type: 'object', required: true },
+    updates: {
+      type: 'object',
+      required: true,
+      validate: (v) => {
+        if (!v || typeof v !== 'object') return 'updates must be an object';
+        const allowed = ['name', 'type', 'status', 'command', 'execPath', 'cwd'];
+        const keys = Object.keys(v);
+        if (keys.length === 0) return 'updates must not be empty';
+        const invalid = keys.filter((k) => !allowed.includes(k));
+        if (invalid.length > 0) return `invalid fields: ${invalid.join(', ')}`;
+        if (v.name !== undefined && (typeof v.name !== 'string' || v.name.length === 0)) return 'name must be a non-empty string';
+        if (v.status !== undefined && !['idle', 'running', 'error'].includes(v.status)) return 'status must be idle, running, or error';
+        if (v.type !== undefined && !['claude', 'codex', 'gemini', 'opencode', 'cursor', 'custom'].includes(v.type)) return 'invalid agent type';
+        return true;
+      },
+    },
+  },
+  delete: {
+    id: { type: 'string', required: true },
+  },
+  healthCheck: {
+    id: { type: 'string', required: true },
   },
   spawn: {
     execPath: { type: 'string', required: true, minLength: 1 },

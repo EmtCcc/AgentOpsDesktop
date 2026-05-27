@@ -51,6 +51,10 @@ const taskController = {
   async delete(_event, id) {
     return tasks.delete(id);
   },
+
+  async remove(_event, { id }) {
+    return tasks.delete(id);
+  },
 };
 
 taskController.schemas = {
@@ -60,9 +64,18 @@ taskController.schemas = {
     goalId: { type: 'string' },
     assigneeAgentId: { type: 'string' },
   },
+  get: {
+    id: { type: 'string', required: true },
+  },
+  list: {
+    goalId: { type: 'string' },
+  },
   update: {
     id: { type: 'string', required: true },
     updates: { type: 'object', required: true },
+  },
+  remove: {
+    id: { type: 'string', required: true },
   },
 };
 
