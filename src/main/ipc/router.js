@@ -3,6 +3,7 @@
 const { ipcMain } = require('electron');
 const { validate, ValidationError } = require('./middleware/validate');
 const { AuthError } = require('./middleware/auth');
+const { IpcError } = require('./errors');
 const logger = require('../logger');
 
 /**
@@ -77,7 +78,15 @@ class IpcRouter {
         if (schema) {
           validate(schema, cleanPayload);
         }
-        return handler(event, cleanPayload);
+
+        try {
+          return await handler(event, cleanPayload);
+        } catch (err) {
+          if (err instanceof IpcError) {
+            return { ok: false, error: { code: err.code, message: err.message, status: err.status, field: err.field } };
+          }
+          throw err;
+        }
       });
     }
 

@@ -16,7 +16,10 @@ contextBridge.exposeInMainWorld('agentOps', {
     create: (agent) => ipcRenderer.invoke('agents:create', agent),
     update: (id, updates) => ipcRenderer.invoke('agents:update', { id, updates }),
     delete: (id) => ipcRenderer.invoke('agents:delete', id),
-    healthCheck: (id) => ipcRenderer.invoke('agents:health-check', id),
+    healthCheck: (id) => ipcRenderer.invoke('agents:health-check', { id }),
+    spawn: (config) => ipcRenderer.invoke('agents:spawn', config),
+    status: (id) => ipcRenderer.invoke('agents:status', { id }),
+    kill: (id, signal) => ipcRenderer.invoke('agents:kill', { id, signal }),
   },
 
   goals: {

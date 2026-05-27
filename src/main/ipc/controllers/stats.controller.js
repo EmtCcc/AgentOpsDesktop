@@ -2,6 +2,7 @@
 
 /**
  * Stats controller — aggregated metrics for the dashboard.
+ * Pulls live data from agent and task controllers.
  */
 
 const agentController = require('./agent.controller');
@@ -9,22 +10,23 @@ const taskController = require('./task.controller');
 
 const statsController = {
   async summary() {
-    const agentList = Array.from(agentController.store.values());
-    const taskList = Array.from(taskController.store.values());
+    const agentList = await agentController.list();
+    const taskList = await taskController.list();
 
     return {
       agents: {
         total: agentList.length,
         running: agentList.filter((a) => a.status === 'running').length,
-        idle: agentList.filter((a) => a.status === 'idle').length,
+        idle: agentList.filter((a) => a.status === 'idle' || a.status === 'spawning').length,
         error: agentList.filter((a) => a.status === 'error').length,
+        stopped: agentList.filter((a) => a.status === 'stopped' || a.status === 'completed').length,
       },
       tasks: {
         total: taskList.length,
-        pending: taskList.filter((t) => t.status === 'pending').length,
-        running: taskList.filter((t) => t.status === 'running').length,
+        todo: taskList.filter((t) => t.status === 'todo').length,
+        in_progress: taskList.filter((t) => t.status === 'in_progress').length,
         done: taskList.filter((t) => t.status === 'done').length,
-        failed: taskList.filter((t) => t.status === 'failed').length,
+        blocked: taskList.filter((t) => t.status === 'blocked').length,
       },
     };
   },

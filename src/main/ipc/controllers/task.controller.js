@@ -12,8 +12,14 @@ const tasks = new Map();
 let nextId = 1;
 
 const taskController = {
-  async list() {
-    return Array.from(tasks.values());
+  async list(_event, { goalId } = {}) {
+    const all = Array.from(tasks.values());
+    if (goalId) return all.filter((t) => t.goalId === goalId);
+    return all;
+  },
+
+  async get(_event, { id }) {
+    return tasks.get(id) || null;
   },
 
   async create(_event, task) {

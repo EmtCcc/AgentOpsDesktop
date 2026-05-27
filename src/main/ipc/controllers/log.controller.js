@@ -2,21 +2,31 @@
 
 /**
  * Log controller.
- * In-memory ring buffer (max 10k entries).
+ * Pulls logs from agent live sessions and maintains a global ring buffer.
  * Pushes new entries to renderer via 'logs:new' channel.
  */
 
 let mainWindow = null;
-const logs = [];
+const globalLogs = [];
 
 function setMainWindow(win) {
   mainWindow = win;
 }
 
 const logController = {
-  async list(_event, { agentId, limit = 200 } = {}) {
-    let filtered = agentId ? logs.filter((l) => l.agentId === agentId) : logs;
-    return filtered.slice(-limit);
+  async list(_event, { agentId, limit = 200, offset = 0 } = {}) {
+    if (agentId) {
+      const agentController = require('./agent.controller');
+      const session = agentController._sessions.get(agentId);
+      if (!session) throw new Error(`Agent session not found: ${agentId}`);
+      const logs = session.logs.slice(offset, offset + limit);
+      return logs.map((l, i) => ({
+        id: `${agentId}-${offset + i}`,
+        agentId,
+        ...l,
+      }));
+    }
+    return globalLogs.slice(offset, offset + limit);
   },
 
   async append(_event, entry) {
@@ -25,14 +35,19 @@ const logController = {
       timestamp: Date.now(),
       ...entry,
     };
-    logs.push(record);
-    if (logs.length > 10000) logs.splice(0, logs.length - 10000);
+    globalLogs.push(record);
+    if (globalLogs.length > 10000) globalLogs.splice(0, globalLogs.length - 10000);
     mainWindow?.webContents.send('logs:new', record);
     return record;
   },
 };
 
 logController.schemas = {
+  list: {
+    agentId: { type: 'string' },
+    limit: { type: 'number' },
+    offset: { type: 'number' },
+  },
   append: {
     agentId: { type: 'string' },
     message: { type: 'string', required: true },

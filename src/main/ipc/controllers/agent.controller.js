@@ -4,20 +4,24 @@ const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const { IpcError } = require('../errors');
+const { paginate } = require('../pagination');
 
 /**
  * Agent lifecycle controller.
- * Manages real CLI agent processes via child_process.spawn.
+ * Manages agent configs (CRUD) and live CLI agent processes (spawn/kill/status).
  *
- * API:
- *   agents:list()                    — list all registered agent configs
- *   agents:create(agent)             — register a new agent config
- *   agents:update({ id, updates })   — update agent config fields
- *   agents:delete(id)                — remove an agent config
- *   agents:spawn({ name, execPath, args, cwd }) — spawn a live process
- *   agents:status({ id })            — get live session status
- *   agents:kill({ id, signal })      — kill a live session
- *   agents:health-check({ id })      — check agent connectivity
+ * Config API (matches preload.js bridge):
+ *   agents:list()                  — list all registered agent configs
+ *   agents:create(agent)           — register a new agent config
+ *   agents:update({ id, updates }) — update agent config fields
+ *   agents:delete(id)              — remove an agent config
+ *   agents:health-check(id)        — check agent connectivity
+ *
+ * Live process API (new):
+ *   agents:spawn({ name, execPath, args, cwd, env }) — spawn a live process
+ *   agents:status({ id })                            — get live session status
+ *   agents:kill({ id, signal })                      — kill a live session
  */
 
 // ── Config store (persistent agent definitions) ──
@@ -68,27 +72,78 @@ async function _validateExecPath(execPath) {
 const agentController = {
   // ── Config CRUD ──
 
-  async list() {
-    return Array.from(agentConfigs.values());
+  /**
+   * List agent configs with pagination.
+   * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status }
+   */
+  async list(_event, params = {}) {
+    const filter = params.status
+      ? (a) => a.status === params.status
+      : undefined;
+    return paginate(agentConfigs, { ...params, filter });
+  },
+
+  /**
+   * Get a single agent config by ID.
+   * @param {string} id
+   */
+  async get(_event, { id }) {
+    const agent = agentConfigs.get(id);
+    if (!agent) throw IpcError.notFound('Agent', id);
+    return agent;
   },
 
   async create(_event, agent) {
     const id = `agent-${nextConfigId++}`;
-    const record = { id, status: 'idle', createdAt: Date.now(), ...agent };
+    const record = {
+      id,
+      name: agent.name,
+      type: agent.type || 'custom',
+      status: 'idle',
+      command: agent.command || null,
+      execPath: agent.execPath || null,
+      cwd: agent.cwd || null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
     agentConfigs.set(id, record);
     return record;
   },
 
   async update(_event, { id, updates }) {
     const existing = agentConfigs.get(id);
-    if (!existing) return null;
-    const updated = { ...existing, ...updates };
+    if (!existing) throw IpcError.notFound('Agent', id);
+    const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
     agentConfigs.set(id, updated);
     return updated;
   },
 
-  async delete(_event, id) {
-    return agentConfigs.delete(id);
+  async delete(_event, { id }) {
+    if (!agentConfigs.has(id)) throw IpcError.notFound('Agent', id);
+    agentConfigs.delete(id);
+    return { deleted: true, id };
+  },
+
+  async healthCheck(_event, id) {
+    // Try live session first
+    const session = sessions.get(id);
+    if (session) {
+      const check = await _validateExecPath(session.execPath);
+      const alive = session.process && !session.process.killed && session.status === AGENT_STATUS.RUNNING;
+      return {
+        ok: check.ok && alive,
+        execValid: check.ok,
+        processAlive: alive,
+        status: session.status,
+      };
+    }
+    // Fall back to config
+    const config = agentConfigs.get(id);
+    if (config) {
+      const check = await _validateExecPath(config.execPath || config.command);
+      return { ok: check.ok, execValid: check.ok, processAlive: false, status: 'idle' };
+    }
+    return { ok: false, error: 'Agent not found' };
   },
 
   // ── Live process management ──
@@ -200,29 +255,7 @@ const agentController = {
     return { id, status: AGENT_STATUS.STOPPED };
   },
 
-  async healthCheck(_event, { id }) {
-    // Try live session first
-    const session = sessions.get(id);
-    if (session) {
-      const check = await _validateExecPath(session.execPath);
-      const alive = session.process && !session.process.killed && session.status === AGENT_STATUS.RUNNING;
-      return {
-        ok: check.ok && alive,
-        execValid: check.ok,
-        processAlive: alive,
-        status: session.status,
-      };
-    }
-    // Fall back to config
-    const config = agentConfigs.get(id);
-    if (config) {
-      const check = await _validateExecPath(config.execPath || config.command);
-      return { ok: check.ok, execValid: check.ok, processAlive: false, status: 'idle' };
-    }
-    return { ok: false, error: 'Agent not found' };
-  },
-
-  /** Expose live sessions for cross-controller access (logs, stats) */
+  /** Expose live sessions for cross-controller access (logs) */
   _sessions: sessions,
 
   /** Expose agent configs for cross-controller access (stats) */
@@ -242,8 +275,8 @@ agentController.schemas = {
     updates: { type: 'object', required: true },
   },
   spawn: {
-    name: { type: 'string', maxLength: 200 },
     execPath: { type: 'string', required: true, minLength: 1 },
+    name: { type: 'string', maxLength: 200 },
     args: { type: 'array' },
     cwd: { type: 'string' },
     env: { type: 'object' },

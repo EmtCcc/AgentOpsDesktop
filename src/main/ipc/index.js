@@ -43,12 +43,17 @@ function bootstrapRoutes(mainWindow) {
   // ── Monitoring ──
   router.register('monitor:health', () => monitor.getHealth());
 
-  // ── Agents (real process management) ──
+  // ── Agents: config CRUD ──
   router.register('agents:list', agentController.list);
+  router.register('agents:create', agentController.create, { schema: agentController.schemas.create });
+  router.register('agents:update', agentController.update, { schema: agentController.schemas.update });
+  router.register('agents:delete', agentController.delete);
+  router.register('agents:health-check', agentController.healthCheck);
+
+  // ── Agents: live process management ──
   router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn });
   router.register('agents:status', agentController.status, { schema: agentController.schemas.status });
   router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill });
-  router.register('agents:health-check', agentController.healthCheck, { schema: agentController.schemas.status });
 
   // ── Goals ──
   router.register('goals:list', goalController.list);

@@ -1,16 +1,14 @@
-# Getting Started with AgentOps Desktop
+# Getting Started
 
-AgentOps Desktop lets you connect, orchestrate, and monitor multiple AI agents from a single desktop app. No cloud account required — everything runs locally.
-
-> **Note:** The UI described below reflects the target workflow. The current renderer is a placeholder welcome screen. The IPC backend and agent runtime are functional — see [API.md](API.md) for programmatic usage.
+AgentOps Desktop is a local-first app for orchestrating multiple AI coding agents from one place. No cloud account needed — everything runs on your machine.
 
 ## Prerequisites
 
-- macOS (Windows and Linux support planned)
+- macOS (Windows/Linux support planned)
 - Node.js 20+
-- At least one CLI agent installed (e.g. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli))
+- At least one CLI agent installed — [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), or [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
-## Install
+## Install & Run
 
 ```bash
 git clone https://github.com/EmtCcc/AgentOpsDesktop.git
@@ -19,72 +17,36 @@ npm install
 npm start
 ```
 
-## Current Capabilities
+Use `npm run dev` to launch with DevTools enabled.
 
-What works today:
+## Core Workflow
 
-- **Electron shell** — launches a desktop window with DevTools support (`npm run dev`)
-- **IPC handlers** — full CRUD for agents, goals, tasks, and logs via `window.agentOps`
-- **Agent runtime** — spawn, monitor, and kill CLI agent processes (`src/main/agent-runtime.js`)
-- **Data persistence** — JSON file store at `~/.agentops/data.json` (`src/main/store.js`)
-- **Health monitoring** — system metrics, IPC latency tracking, alert thresholds (`src/main/monitor.js`)
-- **Structured logging** — JSONL log files in the app's user data directory (`src/main/logger.js`)
+AgentOps follows a four-step loop: **connect → define → run → review**.
 
-## Target Workflow
+### 1. Connect an Agent
 
-The planned user experience follows this loop: **connect agents → define tasks → run & monitor → review results**.
+Open **Settings → Agents** and add a CLI agent by providing its executable path and working directory. Click **Test Connection** to verify it's reachable.
 
-### Step 1 — Connect an Agent
+### 2. Create a Goal and Tasks
 
-Open **Settings → Agents** and add a CLI agent:
+Create a **Goal** (a high-level objective like "Build a TODO API"), then break it into **Tasks**. Assign each task to a connected agent — multiple tasks on one agent run serially; tasks on different agents run in parallel.
 
-| Field | Example |
-|-------|---------|
-| **Name** | `claude-code` |
-| Executable path | `/usr/local/bin/claude` |
-| Working directory | `/Users/you/projects/my-app` |
+### 3. Run and Monitor
 
-Click **Test Connection** to verify the agent is reachable. A green badge means it's ready.
+Click **Start** to launch all tasks under a Goal. The Monitor panel shows agent status, real-time stdout/stderr logs, and task progress (`pending → running → done` or `failed`). A default limit of 3 parallel agents prevents resource contention.
 
-### Step 2 — Create a Goal and Tasks
+### 4. Review and Confirm
 
-Go to the **Task Board** and create a **Goal** — a high-level objective like "Implement a TODO API".
-
-Break the Goal into **Tasks**:
-
-1. "Design the database schema"
-2. "Build CRUD endpoints"
-
-Each task gets assigned to a connected agent. You can assign multiple tasks to the same agent (runs serially) or spread them across agents (runs in parallel).
-
-### Step 3 — Run and Monitor
-
-Click **Start** on a Goal to kick off all its tasks. The **Monitor** panel shows:
-
-- **Status** — which agents are running, idle, blocked, or failed
-- **Live Logs** — real-time stdout/stderr streaming per task
-- **Progress** — tasks move through `pending → running → done` (or `failed`)
-
-You can let tasks run in the background while you do other work. The status bar will alert you if something needs attention.
-
-### Step 4 — Review and Confirm Delivery
-
-When all tasks in a Goal complete, the **Summary** panel shows:
-
-- Changed files and diff summaries
-- Per-task output previews
-- Any warnings or errors encountered
-
-Review the output, then click **Confirm Delivery** to mark the Goal as done.
+When tasks finish, review the summary — changed files, diffs, and any errors. Click **Confirm Delivery** to mark the Goal complete.
 
 ## Tips
 
-- **Max parallel agents**: Defaults to 3. Adjust in Settings if your machine can handle more or fewer.
-- **Timeouts**: Each task has a configurable timeout. If an agent stalls, the task is marked failed and you're notified.
-- **Raw output first**: Agent logs are shown as-is. Structured parsing will come in a future release.
+- Adjust max parallel agents in **Settings** if your machine handles more or fewer.
+- Tasks have configurable timeouts. Stalled agents are automatically marked failed.
+- Logs are raw output today; structured parsing is planned.
 
-## What's Next
+## Further Reading
 
-- [Architecture](ARCHITECTURE.md) — target system design and data model
-- [API Reference](API.md) — current IPC channels and agent runtime
-- [Roadmap](../ROADMAP.md) — milestone plan and phase progression
+- [API Reference](API.md) — IPC channels and agent runtime
+- [Architecture](ARCHITECTURE.md) — system design and data model
+- [Roadmap](../ROADMAP.md) — milestones and phase progression
