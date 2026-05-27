@@ -1,13 +1,23 @@
-'use strict';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHarness } from './helpers/test-harness.js';
 
-const { describe, it, expect, beforeEach, afterEach, vi } = require('vitest');
-const { createHarness } = require('./helpers/test-harness');
+// Mock electron-updater before any source imports
+vi.mock('electron-updater', () => ({
+  autoUpdater: {
+    autoDownload: false,
+    autoInstallOnAppQuit: true,
+    on: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
+  },
+}));
 
 describe('Goals integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {
@@ -52,7 +62,9 @@ describe('Goals integration', () => {
   describe('goals:list', () => {
     it('returns empty list initially', async () => {
       const result = await harness.call('goals:list', harness.auth());
-      expect(result).toEqual([]);
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
     });
 
     it('returns created goals', async () => {
@@ -60,7 +72,8 @@ describe('Goals integration', () => {
       await harness.call('goals:create', harness.withAuth({ title: 'G2' }));
 
       const result = await harness.call('goals:list', harness.auth());
-      expect(result.length).toBe(2);
+      expect(result.items.length).toBe(2);
+      expect(result.total).toBe(2);
     });
 
     it('supports pagination', async () => {
@@ -69,7 +82,9 @@ describe('Goals integration', () => {
       }
 
       const page = await harness.call('goals:list', harness.withAuth({ limit: 2, offset: 0 }));
-      expect(page.length).toBe(2);
+      expect(page.items.length).toBe(2);
+      expect(page.total).toBe(5);
+      expect(page.hasMore).toBe(true);
     });
   });
 
@@ -148,7 +163,8 @@ describe('Goals integration', () => {
       expect(result.id).toBe(created.id);
 
       const list = await harness.call('goals:list', harness.auth());
-      expect(list.length).toBe(0);
+      expect(list.items.length).toBe(0);
+      expect(list.total).toBe(0);
     });
 
     it('throws NOT_FOUND for missing goal', async () => {

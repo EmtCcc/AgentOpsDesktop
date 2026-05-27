@@ -4,6 +4,7 @@ const { AgentRepository } = require('./agent.repository');
 const { GoalRepository } = require('./goal.repository');
 const { TaskRepository } = require('./task.repository');
 const { TaskLogRepository } = require('./task-log.repository');
+const { OrchestratorRepository } = require('./orchestrator.repository');
 
 /**
  * Initialize all repositories with a database connection.
@@ -15,7 +16,8 @@ function createRepositories(db) {
     goals: new GoalRepository(db),
     tasks: new TaskRepository(db),
     taskLogs: new TaskLogRepository(db),
+    orchestrator: new OrchestratorRepository(db),
   };
 }
 
-module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository };
+module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository, OrchestratorRepository };

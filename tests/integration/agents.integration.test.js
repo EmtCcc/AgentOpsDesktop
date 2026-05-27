@@ -1,13 +1,23 @@
-'use strict';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHarness } from './helpers/test-harness.js';
 
-const { describe, it, expect, beforeEach, afterEach, vi } = require('vitest');
-const { createHarness } = require('./helpers/test-harness');
+// Mock electron-updater before any source imports
+vi.mock('electron-updater', () => ({
+  autoUpdater: {
+    autoDownload: false,
+    autoInstallOnAppQuit: true,
+    on: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
+  },
+}));
 
 describe('Agents integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {
@@ -66,7 +76,9 @@ describe('Agents integration', () => {
   describe('agents:list', () => {
     it('returns empty list initially', async () => {
       const result = await harness.call('agents:list', harness.auth());
-      expect(result).toEqual([]);
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
     });
 
     it('returns created agents', async () => {
@@ -74,8 +86,9 @@ describe('Agents integration', () => {
       await harness.call('agents:create', harness.withAuth({ name: 'a2' }));
 
       const result = await harness.call('agents:list', harness.auth());
-      expect(result.length).toBe(2);
-      expect(result.map((a) => a.name).sort()).toEqual(['a1', 'a2']);
+      expect(result.items.length).toBe(2);
+      expect(result.total).toBe(2);
+      expect(result.items.map((a) => a.name).sort()).toEqual(['a1', 'a2']);
     });
 
     it('supports pagination', async () => {
@@ -84,13 +97,17 @@ describe('Agents integration', () => {
       }
 
       const page1 = await harness.call('agents:list', harness.withAuth({ limit: 2, offset: 0 }));
-      expect(page1.length).toBe(2);
+      expect(page1.items.length).toBe(2);
+      expect(page1.total).toBe(5);
+      expect(page1.hasMore).toBe(true);
 
       const page2 = await harness.call('agents:list', harness.withAuth({ limit: 2, offset: 2 }));
-      expect(page2.length).toBe(2);
+      expect(page2.items.length).toBe(2);
+      expect(page2.hasMore).toBe(true);
 
       const page3 = await harness.call('agents:list', harness.withAuth({ limit: 2, offset: 4 }));
-      expect(page3.length).toBe(1);
+      expect(page3.items.length).toBe(1);
+      expect(page3.hasMore).toBe(false);
     });
   });
 
@@ -167,7 +184,8 @@ describe('Agents integration', () => {
 
       // Should be gone
       const list = await harness.call('agents:list', harness.auth());
-      expect(list.length).toBe(0);
+      expect(list.items.length).toBe(0);
+      expect(list.total).toBe(0);
     });
 
     it('throws NOT_FOUND for missing agent', async () => {

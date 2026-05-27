@@ -29,14 +29,12 @@ const goalController = {
    */
   async list(_event, params = {}) {
     if (goalRepo) {
-      const result = goalRepo.list(params);
-      return result.items;
+      return goalRepo.list(params);
     }
     const filter = params.status
       ? (g) => g.status === params.status
       : undefined;
-    const result = paginate(goals, { ...params, filter });
-    return result.items;
+    return paginate(goals, { ...params, filter });
   },
 
   /**

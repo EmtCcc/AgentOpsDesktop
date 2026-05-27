@@ -89,14 +89,12 @@ const agentController = {
    */
   async list(_event, params = {}) {
     if (agentRepo) {
-      const result = agentRepo.list(params);
-      return result.items;
+      return agentRepo.list(params);
     }
     const filter = params.status
       ? (a) => a.status === params.status
       : undefined;
-    const result = paginate(agentConfigs, { ...params, filter });
-    return result.items;
+    return paginate(agentConfigs, { ...params, filter });
   },
 
   /**

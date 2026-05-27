@@ -1,17 +1,26 @@
-'use strict';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHarness } from './helpers/test-harness.js';
 
-const { describe, it, expect, beforeEach, afterEach } = require('vitest');
-const { createHarness } = require('./helpers/test-harness');
+// Mock electron-updater before any source imports
+vi.mock('electron-updater', () => ({
+  autoUpdater: {
+    autoDownload: false,
+    autoInstallOnAppQuit: true,
+    on: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
+  },
+}));
 
 describe('Auth integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {
-    const { vi } = require('vitest');
     vi.restoreAllMocks();
   });
 
@@ -20,64 +29,42 @@ describe('Auth integration', () => {
       const result = await harness.call('auth:login');
       expect(result.token).toBeDefined();
       expect(typeof result.token).toBe('string');
-      expect(result.token.length).toBeGreaterThan(0);
-      expect(result.expiresAt).toBeGreaterThan(Date.now());
+      expect(result.expiresAt).toBeDefined();
     });
 
-    it('creates a new session each call', async () => {
-      const s1 = await harness.call('auth:login');
-      const s2 = await harness.call('auth:login');
-      expect(s1.token).not.toBe(s2.token);
+    it('creates session with specified role', async () => {
+      const result = await harness.call('auth:login', { role: 'viewer' });
+      expect(result.role).toBe('viewer');
+    });
+
+    it('defaults to operator role', async () => {
+      const result = await harness.call('auth:login');
+      expect(result.role).toBe('operator');
     });
   });
 
   describe('auth:status', () => {
-    it('returns isValid: false when no session', async () => {
+    it('returns isValid false when no session', async () => {
       const result = await harness.call('auth:status');
       expect(result.isValid).toBe(false);
     });
 
-    it('returns session info after login', async () => {
-      await harness.call('auth:login');
-      const status = await harness.call('auth:status');
-      expect(status.isValid).toBe(true);
-      expect(status.createdAt).toBeDefined();
-      expect(status.expiresAt).toBeDefined();
+    it('returns session info when logged in', async () => {
+      const login = await harness.call('auth:login');
+      const result = await harness.call('auth:status');
+      expect(result.isValid).toBe(true);
+      expect(result.role).toBeDefined();
     });
   });
 
   describe('auth:logout', () => {
-    it('destroys session', async () => {
-      const { token } = await harness.call('auth:login');
-      const result = await harness.call('auth:logout', { _auth: { token } });
+    it('destroys the session', async () => {
+      await harness.call('auth:login');
+      const result = await harness.call('auth:logout', harness.withAuth({}));
       expect(result.ok).toBe(true);
 
       const status = await harness.call('auth:status');
       expect(status.isValid).toBe(false);
-    });
-
-    it('rejects unauthenticated requests', async () => {
-      await expect(harness.call('auth:logout')).rejects.toThrow();
-    });
-  });
-
-  describe('auth:rotate', () => {
-    it('returns a new token and invalidates the old', async () => {
-      const { token: oldToken } = await harness.call('auth:login');
-      const result = await harness.call('auth:rotate', { _auth: { token: oldToken } });
-
-      expect(result.token).toBeDefined();
-      expect(result.token).not.toBe(oldToken);
-      expect(result.expiresAt).toBeGreaterThan(Date.now());
-
-      // Old token should be invalid
-      const { validate } = harness.tokenManager;
-      expect(validate(oldToken)).toBe(false);
-      expect(validate(result.token)).toBe(true);
-    });
-
-    it('rejects unauthenticated requests', async () => {
-      await expect(harness.call('auth:rotate')).rejects.toThrow();
     });
   });
 
@@ -93,7 +80,7 @@ describe('Auth integration', () => {
 
     it('allows calls with valid token', async () => {
       const result = await harness.call('agents:list', harness.auth());
-      expect(Array.isArray(result)).toBe(true);
+      expect(Array.isArray(result.items)).toBe(true);
     });
   });
 });

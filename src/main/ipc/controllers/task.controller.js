@@ -31,16 +31,14 @@ const taskController = {
    */
   async list(_event, params = {}) {
     if (taskRepo) {
-      const result = taskRepo.list(params);
-      return result.items;
+      return taskRepo.list(params);
     }
     const filter = (t) => {
       if (params.status && t.status !== params.status) return false;
       if (params.goalId && t.goalId !== params.goalId) return false;
       return true;
     };
-    const result = paginate(tasks, { ...params, filter });
-    return result.items;
+    return paginate(tasks, { ...params, filter });
   },
 
   /**
@@ -128,7 +126,7 @@ taskController.schemas = {
   list: {
     offset: { type: 'number' },
     limit: { type: 'number' },
-    status: { type: 'string', enum: ['pending', 'running', 'done', 'failed'] },
+    status: { type: 'string', enum: ['pending', 'assigned', 'running', 'done', 'failed', 'blocked'] },
     goalId: { type: 'string' },
     sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'title', 'status'] },
     sortOrder: { type: 'string', enum: ['asc', 'desc'] },
@@ -155,7 +153,7 @@ taskController.schemas = {
         const invalid = keys.filter((k) => !allowed.includes(k));
         if (invalid.length > 0) return `invalid fields: ${invalid.join(', ')}`;
         if (v.title !== undefined && (typeof v.title !== 'string' || v.title.length === 0)) return 'title must be a non-empty string';
-        if (v.status !== undefined && !['pending', 'running', 'done', 'failed'].includes(v.status)) return 'status must be pending, running, done, or failed';
+        if (v.status !== undefined && !['pending', 'assigned', 'running', 'done', 'failed', 'blocked'].includes(v.status)) return 'status must be pending, assigned, running, done, failed, or blocked';
         return true;
       },
     },

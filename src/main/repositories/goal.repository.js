@@ -92,7 +92,7 @@ class GoalRepository {
     const total = rows.length;
     const items = rows.slice(offset, offset + limit).map((r) => this._toRecord(r));
 
-    return { items, total, offset, limit };
+    return { items, total, offset, limit, hasMore: offset + limit < total };
   }
 }
 

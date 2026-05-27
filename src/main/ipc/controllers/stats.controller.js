@@ -10,9 +10,8 @@ const taskController = require('./task.controller');
 
 const statsController = {
   async summary() {
-    // list() returns items array directly (pagination handled internally)
-    const agentList = await agentController.list(null, { limit: 10000 });
-    const taskList = await taskController.list(null, { limit: 10000 });
+    const { items: agentList } = await agentController.list(null, { limit: 10000 });
+    const { items: taskList } = await taskController.list(null, { limit: 10000 });
 
     return {
       agents: {
@@ -25,9 +24,11 @@ const statsController = {
       tasks: {
         total: taskList.length,
         pending: taskList.filter((t) => t.status === 'pending').length,
+        assigned: taskList.filter((t) => t.status === 'assigned').length,
         running: taskList.filter((t) => t.status === 'running').length,
         done: taskList.filter((t) => t.status === 'done').length,
         failed: taskList.filter((t) => t.status === 'failed').length,
+        blocked: taskList.filter((t) => t.status === 'blocked').length,
       },
     };
   },

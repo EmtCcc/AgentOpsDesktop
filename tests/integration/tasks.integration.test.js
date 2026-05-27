@@ -1,13 +1,23 @@
-'use strict';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHarness } from './helpers/test-harness.js';
 
-const { describe, it, expect, beforeEach, afterEach, vi } = require('vitest');
-const { createHarness } = require('./helpers/test-harness');
+// Mock electron-updater before any source imports
+vi.mock('electron-updater', () => ({
+  autoUpdater: {
+    autoDownload: false,
+    autoInstallOnAppQuit: true,
+    on: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
+  },
+}));
 
 describe('Tasks integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {
@@ -73,7 +83,9 @@ describe('Tasks integration', () => {
   describe('tasks:list', () => {
     it('returns empty list initially', async () => {
       const result = await harness.call('tasks:list', harness.auth());
-      expect(result).toEqual([]);
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
     });
 
     it('returns created tasks', async () => {
@@ -81,7 +93,8 @@ describe('Tasks integration', () => {
       await harness.call('tasks:create', harness.withAuth({ title: 'T2' }));
 
       const result = await harness.call('tasks:list', harness.auth());
-      expect(result.length).toBe(2);
+      expect(result.items.length).toBe(2);
+      expect(result.total).toBe(2);
     });
 
     it('supports pagination', async () => {
@@ -90,7 +103,9 @@ describe('Tasks integration', () => {
       }
 
       const page = await harness.call('tasks:list', harness.withAuth({ limit: 2, offset: 0 }));
-      expect(page.length).toBe(2);
+      expect(page.items.length).toBe(2);
+      expect(page.total).toBe(5);
+      expect(page.hasMore).toBe(true);
     });
 
     it('filters by status', async () => {
@@ -103,12 +118,12 @@ describe('Tasks integration', () => {
       }));
 
       const pending = await harness.call('tasks:list', harness.withAuth({ status: 'pending' }));
-      expect(pending.length).toBe(1);
-      expect(pending[0].title).toBe('T2');
+      expect(pending.items.length).toBe(1);
+      expect(pending.items[0].title).toBe('T2');
 
       const done = await harness.call('tasks:list', harness.withAuth({ status: 'done' }));
-      expect(done.length).toBe(1);
-      expect(done[0].title).toBe('T1');
+      expect(done.items.length).toBe(1);
+      expect(done.items[0].title).toBe('T1');
     });
 
     it('filters by goalId', async () => {
@@ -117,8 +132,8 @@ describe('Tasks integration', () => {
       await harness.call('tasks:create', harness.withAuth({ title: 'Unlinked' }));
 
       const linked = await harness.call('tasks:list', harness.withAuth({ goalId: goal.id }));
-      expect(linked.length).toBe(1);
-      expect(linked[0].title).toBe('Linked');
+      expect(linked.items.length).toBe(1);
+      expect(linked.items[0].title).toBe('Linked');
     });
   });
 
@@ -186,7 +201,8 @@ describe('Tasks integration', () => {
       expect(result.deleted).toBe(true);
 
       const list = await harness.call('tasks:list', harness.auth());
-      expect(list.length).toBe(0);
+      expect(list.items.length).toBe(0);
+      expect(list.total).toBe(0);
     });
 
     it('throws NOT_FOUND for missing task', async () => {

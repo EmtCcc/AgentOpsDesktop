@@ -1,6 +1,6 @@
 'use strict';
 
-const { vi } = require('vitest');
+import { vi } from 'vitest';
 
 /**
  * Integration test harness.
@@ -18,7 +18,7 @@ const { vi } = require('vitest');
 const handlers = new Map();
 let mockIpcMainHandle = null;
 
-function createHarness() {
+async function createHarness() {
   // Clear previous handlers
   handlers.clear();
 
@@ -43,6 +43,10 @@ function createHarness() {
       app: {
         getPath: () => '/tmp/agentops-test',
         getVersion: () => '0.1.0',
+        getName: () => 'agentops-desktop',
+        isReady: () => true,
+        on: vi.fn(),
+        whenReady: () => Promise.resolve(),
       },
     };
   });
@@ -61,6 +65,14 @@ function createHarness() {
     };
   });
 
+  // Mock updater to avoid electron-updater loading at import time
+  vi.doMock('../../../src/main/updater', () => ({
+    init: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
+  }));
+
   // Mock logger to silence output
   vi.doMock('../../../src/main/logger', () => ({
     default: {
@@ -78,7 +90,7 @@ function createHarness() {
   }));
 
   // Import bootstrapRoutes after mocks are in place
-  const { bootstrapRoutes } = require('../../../src/main/ipc/index');
+  const { bootstrapRoutes } = await import('../../../src/main/ipc/index.js');
 
   // Bootstrap routes (registers handlers on mocked ipcMain)
   const mockMainWindow = {
@@ -87,7 +99,7 @@ function createHarness() {
   bootstrapRoutes(mockMainWindow);
 
   // Get the token manager for creating test sessions
-  const { tokenManager } = require('../../../src/main/ipc/index');
+  const { tokenManager } = await import('../../../src/main/ipc/index.js');
 
   return {
     handlers,
@@ -124,4 +136,4 @@ function createHarness() {
   };
 }
 
-module.exports = { createHarness };
+export { createHarness };

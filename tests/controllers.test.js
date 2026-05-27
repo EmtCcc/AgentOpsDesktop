@@ -5,23 +5,26 @@ const { paginate } = require('../src/main/ipc/pagination');
 
 // ── Regression Tests for CMPAAA-23 ──
 
-describe('regression: list() returns plain array (not paginate object)', () => {
-  it('taskController.list returns array with .length', async () => {
+describe('regression: list() returns pagination envelope', () => {
+  it('taskController.list returns { items, total, offset, limit, hasMore }', async () => {
     const taskController = (await import('../src/main/ipc/controllers/task.controller.js')).default || (await import('../src/main/ipc/controllers/task.controller.js'));
     await taskController.create(null, { title: 'R1' });
     await taskController.create(null, { title: 'R2' });
     const result = await taskController.list();
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBeGreaterThanOrEqual(2);
-    expect(result.items).toBeUndefined(); // must NOT be a paginate object
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items.length).toBeGreaterThanOrEqual(2);
+    expect(result.total).toBeGreaterThanOrEqual(2);
+    expect(result).toHaveProperty('offset');
+    expect(result).toHaveProperty('limit');
+    expect(result).toHaveProperty('hasMore');
   });
 
-  it('goalController.list returns array', async () => {
+  it('goalController.list returns pagination envelope', async () => {
     const goalController = (await import('../src/main/ipc/controllers/goal.controller.js')).default || (await import('../src/main/ipc/controllers/goal.controller.js'));
     await goalController.create(null, { title: 'G1' });
     const result = await goalController.list();
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.items).toBeUndefined();
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -32,25 +35,26 @@ describe('regression: task status vocabulary is consistent', () => {
     expect(task.status).toBe('pending');
   });
 
-  it('task update schema accepts pending/running/done/failed', async () => {
+  it('task update schema accepts all valid statuses', async () => {
     const taskController = (await import('../src/main/ipc/controllers/task.controller.js')).default || (await import('../src/main/ipc/controllers/task.controller.js'));
     const task = await taskController.create(null, { title: 'Schema test' });
-    for (const status of ['pending', 'running', 'done', 'failed']) {
+    for (const status of ['pending', 'assigned', 'running', 'done', 'failed', 'blocked']) {
       const updated = await taskController.update(null, { id: task.id, updates: { status } });
       expect(updated.status).toBe(status);
     }
   });
 
-  it('stats controller uses pending/running/done/failed keys', async () => {
+  it('stats controller uses all task status keys', async () => {
     const statsController = (await import('../src/main/ipc/controllers/stats.controller.js')).default || (await import('../src/main/ipc/controllers/stats.controller.js'));
     const stats = await statsController.summary();
     expect(stats.tasks).toHaveProperty('pending');
+    expect(stats.tasks).toHaveProperty('assigned');
     expect(stats.tasks).toHaveProperty('running');
     expect(stats.tasks).toHaveProperty('done');
     expect(stats.tasks).toHaveProperty('failed');
+    expect(stats.tasks).toHaveProperty('blocked');
     expect(stats.tasks).not.toHaveProperty('todo');
     expect(stats.tasks).not.toHaveProperty('in_progress');
-    expect(stats.tasks).not.toHaveProperty('blocked');
   });
 });
 
@@ -220,8 +224,9 @@ describe('taskController', () => {
   it('lists tasks', async () => {
     await taskController.create(null, { title: 'Task 1' });
     await taskController.create(null, { title: 'Task 2' });
-    const tasks = await taskController.list();
-    expect(tasks.length).toBeGreaterThanOrEqual(2);
+    const result = await taskController.list();
+    expect(result.items.length).toBeGreaterThanOrEqual(2);
+    expect(result.total).toBeGreaterThanOrEqual(2);
   });
 
   it('updates task status', async () => {
@@ -262,8 +267,9 @@ describe('goalController', () => {
 
   it('lists goals', async () => {
     await goalController.create(null, { title: 'Goal 1' });
-    const goals = await goalController.list();
-    expect(goals.length).toBeGreaterThanOrEqual(1);
+    const result = await goalController.list();
+    expect(result.items.length).toBeGreaterThanOrEqual(1);
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
   it('updates goal fields', async () => {
