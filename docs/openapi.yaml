@@ -1,46 +1,38 @@
-openapi: 3.0.3
+openapi: "3.0.3"
 info:
   title: AgentOps Desktop API
-  description: IPC API for AgentOps Desktop — an Electron application for managing AI agent sessions, goals, tasks, and logs.
-
-**Transport**: Electron IPC (ipcMain.handle / ipcRenderer.invoke)
-**Auth**: Bearer token via session management
-
-This spec documents the IPC channel interface. Each operation maps to an IPC channel (listed in `x-ipc-channel`). Call via `window.api.invoke(channel, payload)` from the renderer.
-  version: 0.1.0
+  description:
+    IPC API for AgentOps Desktop — an Electron application for managing AI agent sessions, goals, tasks, and logs.
+    
+    **Transport**: Electron IPC (ipcMain.handle / ipcRenderer.invoke)
+    **Auth**: Bearer token via session management
+    
+    This spec documents the IPC channel interface. Each operation maps to an IPC channel (listed in `x-ipc-channel`). Call via `window.api.invoke(channel, payload)` from the renderer.
+  version: "0.1.0"
   contact:
     name: AgentOps Team
   license:
     name: UNLICENSED
 servers:
-  -
-      url: ipc://localhost
-      description: Electron IPC transport
+  - url: "ipc://localhost"
+    description: Electron IPC transport
 tags:
-  -
-      name: Auth
-      description: Session management (login, logout, token rotation)
-  -
-      name: Monitoring
-      description: Health checks and system diagnostics
-  -
-      name: Agents
-      description: Agent configuration CRUD
-  -
-      name: Agent Processes
-      description: Live agent process management (spawn, kill, status)
-  -
-      name: Goals
-      description: Goal management
-  -
-      name: Tasks
-      description: Task management with goal linking
-  -
-      name: Logs
-      description: Log entry management
-  -
-      name: Stats
-      description: Aggregated dashboard statistics
+  - name: Auth
+    description: "Session management (login, logout, token rotation)"
+  - name: Monitoring
+    description: Health checks and system diagnostics
+  - name: Agents
+    description: Agent configuration CRUD
+  - name: Agent Processes
+    description: "Live agent process management (spawn, kill, status)"
+  - name: Goals
+    description: Goal management
+  - name: Tasks
+    description: Task management with goal linking
+  - name: Logs
+    description: Log entry management
+  - name: Stats
+    description: Aggregated dashboard statistics
 components:
   securitySchemes:
     bearerAuth:
@@ -54,10 +46,10 @@ components:
       properties:
         id:
           type: string
-          example: agent-1
+          example: "agent-1"
         name:
           type: string
-          example: my-claude-agent
+          example: "my-claude-agent"
         type:
           type: string
           enum:
@@ -93,7 +85,7 @@ components:
       properties:
         id:
           type: string
-          example: goal-1
+          example: "goal-1"
         title:
           type: string
           example: Ship MVP
@@ -119,7 +111,7 @@ components:
       properties:
         id:
           type: string
-          example: task-1
+          example: "task-1"
         title:
           type: string
           example: Implement auth
@@ -192,7 +184,7 @@ paths:
       operationId: auth_login
       tags:
         - Auth
-      x-ipc-channel: auth:login
+      x-ipc-channel: "auth:login"
       responses:
         200:
           description: Success
@@ -214,7 +206,7 @@ paths:
       operationId: auth_status
       tags:
         - Auth
-      x-ipc-channel: auth:status
+      x-ipc-channel: "auth:status"
       responses:
         200:
           description: Success
@@ -238,10 +230,9 @@ paths:
       operationId: auth_logout
       tags:
         - Auth
-      x-ipc-channel: auth:logout
+      x-ipc-channel: "auth:logout"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       responses:
         200:
           description: Success
@@ -261,10 +252,9 @@ paths:
       operationId: auth_rotate
       tags:
         - Auth
-      x-ipc-channel: auth:rotate
+      x-ipc-channel: "auth:rotate"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       responses:
         200:
           description: Success
@@ -282,11 +272,11 @@ paths:
   /monitor/health:
     get:
       summary: System health check
-      description: Returns application health status, version, platform info, and memory usage.
+      description: "Returns application health status, version, platform info, and memory usage."
       operationId: monitor_health
       tags:
         - Monitoring
-      x-ipc-channel: monitor:health
+      x-ipc-channel: "monitor:health"
       responses:
         200:
           description: Success
@@ -329,55 +319,30 @@ paths:
       operationId: agents_list
       tags:
         - Agents
-      x-ipc-channel: agents:list
+      x-ipc-channel: "agents:list"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: offset
-            in: query
-            required: false
-            schema:
-              type: number
-              description: Pagination offset
-        -
-            name: limit
-            in: query
-            required: false
-            schema:
-              type: number
-              description: Max items to return
-        -
-            name: status
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - idle
-                - running
-                - error
-        -
-            name: sortBy
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - createdAt
-                - updatedAt
-                - name
-                - status
-        -
-            name: sortOrder
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - asc
-                - desc
+        - name: offset
+          in: query
+          required: false
+          schema: {"type":"number","description":"Pagination offset"}
+        - name: limit
+          in: query
+          required: false
+          schema: {"type":"number","description":"Max items to return"}
+        - name: status
+          in: query
+          required: false
+          schema: {"type":"string","enum":["idle","running","error"]}
+        - name: sortBy
+          in: query
+          required: false
+          schema: {"type":"string","enum":["createdAt","updatedAt","name","status"]}
+        - name: sortOrder
+          in: query
+          required: false
+          schema: {"type":"string","enum":["asc","desc"]}
       responses:
         200:
           description: Success
@@ -386,7 +351,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: #/components/schemas/Agent
+                  $ref: "#/components/schemas/Agent"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -397,10 +362,9 @@ paths:
       operationId: agents_create
       tags:
         - Agents
-      x-ipc-channel: agents:create
+      x-ipc-channel: "agents:create"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -438,7 +402,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Agent
+                $ref: "#/components/schemas/Agent"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -450,24 +414,21 @@ paths:
       operationId: agents_get
       tags:
         - Agents
-      x-ipc-channel: agents:get
+      x-ipc-channel: "agents:get"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Agent
+                $ref: "#/components/schemas/Agent"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -478,17 +439,14 @@ paths:
       operationId: agents_update
       tags:
         - Agents
-      x-ipc-channel: agents:update
+      x-ipc-channel: "agents:update"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -533,7 +491,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Agent
+                $ref: "#/components/schemas/Agent"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -544,17 +502,14 @@ paths:
       operationId: agents_delete
       tags:
         - Agents
-      x-ipc-channel: agents:delete
+      x-ipc-channel: "agents:delete"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -586,20 +541,17 @@ paths:
     post:
       summary: Validate agent executable
       description: Checks whether the agent executable exists and is runnable.
-      operationId: agents_health-check
+      operationId: "agents_health-check"
       tags:
         - Agents
-      x-ipc-channel: agents:health-check
+      x-ipc-channel: "agents:health-check"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -638,10 +590,9 @@ paths:
       operationId: agents_spawn
       tags:
         - Agent Processes
-      x-ipc-channel: agents:spawn
+      x-ipc-channel: "agents:spawn"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -702,17 +653,14 @@ paths:
       operationId: agents_status
       tags:
         - Agent Processes
-      x-ipc-channel: agents:status
+      x-ipc-channel: "agents:status"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       responses:
         200:
           description: Success
@@ -754,21 +702,18 @@ paths:
   /agents/processes/{id}/kill:
     post:
       summary: Kill agent process
-      description: Sends a signal to terminate a live agent process. Defaults to SIGTERM, escalates to SIGKILL after 5s.
+      description: "Sends a signal to terminate a live agent process. Defaults to SIGTERM, escalates to SIGKILL after 5s."
       operationId: agents_kill
       tags:
         - Agent Processes
-      x-ipc-channel: agents:kill
+      x-ipc-channel: "agents:kill"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -782,7 +727,7 @@ paths:
                   type: string
                 signal:
                   type: string
-                  description: Signal to send (default: SIGTERM)
+                  description: "Signal to send (default: SIGTERM)"
       responses:
         200:
           description: Success
@@ -808,53 +753,30 @@ paths:
       operationId: goals_list
       tags:
         - Goals
-      x-ipc-channel: goals:list
+      x-ipc-channel: "goals:list"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: offset
-            in: query
-            required: false
-            schema:
-              type: number
-        -
-            name: limit
-            in: query
-            required: false
-            schema:
-              type: number
-        -
-            name: status
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - active
-                - completed
-                - archived
-        -
-            name: sortBy
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - createdAt
-                - updatedAt
-                - title
-                - status
-        -
-            name: sortOrder
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - asc
-                - desc
+        - name: offset
+          in: query
+          required: false
+          schema: {"type":"number"}
+        - name: limit
+          in: query
+          required: false
+          schema: {"type":"number"}
+        - name: status
+          in: query
+          required: false
+          schema: {"type":"string","enum":["active","completed","archived"]}
+        - name: sortBy
+          in: query
+          required: false
+          schema: {"type":"string","enum":["createdAt","updatedAt","title","status"]}
+        - name: sortOrder
+          in: query
+          required: false
+          schema: {"type":"string","enum":["asc","desc"]}
       responses:
         200:
           description: Success
@@ -863,7 +785,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: #/components/schemas/Goal
+                  $ref: "#/components/schemas/Goal"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -874,10 +796,9 @@ paths:
       operationId: goals_create
       tags:
         - Goals
-      x-ipc-channel: goals:create
+      x-ipc-channel: "goals:create"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -900,7 +821,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Goal
+                $ref: "#/components/schemas/Goal"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -912,24 +833,21 @@ paths:
       operationId: goals_get
       tags:
         - Goals
-      x-ipc-channel: goals:get
+      x-ipc-channel: "goals:get"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Goal
+                $ref: "#/components/schemas/Goal"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -940,17 +858,14 @@ paths:
       operationId: goals_update
       tags:
         - Goals
-      x-ipc-channel: goals:update
+      x-ipc-channel: "goals:update"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -982,7 +897,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Goal
+                $ref: "#/components/schemas/Goal"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -993,17 +908,14 @@ paths:
       operationId: goals_delete
       tags:
         - Goals
-      x-ipc-channel: goals:delete
+      x-ipc-channel: "goals:delete"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -1038,60 +950,34 @@ paths:
       operationId: tasks_list
       tags:
         - Tasks
-      x-ipc-channel: tasks:list
+      x-ipc-channel: "tasks:list"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: offset
-            in: query
-            required: false
-            schema:
-              type: number
-        -
-            name: limit
-            in: query
-            required: false
-            schema:
-              type: number
-        -
-            name: status
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - pending
-                - running
-                - done
-                - failed
-        -
-            name: goalId
-            in: query
-            required: false
-            schema:
-              type: string
-        -
-            name: sortBy
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - createdAt
-                - updatedAt
-                - title
-                - status
-        -
-            name: sortOrder
-            in: query
-            required: false
-            schema:
-              type: string
-              enum:
-                - asc
-                - desc
+        - name: offset
+          in: query
+          required: false
+          schema: {"type":"number"}
+        - name: limit
+          in: query
+          required: false
+          schema: {"type":"number"}
+        - name: status
+          in: query
+          required: false
+          schema: {"type":"string","enum":["pending","running","done","failed"]}
+        - name: goalId
+          in: query
+          required: false
+          schema: {"type":"string"}
+        - name: sortBy
+          in: query
+          required: false
+          schema: {"type":"string","enum":["createdAt","updatedAt","title","status"]}
+        - name: sortOrder
+          in: query
+          required: false
+          schema: {"type":"string","enum":["asc","desc"]}
       responses:
         200:
           description: Success
@@ -1100,7 +986,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: #/components/schemas/Task
+                  $ref: "#/components/schemas/Task"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1111,10 +997,9 @@ paths:
       operationId: tasks_create
       tags:
         - Tasks
-      x-ipc-channel: tasks:create
+      x-ipc-channel: "tasks:create"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1141,7 +1026,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Task
+                $ref: "#/components/schemas/Task"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1153,24 +1038,21 @@ paths:
       operationId: tasks_get
       tags:
         - Tasks
-      x-ipc-channel: tasks:get
+      x-ipc-channel: "tasks:get"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Task
+                $ref: "#/components/schemas/Task"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1181,17 +1063,14 @@ paths:
       operationId: tasks_update
       tags:
         - Tasks
-      x-ipc-channel: tasks:update
+      x-ipc-channel: "tasks:update"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -1228,7 +1107,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/Task
+                $ref: "#/components/schemas/Task"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1239,17 +1118,14 @@ paths:
       operationId: tasks_delete
       tags:
         - Tasks
-      x-ipc-channel: tasks:delete
+      x-ipc-channel: "tasks:delete"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: id
-            in: path
-            required: true
-            schema:
-              type: string
+        - name: id
+          in: path
+          required: true
+          schema: {"type":"string"}
       requestBody:
         required: true
         content:
@@ -1280,33 +1156,26 @@ paths:
   /logs:
     get:
       summary: List log entries
-      description: Lists log entries. Filter by agentId for session-specific logs.
+      description: "Lists log entries. Filter by agentId for session-specific logs."
       operationId: logs_list
       tags:
         - Logs
-      x-ipc-channel: logs:list
+      x-ipc-channel: "logs:list"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       parameters:
-        -
-            name: agentId
-            in: query
-            required: false
-            schema:
-              type: string
-        -
-            name: limit
-            in: query
-            required: false
-            schema:
-              type: number
-        -
-            name: offset
-            in: query
-            required: false
-            schema:
-              type: number
+        - name: agentId
+          in: query
+          required: false
+          schema: {"type":"string"}
+        - name: limit
+          in: query
+          required: false
+          schema: {"type":"number"}
+        - name: offset
+          in: query
+          required: false
+          schema: {"type":"number"}
       responses:
         200:
           description: Success
@@ -1315,7 +1184,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: #/components/schemas/LogEntry
+                  $ref: "#/components/schemas/LogEntry"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1326,10 +1195,9 @@ paths:
       operationId: logs_append
       tags:
         - Logs
-      x-ipc-channel: logs:append
+      x-ipc-channel: "logs:append"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1361,7 +1229,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: #/components/schemas/LogEntry
+                $ref: "#/components/schemas/LogEntry"
         401:
           description: Unauthorized — invalid or missing token
         422:
@@ -1373,10 +1241,9 @@ paths:
       operationId: stats_summary
       tags:
         - Stats
-      x-ipc-channel: stats:summary
+      x-ipc-channel: "stats:summary"
       security:
-        -
-            bearerAuth: {}
+        - bearerAuth: []
       responses:
         200:
           description: Success

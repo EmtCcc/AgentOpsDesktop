@@ -839,7 +839,7 @@ function buildSpec() {
 // ── YAML serialization (minimal, no dependency) ──
 
 function needsQuoting(s) {
-  return s === '' || /[:#'"{}\[\],&*?|->!%@`]/.test(s) || /^\d/.test(s) ||
+  return s === '' || /[-:#'"{}\[\],&*?|>!%@`]/.test(s) || /^\d/.test(s) ||
     /^(true|false|null|yes|no|on|off)$/i.test(s);
 }
 

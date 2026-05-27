@@ -55,9 +55,20 @@ const icons = {
   activity: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
 };
 
+// ── Additional Icons ──
+
+const landingIcons = {
+  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  workflow: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
+  zap: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  shield: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  arrowRight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+};
+
 // ── State ──
 
-let currentPage = 'dashboard';
+let currentPage = 'landing';
 let sidebarCollapsed = false;
 
 // ── Navigation ──
@@ -77,11 +88,13 @@ function navigate(page) {
 function renderPage(page) {
   const main = $('#main-content');
   const renderers = {
+    landing: renderLanding,
     dashboard: renderDashboard,
     agents: renderAgents,
     tasks: renderTasks,
     logs: renderLogs,
     settings: renderSettings,
+    workflows: renderWorkflows,
   };
 
   const renderer = renderers[page];
@@ -90,6 +103,70 @@ function renderPage(page) {
   } else {
     main.innerHTML = `<div class="empty-state"><div class="empty-state__title">Page not found</div></div>`;
   }
+}
+
+// ── Landing Page ──
+
+function renderLanding(container) {
+  container.innerHTML = `
+    <div class="landing">
+      <div class="landing__hero">
+        <h1 class="landing__title">
+          Operational control for
+          <span class="landing__title-highlight">autonomous agents</span>
+        </h1>
+        <p class="landing__subtitle">
+          Monitor, manage, and orchestrate your AI agent operations from a single desktop application.
+          Real-time visibility into agent status, task execution, and system health.
+        </p>
+        <div class="landing__actions">
+          <button class="btn btn--primary btn--lg" data-navigate="dashboard">
+            Get Started ${landingIcons.arrowRight}
+          </button>
+          <button class="btn btn--secondary btn--lg" data-navigate="agents">
+            Add Agent
+          </button>
+        </div>
+      </div>
+
+      <div class="landing__features">
+        <div class="landing__feature">
+          <div class="landing__feature-icon">
+            ${icons.bot}
+          </div>
+          <h3 class="landing__feature-title">Agent Management</h3>
+          <p class="landing__feature-desc">
+            Connect and manage multiple AI agents from different providers.
+            Monitor health, status, and performance in real-time.
+          </p>
+        </div>
+
+        <div class="landing__feature">
+          <div class="landing__feature-icon">
+            ${icons.listChecks}
+          </div>
+          <h3 class="landing__feature-title">Task Orchestration</h3>
+          <p class="landing__feature-desc">
+            Create, assign, and track tasks across your agent fleet.
+            Kanban board for visual task management.
+          </p>
+        </div>
+
+        <div class="landing__feature">
+          <div class="landing__feature-icon">
+            ${icons.activity}
+          </div>
+          <h3 class="landing__feature-title">Real-time Monitoring</h3>
+          <p class="landing__feature-desc">
+            Live log streaming and activity feeds. Debug agent behavior
+            and track execution progress in real-time.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  bindNavigationLinks(container);
 }
 
 // ── Dashboard Page ──
@@ -786,6 +863,25 @@ document.addEventListener('DOMContentLoaded', () => {
   $$('[data-page="settings"]').forEach((btn) => {
     if (!btn.classList.contains('sidebar__item')) {
       btn.addEventListener('click', () => navigate('settings'));
+    }
+  });
+
+  // Debounced global search
+  const searchInput = document.getElementById('global-search');
+  if (searchInput) {
+    const debouncedSearch = debounce((query) => {
+      if (query.length < 2) return;
+      // Future: dispatch search across agents, tasks, logs
+      console.debug('[search]', query);
+    }, 250);
+    searchInput.addEventListener('input', (e) => debouncedSearch(e.target.value));
+  }
+
+  // ⌘K shortcut to focus search
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      searchInput?.focus();
     }
   });
 

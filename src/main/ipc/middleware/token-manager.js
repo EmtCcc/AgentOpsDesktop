@@ -70,10 +70,10 @@ class TokenManager {
       this.destroySession();
       return false;
     }
-    return crypto.timingSafeEqual(
-      Buffer.from(this._session.token, 'utf8'),
-      Buffer.from(token, 'utf8')
-    );
+    // Hash both tokens to normalize length before timing-safe comparison
+    const storedHash = crypto.createHash('sha256').update(this._session.token).digest();
+    const inputHash = crypto.createHash('sha256').update(token).digest();
+    return crypto.timingSafeEqual(storedHash, inputHash);
   }
 
   /**

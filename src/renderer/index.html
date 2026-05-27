@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; script-src 'self';">
   <title>AgentOps</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="preload" href="styles/tokens.css" as="style">
+  <link rel="preload" href="styles/base.css" as="style">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/layout.css">
@@ -15,7 +18,7 @@
   <div class="app" id="app">
 
     <!-- ── Header ── -->
-    <header class="header titlebar-drag">
+    <header class="header titlebar-drag" data-testid="header">
       <div class="header__left">
         <button class="header__toggle" id="sidebar-toggle" title="Toggle sidebar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -61,7 +64,7 @@
     </header>
 
     <!-- ── Sidebar ── -->
-    <nav class="sidebar" id="sidebar">
+    <nav class="sidebar" id="sidebar" data-testid="sidebar">
       <div class="sidebar__section">
         <div class="sidebar__section-title">Overview</div>
         <a class="sidebar__item sidebar__item--active" data-page="dashboard">
@@ -133,12 +136,12 @@
     </nav>
 
     <!-- ── Main Content ── -->
-    <main class="main" id="main-content">
+    <main class="main" id="main-content" data-testid="main-content">
       <!-- Pages rendered by JS -->
     </main>
 
     <!-- ── Footer / Status Bar ── -->
-    <footer class="footer">
+    <footer class="footer" data-testid="footer">
       <div class="footer__left">
         <div class="footer__status">
           <span class="footer__dot footer__dot--running" id="footer-status-dot"></span>
