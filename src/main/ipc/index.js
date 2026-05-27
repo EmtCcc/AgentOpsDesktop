@@ -88,11 +88,12 @@ function bootstrapRoutes(mainWindow) {
   router.register('monitor:health', () => monitor.getHealth());
 
   // ── Agents: config CRUD (protected) ──
-  router.register('agents:list', agentController.list, { auth: true });
+  router.register('agents:list', agentController.list, { schema: agentController.schemas.list, auth: true });
+  router.register('agents:get', agentController.get, { schema: agentController.schemas.get, auth: true });
   router.register('agents:create', agentController.create, { schema: agentController.schemas.create, auth: true });
   router.register('agents:update', agentController.update, { schema: agentController.schemas.update, auth: true });
-  router.register('agents:delete', agentController.delete, { auth: true });
-  router.register('agents:health-check', agentController.healthCheck, { auth: true });
+  router.register('agents:delete', agentController.delete, { schema: agentController.schemas.delete, auth: true });
+  router.register('agents:health-check', agentController.healthCheck, { schema: agentController.schemas.healthCheck, auth: true });
 
   // ── Agents: live process management (protected) ──
   router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn, auth: true });
@@ -101,12 +102,14 @@ function bootstrapRoutes(mainWindow) {
 
   // ── Goals (protected) ──
   router.register('goals:list', goalController.list, { auth: true });
+  router.register('goals:get', goalController.get, { schema: goalController.schemas.get, auth: true });
   router.register('goals:create', goalController.create, { schema: goalController.schemas.create, auth: true });
   router.register('goals:update', goalController.update, { schema: goalController.schemas.update, auth: true });
   router.register('goals:delete', goalController.delete, { auth: true });
 
   // ── Tasks (protected) ──
   router.register('tasks:list', taskController.list, { auth: true });
+  router.register('tasks:get', taskController.get, { schema: taskController.schemas.get, auth: true });
   router.register('tasks:create', taskController.create, { schema: taskController.schemas.create, auth: true });
   router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true });
   router.register('tasks:delete', taskController.delete, { auth: true });

@@ -28,7 +28,9 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "better-sqlite3": "^11.9.1",
+    "electron-updater": "^6.3.9",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@electron/notarize": "^3.0.0",

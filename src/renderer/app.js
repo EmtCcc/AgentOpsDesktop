@@ -46,6 +46,7 @@ function renderPage(page) {
     dashboard: renderDashboard,
     agents: renderAgents,
     tasks: renderTasks,
+    logs: renderLogs,
     settings: renderSettings,
   };
 
@@ -103,8 +104,9 @@ function renderDashboard(container) {
       <div class="card">
         <div class="card__header">
           <h3 class="card__title">Recent activity</h3>
+          <button class="btn btn--ghost btn--sm" data-navigate="logs">View all</button>
         </div>
-        <div class="card__body">
+        <div class="card__body" id="activity-feed">
           <div class="empty-state" style="padding: var(--space-8) 0;">
             <div style="color: var(--color-text-tertiary); margin-bottom: var(--space-2);">${icons.terminal}</div>
             <div style="font-size: var(--text-sm); color: var(--color-text-tertiary);">No recent activity</div>
@@ -132,6 +134,7 @@ function renderDashboard(container) {
   `;
 
   loadStats();
+  loadRecentActivity();
   bindNavigationLinks(container);
 }
 
@@ -148,6 +151,24 @@ async function loadStats() {
   } catch {
     // IPC not available yet
   }
+}
+
+async function loadRecentActivity() {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  try {
+    const logs = await window.agentOps.logs.list({ limit: 10 });
+    if (!logs || logs.length === 0) return;
+    feed.innerHTML = `<div class="activity-feed">${logs.reverse().map((l) => `
+      <div class="activity-item">
+        <div class="activity-item__icon">${l.level === 'error' ? icons.activity : icons.terminal}</div>
+        <div class="activity-item__content">
+          <div class="activity-item__text">${escapeHtml(l.message || l.text || '')}</div>
+          <div class="activity-item__time">${formatTime(l.timestamp)}</div>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  } catch { /* IPC not available */ }
 }
 
 // ── Agents Page ──
@@ -453,6 +474,130 @@ function renderSettings(container) {
       </div>
     </div>
   `;
+}
+
+// ── Logs Page ──
+
+let logsUnsubscribe = null;
+let logsFilterAgent = '';
+let logsFilterLevel = '';
+
+function renderLogs(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-header__title">Logs</h1>
+        <p class="page-header__desc">Real-time agent output</p>
+      </div>
+      <div class="page-header__actions">
+        <select id="logs-filter-agent" class="logs-filter" style="height:28px; font-size:var(--text-xs);">
+          <option value="">All agents</option>
+        </select>
+        <select id="logs-filter-level" class="logs-filter" style="height:28px; font-size:var(--text-xs);">
+          <option value="">All levels</option>
+          <option value="debug">Debug</option>
+          <option value="info">Info</option>
+          <option value="warn">Warning</option>
+          <option value="error">Error</option>
+        </select>
+        <button class="btn btn--ghost btn--sm" id="btn-logs-clear">${icons.trash} Clear</button>
+        <button class="btn btn--secondary btn--sm" id="btn-logs-refresh">${icons.refresh} Refresh</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="log-viewer" id="log-viewer">
+        <div class="empty-state" style="padding: var(--space-12) 0;">
+          <div style="color: var(--color-text-tertiary); margin-bottom: var(--space-2);">${icons.terminal}</div>
+          <div class="empty-state__title" style="font-size:var(--text-sm);">No logs yet</div>
+          <div class="empty-state__desc">Logs from agent sessions will appear here in real time.</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  loadLogs();
+  loadLogAgents();
+  bindLogActions(container);
+
+  // Subscribe to real-time log updates
+  if (logsUnsubscribe) logsUnsubscribe();
+  logsUnsubscribe = window.agentOps.logs.onNew((entry) => {
+    if (logsFilterAgent && entry.agentId !== logsFilterAgent) return;
+    if (logsFilterLevel && entry.level !== logsFilterLevel) return;
+    appendLogEntry(entry);
+  });
+}
+
+async function loadLogs() {
+  const viewer = document.getElementById('log-viewer');
+  if (!viewer) return;
+  try {
+    const opts = { limit: 500 };
+    if (logsFilterAgent) opts.agentId = logsFilterAgent;
+    const logs = await window.agentOps.logs.list(opts);
+    if (!logs || logs.length === 0) return;
+    const filtered = logsFilterLevel ? logs.filter((l) => l.level === logsFilterLevel) : logs;
+    viewer.innerHTML = filtered.map((l) => logEntryHtml(l)).join('');
+    viewer.scrollTop = viewer.scrollHeight;
+  } catch { /* IPC not available */ }
+}
+
+async function loadLogAgents() {
+  const select = document.getElementById('logs-filter-agent');
+  if (!select) return;
+  try {
+    const agents = await window.agentOps.agents.list();
+    agents.forEach((a) => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      select.appendChild(opt);
+    });
+  } catch { /* IPC not available */ }
+}
+
+function appendLogEntry(entry) {
+  const viewer = document.getElementById('log-viewer');
+  if (!viewer) return;
+  // Remove empty state if present
+  const empty = viewer.querySelector('.empty-state');
+  if (empty) empty.remove();
+  viewer.insertAdjacentHTML('beforeend', logEntryHtml(entry));
+  // Auto-scroll if near bottom
+  if (viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 80) {
+    viewer.scrollTop = viewer.scrollHeight;
+  }
+}
+
+function logEntryHtml(l) {
+  const levelClass = l.level === 'error' ? 'log-line--error' : l.level === 'warn' ? 'log-line--warn' : '';
+  const streamTag = l.stream === 'stderr' ? '<span class="log-line__tag log-line__tag--stderr">stderr</span>' : '';
+  const agentTag = l.agentId ? `<span class="log-line__tag">${escapeHtml(l.agentId)}</span>` : '';
+  const ts = l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : '';
+  return `<div class="log-line ${levelClass}"><span class="log-line__ts">${ts}</span>${agentTag}${streamTag}<span class="log-line__msg">${escapeHtml(l.message || l.text || '')}</span></div>`;
+}
+
+function bindLogActions(container) {
+  container.addEventListener('click', async (e) => {
+    const clearBtn = e.target.closest('#btn-logs-clear');
+    if (clearBtn) {
+      const viewer = document.getElementById('log-viewer');
+      if (viewer) viewer.innerHTML = `<div class="empty-state" style="padding: var(--space-12) 0;"><div style="font-size:var(--text-sm); color:var(--color-text-tertiary);">Logs cleared</div></div>`;
+      return;
+    }
+    const refreshBtn = e.target.closest('#btn-logs-refresh');
+    if (refreshBtn) { loadLogs(); return; }
+  });
+
+  const agentFilter = container.querySelector('#logs-filter-agent');
+  if (agentFilter) {
+    agentFilter.addEventListener('change', (e) => { logsFilterAgent = e.target.value; loadLogs(); });
+  }
+  const levelFilter = container.querySelector('#logs-filter-level');
+  if (levelFilter) {
+    levelFilter.addEventListener('change', (e) => { logsFilterLevel = e.target.value; loadLogs(); });
+  }
 }
 
 // ── Utilities ──

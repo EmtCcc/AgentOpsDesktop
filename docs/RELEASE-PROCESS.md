@@ -107,20 +107,58 @@ The app uses `electron-updater` with GitHub Releases as the provider (configured
 
 No additional server or CDN is needed — GitHub Releases handles hosting.
 
-## CI/CD Pipeline (Current)
+## CI/CD Pipeline
 
-The existing `.github/workflows/ci.yml` runs on every push and PR to `main`:
+### CI (`.github/workflows/ci.yml`)
+
+Runs on every push and PR to `main`:
 
 | Job | What it does |
 |-----|-------------|
 | `lint` | `npm run lint` |
 | `test` | `npm run test` |
+| `build-mac` | Builds DMG on macOS runner (unsigned, for verification) |
 
-**Not yet automated** (future work):
-- Build step in CI (requires macOS runner)
-- Automated release workflow triggered by git tags
-- Code signing with Apple Developer certificate
-- Notarization for Gatekeeper
+### Release (`.github/workflows/release.yml`)
+
+Triggered automatically when a `v*` tag is pushed:
+
+1. Lint + test (via CI)
+2. Import Apple Developer certificate from GitHub Secrets
+3. Build signed DMGs (arm64 + x64)
+4. Notarize with Apple
+5. Publish to GitHub Releases with artifacts
+
+**Required GitHub Secrets** (see [CODE-SIGNING.md](CODE-SIGNING.md) for setup):
+
+| Secret | Purpose |
+|--------|---------|
+| `APPLE_CERTIFICATE` | Base64-encoded `.p12` certificate |
+| `APPLE_CERTIFICATE_PASSWORD` | Certificate export password |
+| `APPLE_ID` | Apple ID email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password |
+| `APPLE_TEAM_ID` | Apple Developer Team ID |
+
+### Release Flow
+
+```
+git tag v0.2.0 && git push origin v0.2.0
+        │
+        ▼
+┌─────────────────────────────────┐
+│  GitHub Actions: release.yml    │
+│                                 │
+│  1. Lint + Test                 │
+│  2. Import certificate          │
+│  3. Build signed DMGs           │
+│  4. Notarize with Apple         │
+│  5. Publish to GitHub Releases  │
+└─────────────────────────────────┘
+        │
+        ▼
+  electron-updater picks up latest-mac.yml
+  Users auto-update on next launch
+```
 
 ## Troubleshooting
 
@@ -151,8 +189,8 @@ Until code signing is configured, users may need to:
 
 ## Future Improvements
 
-- [ ] Add `release` workflow to CI (triggered by `v*` tags)
-- [ ] Apple Developer code signing + notarization
+- [x] Add `release` workflow to CI (triggered by `v*` tags)
+- [x] Apple Developer code signing + notarization
 - [ ] Windows and Linux build targets
 - [ ] Automated changelog generation from conventional commits
 - [ ] Release candidate (RC) channel for pre-release testing
