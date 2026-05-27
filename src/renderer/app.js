@@ -364,9 +364,45 @@ function renderTasks(container) {
         <div class="task-column__cards" id="col-failed"></div>
       </div>
     </div>
+
+    <!-- New Task Modal -->
+    <div id="task-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+      <div class="card" style="width: 480px; max-width: 90vw;">
+        <div class="card__header">
+          <h3 class="card__title">New task</h3>
+        </div>
+        <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <div>
+            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Title</label>
+            <input type="text" id="task-title" placeholder="Implement user auth" style="width:100%;">
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Description</label>
+            <textarea id="task-desc" placeholder="Details about the task..." style="width:100%; height:72px; resize:vertical;"></textarea>
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Assign to agent</label>
+            <select id="task-agent" style="width:100%;">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Goal (optional)</label>
+            <select id="task-goal" style="width:100%;">
+              <option value="">No goal</option>
+            </select>
+          </div>
+        </div>
+        <div class="card__footer">
+          <button class="btn btn--secondary" id="task-modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="task-modal-save">Create task</button>
+        </div>
+      </div>
+    </div>
   `;
 
   loadTasks();
+  bindTaskActions(container);
 }
 
 async function loadTasks() {
@@ -402,6 +438,57 @@ async function loadTasks() {
   } catch {
     // IPC not available
   }
+}
+
+async function bindTaskActions(container) {
+  // Populate agent dropdown
+  try {
+    const agents = await window.agentOps.agents.list();
+    const sel = container.querySelector('#task-agent');
+    if (sel) agents.forEach((a) => { const o = document.createElement('option'); o.value = a.id; o.textContent = a.name; sel.appendChild(o); });
+  } catch { /* ignore */ }
+
+  // Populate goal dropdown
+  try {
+    const goals = await window.agentOps.goals.list();
+    const sel = container.querySelector('#task-goal');
+    if (sel) goals.forEach((g) => { const o = document.createElement('option'); o.value = g.id; o.textContent = g.title; sel.appendChild(o); });
+  } catch { /* ignore */ }
+
+  container.addEventListener('click', async (e) => {
+    const addBtn = e.target.closest('#btn-add-task');
+    if (addBtn) {
+      const overlay = container.querySelector('#task-modal-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      return;
+    }
+
+    const cancel = e.target.closest('#task-modal-cancel');
+    if (cancel) {
+      const overlay = container.querySelector('#task-modal-overlay');
+      if (overlay) overlay.style.display = 'none';
+      return;
+    }
+
+    const save = e.target.closest('#task-modal-save');
+    if (save) {
+      const title = container.querySelector('#task-title')?.value?.trim();
+      if (!title) return;
+      const task = {
+        title,
+        description: container.querySelector('#task-desc')?.value?.trim() || '',
+        assigneeAgentId: container.querySelector('#task-agent')?.value || undefined,
+        goalId: container.querySelector('#task-goal')?.value || undefined,
+      };
+      try {
+        await window.agentOps.tasks.create(task);
+        const overlay = container.querySelector('#task-modal-overlay');
+        if (overlay) overlay.style.display = 'none';
+        loadTasks();
+      } catch { /* ignore */ }
+      return;
+    }
+  });
 }
 
 // ── Settings Page ──

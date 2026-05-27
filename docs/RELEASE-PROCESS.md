@@ -10,9 +10,10 @@ AgentOps Desktop is an Electron app distributed as macOS DMG files. Releases are
 
 - Node.js >= 20
 - npm >= 10
-- macOS (for building DMG artifacts)
+- macOS (for local builds; CI uses `macos-latest`)
 - GitHub CLI (`gh`) authenticated with publish access
 - GITHUB_TOKEN with `repo` scope (for electron-builder publish)
+- Apple Developer account + code signing certificate (see [CODE-SIGNING.md](CODE-SIGNING.md))
 
 ## Versioning
 

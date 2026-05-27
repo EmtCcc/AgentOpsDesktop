@@ -10,23 +10,43 @@ These channels are live in the current codebase.
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `agents.list()` | — | `Agent[]` | List all configured agents |
-| `agents.create(agent)` | `{ name, execPath, args?, cwd?, label? }` | `Agent` | Register a new agent |
-| `agents.update(id, updates)` | `id: string`, `updates: object` | `Agent \| null` | Update agent fields |
-| `agents.delete(id)` | `id: string` | `boolean` | Remove an agent |
-| `agents.healthCheck(id)` | `id: string` | `{ status, timestamp }` | Check if agent executable is reachable |
+| `agents.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `PaginatedResult<Agent>` | List agents with pagination |
+| `agents.get(id)` | `id: string` | `Agent` | Get a single agent by ID |
+| `agents.create(agent)` | `{ name, type?, command?, execPath?, cwd? }` | `Agent` | Register a new agent |
+| `agents.update(id, updates)` | `id: string`, `updates: object` | `Agent` | Update agent fields |
+| `agents.delete(id)` | `id: string` | `{ deleted: true, id }` | Remove an agent |
+| `agents.healthCheck(id)` | `id: string` | `{ ok, execValid, processAlive, status }` | Check if agent executable is reachable |
+
+**Pagination params:**
+- `offset` (number, default 0) — items to skip
+- `limit` (number, default 20, max 100) — items per page
+- `status` (string) — filter by status: `idle`, `running`, `error`
+- `sortBy` (string) — field to sort: `createdAt`, `updatedAt`, `name`, `status`
+- `sortOrder` (string) — `asc` or `desc` (default `desc`)
+
+**PaginatedResult shape:**
+```js
+{
+  items: Agent[],
+  total: number,
+  offset: number,
+  limit: number,
+  hasMore: boolean
+}
+```
 
 **Agent object shape:**
 ```js
 {
   id: string,          // "agent-1", "agent-2", ...
   name: string,
-  execPath: string,
-  args: string[],
-  cwd: string,
-  label: string,
+  type: 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor' | 'custom',
   status: 'idle' | 'running' | 'error',
+  command: string | null,
+  execPath: string | null,
+  cwd: string | null,
   createdAt: number,   // Date.now() timestamp
+  updatedAt: number,
   lastHealthCheck?: number
 }
 ```

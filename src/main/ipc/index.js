@@ -101,18 +101,18 @@ function bootstrapRoutes(mainWindow) {
   router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill, auth: true });
 
   // ── Goals (protected) ──
-  router.register('goals:list', goalController.list, { auth: true });
+  router.register('goals:list', goalController.list, { schema: goalController.schemas.list, auth: true });
   router.register('goals:get', goalController.get, { schema: goalController.schemas.get, auth: true });
   router.register('goals:create', goalController.create, { schema: goalController.schemas.create, auth: true });
   router.register('goals:update', goalController.update, { schema: goalController.schemas.update, auth: true });
-  router.register('goals:delete', goalController.delete, { auth: true });
+  router.register('goals:delete', goalController.delete, { schema: goalController.schemas.delete, auth: true });
 
   // ── Tasks (protected) ──
-  router.register('tasks:list', taskController.list, { auth: true });
+  router.register('tasks:list', taskController.list, { schema: taskController.schemas.list, auth: true });
   router.register('tasks:get', taskController.get, { schema: taskController.schemas.get, auth: true });
   router.register('tasks:create', taskController.create, { schema: taskController.schemas.create, auth: true });
   router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true });
-  router.register('tasks:delete', taskController.delete, { auth: true });
+  router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true });
 
   // ── Logs (protected) ──
   router.register('logs:list', logController.list, { schema: logController.schemas.list, auth: true });

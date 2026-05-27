@@ -367,7 +367,7 @@ Once code exists, the following test automation should be implemented:
 
 | Layer | Tool | Coverage |
 |-------|------|----------|
-| Unit | Jest | Agent connection logic, task state machine, status mapping |
+| Unit | Vitest | Agent connection logic, task state machine, status mapping |
 | Component | React Testing Library | Button interactions, form validation, status indicators |
 | Integration | Playwright | Full user flows: connect agent, create goal, monitor execution |
 | E2E | Playwright + Electron | App launch, agent lifecycle, delivery confirmation |
