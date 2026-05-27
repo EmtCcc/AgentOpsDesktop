@@ -70,8 +70,8 @@ None — no code exists. Debt will accumulate once implementation begins.
 
 | Issue | Priority | Description |
 |-------|----------|-------------|
-| CMPAA-13 | High | Initialize project with tech stack, scaffolding, .gitignore, linter config |
-| CMPAA-14 | Medium | Set up test framework and write first test |
+| CMPAA-60 | High | Initialize project with tech stack, scaffolding, .gitignore, linter config |
+| CMPAA-64 | Medium | Set up test framework and write first test |
 
 ## Conclusion
 
