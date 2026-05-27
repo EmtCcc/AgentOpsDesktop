@@ -40,30 +40,30 @@ function scheduleScroll(el) {
 // ── SVG Icons ──
 
 const icons = {
-  bot: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>',
-  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-  listChecks: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
-  rocket: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
-  barChart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
-  terminal: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
-  plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
-  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-  play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
-  pause: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
-  refresh: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
-  search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
-  activity: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  bot: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>',
+  check: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  listChecks: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  rocket: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+  barChart: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+  terminal: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+  plus: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  trash: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  play: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  pause: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+  refresh: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  search: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  activity: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
 };
 
 // ── Additional Icons ──
 
 const landingIcons = {
-  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-  workflow: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
-  zap: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-  shield: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-  settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-  arrowRight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  home: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  workflow: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
+  zap: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  shield: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  settings: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  arrowRight: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
 };
 
 // ── State ──
@@ -237,7 +237,39 @@ function renderDashboard(container) {
             ${icons.plus} Create task
           </button>
           <button class="btn btn--secondary" style="justify-content: flex-start;" data-navigate="settings">
-            ${icons.barChart} View settings
+            ${icons.settings} View settings
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="onboarding-card" style="display: none;">
+        <div class="card__header">
+          <h3 class="card__title">Getting started</h3>
+        </div>
+        <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">1</div>
+            <div>
+              <div style="font-weight: 500; margin-bottom: var(--space-1);">Add your first agent</div>
+              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Connect a CLI agent like Claude Code, Codex, or Gemini CLI to get started.</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">2</div>
+            <div>
+              <div style="font-weight: 500; margin-bottom: var(--space-1);">Create a task</div>
+              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Define what you want your agent to do and assign it.</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">3</div>
+            <div>
+              <div style="font-weight: 500; margin-bottom: var(--space-1);">Monitor progress</div>
+              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Watch real-time logs and track task completion status.</div>
+            </div>
+          </div>
+          <button class="btn btn--primary" style="margin-top: var(--space-2);" data-navigate="agents">
+            ${icons.plus} Add your first agent
           </button>
         </div>
       </div>
@@ -259,6 +291,12 @@ async function loadStats() {
     if (el('stat-errors')) el('stat-errors').textContent = stats.agents.error;
     const footerCount = el('footer-agent-count');
     if (footerCount) footerCount.textContent = `${stats.agents.total} agent${stats.agents.total !== 1 ? 's' : ''}`;
+
+    // Show onboarding card when no agents are configured
+    const onboardingCard = document.getElementById('onboarding-card');
+    if (onboardingCard) {
+      onboardingCard.style.display = stats.agents.total === 0 ? 'block' : 'none';
+    }
   } catch {
     // IPC not available yet — expected during initial load
   }
@@ -310,18 +348,18 @@ function renderAgents(container) {
     </div>
 
     <!-- Add Agent Modal -->
-    <div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:center; justify-content:center;">
+    <div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:center; justify-content:center;" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="card" style="width: 440px; max-width: 90vw;">
         <div class="card__header">
-          <h3 class="card__title">Add agent</h3>
+          <h3 class="card__title" id="modal-title">Add agent</h3>
         </div>
         <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Agent name</label>
+            <label for="agent-name" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Agent name</label>
             <input type="text" id="agent-name" placeholder="e.g. Claude Code" style="width:100%;">
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Type</label>
+            <label for="agent-type" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Agent type</label>
             <select id="agent-type" style="width:100%;">
               <option value="claude">Claude Code</option>
               <option value="codex">Codex</option>
@@ -332,11 +370,11 @@ function renderAgents(container) {
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Executable path</label>
+            <label for="agent-path" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Executable path</label>
             <input type="text" id="agent-path" placeholder="/usr/local/bin/claude" style="width:100%; font-family:var(--font-mono); font-size:var(--text-mono-sm);">
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Working directory</label>
+            <label for="agent-cwd" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Working directory</label>
             <input type="text" id="agent-cwd" placeholder="/path/to/project" style="width:100%; font-family:var(--font-mono); font-size:var(--text-mono-sm);">
           </div>
         </div>
@@ -370,8 +408,8 @@ async function loadAgents() {
         </div>
         <span class="status-badge status-badge--${a.status}">${a.status}</span>
         <div class="agent-row__actions">
-          <button class="btn btn--ghost btn--sm btn--icon" title="Health check" data-action="health" data-id="${a.id}">${icons.refresh}</button>
-          <button class="btn btn--ghost btn--sm btn--icon" title="Remove" data-action="delete" data-id="${a.id}">${icons.trash}</button>
+          <button class="btn btn--ghost btn--sm btn--icon" title="Health check" aria-label="Health check" data-action="health" data-id="${a.id}">${icons.refresh}</button>
+          <button class="btn btn--ghost btn--sm btn--icon" title="Remove" aria-label="Remove agent" data-action="delete" data-id="${a.id}">${icons.trash}</button>
         </div>
       </div>
     `).join('');
@@ -426,10 +464,15 @@ function bindAgentActions(container) {
     const deleteBtn = e.target.closest('[data-action="delete"]');
     if (deleteBtn) {
       const id = deleteBtn.dataset.id;
-      try {
-        await window.agentOps.agents.delete(id);
-        loadAgents();
-      } catch (err) { showToast(`Failed to remove agent: ${err.message || 'Unknown error'}`); }
+      const agentRow = deleteBtn.closest('.agent-row');
+      const agentName = agentRow?.querySelector('.agent-row__name')?.textContent || 'this agent';
+      if (confirm(`Remove "${agentName}"? This action cannot be undone.`)) {
+        try {
+          await window.agentOps.agents.delete(id);
+          loadAgents();
+          showToast('Agent removed', 'success');
+        } catch (err) { showToast(`Failed to remove agent: ${err.message || 'Unknown error'}`); }
+      }
       return;
     }
   });
@@ -479,28 +522,28 @@ function renderTasks(container) {
     </div>
 
     <!-- New Task Modal -->
-    <div id="task-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+    <div id="task-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
       <div class="card" style="width: 480px; max-width: 90vw;">
         <div class="card__header">
-          <h3 class="card__title">New task</h3>
+          <h3 class="card__title" id="task-modal-title">New task</h3>
         </div>
         <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Title</label>
+            <label for="task-title" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Title</label>
             <input type="text" id="task-title" placeholder="Implement user auth" style="width:100%;">
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Description</label>
+            <label for="task-desc" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Description</label>
             <textarea id="task-desc" placeholder="Details about the task..." style="width:100%; height:72px; resize:vertical;"></textarea>
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Assign to agent</label>
+            <label for="task-agent" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Assign to agent</label>
             <select id="task-agent" style="width:100%;">
               <option value="">Unassigned</option>
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Goal (optional)</label>
+            <label for="task-goal" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Goal (optional)</label>
             <select id="task-goal" style="width:100%;">
               <option value="">No goal</option>
             </select>
@@ -606,7 +649,11 @@ async function bindTaskActions(container) {
 
 // ── Settings Page ──
 
+let currentSettings = {};
+
 function renderSettings(container) {
+  const version = window.agentOps?.version || '0.1.0';
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -624,7 +671,7 @@ function renderSettings(container) {
             <div class="settings-row__desc">Current build version</div>
           </div>
           <div class="settings-row__control">
-            <span class="badge">v0.1.0</span>
+            <span class="badge">v${escapeHtml(version)}</span>
           </div>
         </div>
         <div class="settings-row">
@@ -633,7 +680,7 @@ function renderSettings(container) {
             <div class="settings-row__desc">Operating system</div>
           </div>
           <div class="settings-row__control">
-            <span class="badge">${window.agentOps?.platform || 'unknown'}</span>
+            <span class="badge">${escapeHtml(window.agentOps?.platform || 'unknown')}</span>
           </div>
         </div>
       </div>
@@ -642,20 +689,20 @@ function renderSettings(container) {
         <h3 class="settings-section__title">Agents</h3>
         <div class="settings-row">
           <div class="settings-row__info">
-            <div class="settings-row__label">Max parallel agents</div>
+            <label class="settings-row__label" for="setting-max-agents">Max parallel agents</label>
             <div class="settings-row__desc">Maximum number of agents running simultaneously</div>
           </div>
           <div class="settings-row__control">
-            <input type="number" value="3" min="1" max="10" style="width: 64px; text-align: center;">
+            <input type="number" id="setting-max-agents" value="${currentSettings.maxParallelAgents || 3}" min="1" max="10" style="width: 64px; text-align: center;">
           </div>
         </div>
         <div class="settings-row">
           <div class="settings-row__info">
-            <div class="settings-row__label">Task timeout</div>
+            <label class="settings-row__label" for="setting-task-timeout">Task timeout</label>
             <div class="settings-row__desc">Default timeout for agent tasks (minutes)</div>
           </div>
           <div class="settings-row__control">
-            <input type="number" value="30" min="1" max="480" style="width: 64px; text-align: center;">
+            <input type="number" id="setting-task-timeout" value="${currentSettings.taskTimeout || 30}" min="1" max="480" style="width: 64px; text-align: center;">
           </div>
         </div>
       </div>
@@ -664,16 +711,53 @@ function renderSettings(container) {
         <h3 class="settings-section__title">Logs</h3>
         <div class="settings-row">
           <div class="settings-row__info">
-            <div class="settings-row__label">Log retention</div>
+            <label class="settings-row__label" for="setting-log-retention">Log retention</label>
             <div class="settings-row__desc">Number of log entries to keep in memory</div>
           </div>
           <div class="settings-row__control">
-            <input type="number" value="10000" min="1000" max="100000" step="1000" style="width: 80px; text-align: center;">
+            <input type="number" id="setting-log-retention" value="${currentSettings.logRetention || 10000}" min="1000" max="100000" step="1000" style="width: 80px; text-align: center;">
           </div>
         </div>
       </div>
     </div>
   `;
+
+  loadSettings();
+  bindSettingsActions(container);
+}
+
+async function loadSettings() {
+  try {
+    currentSettings = await window.agentOps.settings.get();
+    const maxAgents = document.getElementById('setting-max-agents');
+    const taskTimeout = document.getElementById('setting-task-timeout');
+    const logRetention = document.getElementById('setting-log-retention');
+    if (maxAgents && currentSettings.maxParallelAgents) maxAgents.value = currentSettings.maxParallelAgents;
+    if (taskTimeout && currentSettings.taskTimeout) taskTimeout.value = currentSettings.taskTimeout;
+    if (logRetention && currentSettings.logRetention) logRetention.value = currentSettings.logRetention;
+  } catch {
+    // IPC not available
+  }
+}
+
+function bindSettingsActions(container) {
+  const inputs = container.querySelectorAll('input[type="number"]');
+  inputs.forEach((input) => {
+    input.addEventListener('change', async () => {
+      const settings = {
+        maxParallelAgents: parseInt(container.querySelector('#setting-max-agents')?.value || '3'),
+        taskTimeout: parseInt(container.querySelector('#setting-task-timeout')?.value || '30'),
+        logRetention: parseInt(container.querySelector('#setting-log-retention')?.value || '10000'),
+      };
+      try {
+        await window.agentOps.settings.update(settings);
+        currentSettings = settings;
+        showToast('Settings saved');
+      } catch {
+        showToast('Failed to save settings', 'error');
+      }
+    });
+  });
 }
 
 // ── Logs Page ──
@@ -681,6 +765,7 @@ function renderSettings(container) {
 let logsUnsubscribe = null;
 let logsFilterAgent = '';
 let logsFilterLevel = '';
+let logsFilterText = '';
 
 function renderLogs(container) {
   container.innerHTML = `
@@ -690,6 +775,10 @@ function renderLogs(container) {
         <p class="page-header__desc">Real-time agent output</p>
       </div>
       <div class="page-header__actions">
+        <div style="position: relative;">
+          <svg aria-hidden="true" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--color-text-tertiary);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="logs-search" placeholder="Search logs..." style="height:28px; font-size:var(--text-xs); padding-left: 28px; width: 160px;">
+        </div>
         <select id="logs-filter-agent" class="logs-filter" style="height:28px; font-size:var(--text-xs);">
           <option value="">All agents</option>
         </select>
@@ -725,6 +814,10 @@ function renderLogs(container) {
   logsUnsubscribe = window.agentOps.logs.onNew((entry) => {
     if (logsFilterAgent && entry.agentId !== logsFilterAgent) return;
     if (logsFilterLevel && entry.level !== logsFilterLevel) return;
+    if (logsFilterText) {
+      const text = (entry.message || entry.text || '').toLowerCase();
+      if (!text.includes(logsFilterText.toLowerCase())) return;
+    }
     appendLogEntry(entry);
   });
 }
@@ -737,7 +830,14 @@ async function loadLogs() {
     if (logsFilterAgent) opts.agentId = logsFilterAgent;
     const logs = await window.agentOps.logs.list(opts);
     if (!logs || logs.length === 0) return;
-    const filtered = logsFilterLevel ? logs.filter((l) => l.level === logsFilterLevel) : logs;
+    let filtered = logsFilterLevel ? logs.filter((l) => l.level === logsFilterLevel) : logs;
+    if (logsFilterText) {
+      const searchLower = logsFilterText.toLowerCase();
+      filtered = filtered.filter((l) => {
+        const text = (l.message || l.text || '').toLowerCase();
+        return text.includes(searchLower);
+      });
+    }
     viewer.innerHTML = filtered.map((l) => logEntryHtml(l)).join('');
     scheduleScroll(viewer);
   } catch { /* IPC not available */ }
@@ -797,6 +897,17 @@ function bindLogActions(container) {
   const levelFilter = container.querySelector('#logs-filter-level');
   if (levelFilter) {
     levelFilter.addEventListener('change', (e) => { logsFilterLevel = e.target.value; loadLogs(); });
+  }
+  const searchInput = container.querySelector('#logs-search');
+  if (searchInput) {
+    let searchTimeout;
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        logsFilterText = e.target.value;
+        loadLogs();
+      }, 300);
+    });
   }
 }
 
@@ -891,6 +1002,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sidebar navigation
   $$('.sidebar__item[data-page]').forEach((item) => {
     item.addEventListener('click', () => navigate(item.dataset.page));
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        navigate(item.dataset.page);
+      }
+    });
   });
 
   // Header settings button
@@ -918,6 +1035,13 @@ document.addEventListener('DOMContentLoaded', () => {
       searchInput?.focus();
     }
   });
+
+  // Set version dynamically
+  const version = window.agentOps?.version || '0.1.0';
+  const sidebarVersion = document.getElementById('sidebar-version');
+  const footerVersion = document.getElementById('footer-version');
+  if (sidebarVersion) sidebarVersion.textContent = `v${version}`;
+  if (footerVersion) footerVersion.textContent = `v${version}`;
 
   // Initial page
   navigate('landing');
