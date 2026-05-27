@@ -226,9 +226,9 @@ Apply via `session.defaultSession.webRequest.onHeadersReceived` in the main proc
 
 | Issue | Severity | Description |
 |-------|----------|-------------|
-| CMPAA-38 | Medium | Pin GitHub Actions to SHA digests in CI workflow |
-| CMPAA-39 | High | Define Electron security configuration (CSP, nodeIntegration, contextIsolation) as ADR before implementation |
-| CMPAA-40 | High | Implement secure subprocess execution patterns for CLI agent runtime |
+| CMPAA-61 | Medium | Pin GitHub Actions to SHA digests in CI workflow |
+| CMPAA-62 | High | Define Electron security configuration (CSP, nodeIntegration, contextIsolation) as ADR before implementation |
+| CMPAA-63 | High | Implement secure subprocess execution patterns for CLI agent runtime |
 
 ---
 

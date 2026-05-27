@@ -1,0 +1,110 @@
+/* AgentOps Desktop — Base Reset & Global Styles */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  overflow: hidden;
+  user-select: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--motion-fast);
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  transition: border-color var(--motion-fast);
+  height: 32px;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+code, pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* macOS drag region for title bar */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-drag button,
+.titlebar-drag a {
+  -webkit-app-region: no-drag;
+}
