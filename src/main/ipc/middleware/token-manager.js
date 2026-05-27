@@ -8,6 +8,7 @@ const logger = require('../../logger');
 
 const TOKEN_BYTES = 48;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DEFAULT_ROLE = 'operator';
 
 class TokenManager {
   constructor() {
@@ -32,22 +33,28 @@ class TokenManager {
   /**
    * Create a new session token. Returns the plaintext token.
    * The token is encrypted and persisted to disk.
+   *
+   * @param {Object} [options]
+   * @param {string} [options.role] - Session role (default: 'operator')
    */
-  createSession() {
+  createSession(options = {}) {
     const token = crypto.randomBytes(TOKEN_BYTES).toString('base64url');
     const now = Date.now();
+    const role = options.role || DEFAULT_ROLE;
 
     this._session = {
       token,
+      role,
       createdAt: now,
       expiresAt: now + SESSION_TTL_MS,
     };
 
     this._persistSession();
-    logger.info('token-manager.session-created', { expiresAt: this._session.expiresAt });
+    logger.info('token-manager.session-created', { expiresAt: this._session.expiresAt, role });
 
     return {
       token,
+      role,
       createdAt: this._session.createdAt,
       expiresAt: this._session.expiresAt,
     };

@@ -297,7 +297,7 @@ function bindAgentActions(container) {
         await window.agentOps.agents.create({ name, type, execPath: path, cwd });
         hideModal();
         loadAgents();
-      } catch { /* ignore */ }
+      } catch (err) { showToast(`Failed to add agent: ${err.message || 'Unknown error'}`); }
       return;
     }
 
@@ -307,7 +307,7 @@ function bindAgentActions(container) {
       try {
         await window.agentOps.agents.healthCheck(id);
         loadAgents();
-      } catch { /* ignore */ }
+      } catch (err) { showToast(`Health check failed: ${err.message || 'Unknown error'}`); }
       return;
     }
 
@@ -317,7 +317,7 @@ function bindAgentActions(container) {
       try {
         await window.agentOps.agents.delete(id);
         loadAgents();
-      } catch { /* ignore */ }
+      } catch (err) { showToast(`Failed to remove agent: ${err.message || 'Unknown error'}`); }
       return;
     }
   });
@@ -339,7 +339,7 @@ function renderTasks(container) {
       </div>
     </div>
 
-    <div class="task-columns" id="task-board">
+    <div class="task-columns" id="task-board" role="region" aria-label="Task board" aria-live="polite">
       <div class="task-column">
         <div class="task-column__header">
           <span class="task-column__title">Pending <span class="task-column__count" id="count-pending">0</span></span>
@@ -447,14 +447,14 @@ async function bindTaskActions(container) {
     const agents = await window.agentOps.agents.list();
     const sel = container.querySelector('#task-agent');
     if (sel) agents.forEach((a) => { const o = document.createElement('option'); o.value = a.id; o.textContent = a.name; sel.appendChild(o); });
-  } catch { /* ignore */ }
+  } catch (err) { console.warn('Failed to load agents for dropdown:', err); }
 
   // Populate goal dropdown
   try {
     const goals = await window.agentOps.goals.list();
     const sel = container.querySelector('#task-goal');
     if (sel) goals.forEach((g) => { const o = document.createElement('option'); o.value = g.id; o.textContent = g.title; sel.appendChild(o); });
-  } catch { /* ignore */ }
+  } catch (err) { console.warn('Failed to load goals for dropdown:', err); }
 
   container.addEventListener('click', async (e) => {
     const addBtn = e.target.closest('#btn-add-task');
@@ -486,7 +486,7 @@ async function bindTaskActions(container) {
         const overlay = container.querySelector('#task-modal-overlay');
         if (overlay) overlay.style.display = 'none';
         loadTasks();
-      } catch { /* ignore */ }
+      } catch (err) { showToast(`Failed to create task: ${err.message || 'Unknown error'}`); }
       return;
     }
   });
@@ -594,7 +594,7 @@ function renderLogs(container) {
     </div>
 
     <div class="card" style="padding:0; overflow:hidden;">
-      <div class="log-viewer" id="log-viewer">
+      <div class="log-viewer" id="log-viewer" role="log" aria-label="Agent logs" aria-live="polite">
         <div class="empty-state" style="padding: var(--space-12) 0;">
           <div style="color: var(--color-text-tertiary); margin-bottom: var(--space-2);">${icons.terminal}</div>
           <div class="empty-state__title" style="font-size:var(--text-sm);">No logs yet</div>
@@ -694,6 +694,28 @@ function escapeHtml(str) {
   const el = document.createElement('span');
   el.textContent = str || '';
   return el.innerHTML;
+}
+
+function showToast(message, type = 'error') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.setAttribute('role', 'alert');
+    container.setAttribute('aria-live', 'assertive');
+    container.style.cssText = 'position:fixed;top:var(--space-4);right:var(--space-4);z-index:var(--z-toast);display:flex;flex-direction:column;gap:var(--space-2);pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  const bgColor = type === 'error' ? 'var(--color-danger)' : type === 'success' ? 'var(--color-success)' : 'var(--color-info)';
+  toast.style.cssText = `background:${bgColor};color:white;padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);font-size:var(--text-sm);box-shadow:var(--shadow-lg);pointer-events:auto;max-width:400px;animation:fadeIn var(--motion-normal) ease;`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity var(--motion-normal)';
+    setTimeout(() => toast.remove(), 200);
+  }, 4000);
 }
 
 function formatTime(ts) {
