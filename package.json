@@ -1,0 +1,16 @@
+{
+  "name": "agentops-desktop",
+  "version": "0.1.0",
+  "description": "Desktop application for AgentOps",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "lint": "eslint src/",
+    "test": "jest"
+  },
+  "keywords": ["agentops", "desktop", "electron"],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true
+}
