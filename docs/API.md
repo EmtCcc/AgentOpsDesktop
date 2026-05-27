@@ -68,13 +68,13 @@ When an IPC handler throws an `IpcError`, the router catches it and returns a st
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `goals.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `PaginatedResult<Goal>` | List goals with pagination |
+| `goals.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `Goal[]` | List goals (paginated internally) |
 | `goals.get(id)` | `id: string` | `Goal` | Get a single goal by ID |
 | `goals.create(goal)` | `{ title, description? }` | `Goal` | Create a goal |
 | `goals.update(id, updates)` | `id: string`, `updates: object` | `Goal` | Update goal fields |
 | `goals.delete(id)` | `id: string` | `{ deleted: true, id }` | Delete a goal |
 
-**Pagination params:**
+**Pagination params (for list):**
 - `offset` (number, default 0) — items to skip
 - `limit` (number, default 20, max 100) — items per page
 - `status` (string) — filter by status: `active`, `completed`, `archived`
@@ -98,13 +98,13 @@ When an IPC handler throws an `IpcError`, the router catches it and returns a st
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `tasks.list(params?)` | `{ offset?, limit?, status?, goalId?, sortBy?, sortOrder? }` | `PaginatedResult<Task>` | List tasks with pagination |
+| `tasks.list(params?)` | `{ offset?, limit?, status?, goalId?, sortBy?, sortOrder? }` | `Task[]` | List tasks (paginated internally) |
 | `tasks.get(id)` | `id: string` | `Task` | Get a single task by ID |
 | `tasks.create(task)` | `{ title, description?, goalId?, assigneeAgentId? }` | `Task` | Create a task (optionally linked to a goal) |
 | `tasks.update(id, updates)` | `id: string`, `updates: object` | `Task` | Update task fields |
 | `tasks.delete(id)` | `id: string` | `{ deleted: true, id }` | Delete a task |
 
-**Pagination params:**
+**Pagination params (for list):**
 - `offset` (number, default 0) — items to skip
 - `limit` (number, default 20, max 100) — items per page
 - `status` (string) — filter by status: `pending`, `running`, `done`, `failed`

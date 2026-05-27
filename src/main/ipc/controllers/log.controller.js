@@ -38,7 +38,9 @@ const logController = {
       ...entry,
     };
     globalLogs.push(record);
-    if (globalLogs.length > 10000) globalLogs.splice(0, globalLogs.length - 10000);
+    if (globalLogs.length > LOG_HARD_LIMIT) {
+      globalLogs.splice(0, globalLogs.length - LOG_TRIM_TARGET);
+    }
     mainWindow?.webContents.send('logs:new', record);
     return record;
   },
