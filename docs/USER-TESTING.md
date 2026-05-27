@@ -2,7 +2,8 @@
 
 **Date**: 2026-05-28
 **Evaluator**: QA Engineer (Design-phase heuristic evaluation)
-**Status**: Initial evaluation — Day 0, no running code. Findings are based on documented specs (VISION.md, MVP-SCOPE.md, DESIGN-SYSTEM.md, BRAND-IDENTITY.md).
+**Status**: Initial heuristic evaluation — Day 0, no running code. Findings based on documented specs (VISION.md, MVP-SCOPE.md, DESIGN-SYSTEM.md, BRAND-IDENTITY.md).
+**Last updated**: 2026-05-28 — Added acceptance criteria mapping, test environment, usability metrics framework. Fixed test runner to Vitest.
 
 ---
 
@@ -382,8 +383,83 @@ Priority automation targets (from MVP acceptance criteria):
 
 ---
 
+## Acceptance Criteria Mapping
+
+Each MVP acceptance criterion maps to one or more test scenarios:
+
+| MVP Acceptance Criterion | Test Scenario(s) | Coverage Status |
+|--------------------------|-------------------|-----------------|
+| 1. macOS launch + configure Claude Code Agent | Scenario 1 (Steps 1-6) | Covered |
+| 2. Create Goal "Implement a TODO API" | Scenario 2 (Steps 1-2) | Covered |
+| 3. Split into 2 Tasks | Scenario 2 (Steps 3-4) | Covered |
+| 4. Assign to Agent (serial or parallel) | Scenario 2 (Steps 5-7), Scenario 3 | Covered |
+| 5. Real-time log output per Task | Scenario 3 (Steps 3-4) | Covered |
+| 6. View output summary after completion | Scenario 4 (Steps 1-3) | Covered |
+| 7. Confirm delivery, task marked done | Scenario 4 (Steps 4-5) | Covered |
+
+All 7 MVP acceptance criteria have corresponding test coverage.
+
+---
+
+## Test Environment & Setup
+
+| Item | Specification |
+|------|---------------|
+| **Platform** | macOS (primary target per MVP-SCOPE.md) |
+| **Runtime** | Electron 42, Node.js >= 20 |
+| **Test runner** | Vitest (unit/integration), Playwright (E2E) |
+| **Agent under test** | Claude Code CLI (`/usr/local/bin/claude` or equivalent) |
+| **Test data** | Synthetic goals/tasks with deterministic agent prompts |
+| **Isolation** | Each test run uses a temp working directory; `~/.agentops/data.json` reset between runs |
+| **Mock strategy** | Mock agent subprocess for unit tests; real CLI agent for integration/E2E |
+
+### Prerequisites for Manual Evaluation
+
+1. macOS with Electron app built (`npm run build`)
+2. At least one CLI agent installed and on PATH (Claude Code recommended)
+3. A writable test working directory (e.g., `~/agentops-test/`)
+4. Screen recording enabled for evaluation sessions (QuickTime or equivalent)
+
+---
+
+## Usability Metrics Framework
+
+Quantitative metrics to collect during evaluation sessions:
+
+| Metric | Target | Collection Method |
+|--------|--------|-------------------|
+| **Task completion rate** | 100% for Scenario 1-4 core steps | Observer logs pass/fail per step |
+| **Time on task** | Scenario 1 < 2 min, Scenario 2 < 3 min | Stopwatch per scenario |
+| **Error rate** | < 2 user errors per scenario | Observer logs mistakes + self-corrections |
+| **System Usability Scale (SUS)** | >= 68 (above average) | Post-evaluation questionnaire |
+| **Agent failure detection time** | < 60s from failure to user awareness | Timestamp comparison |
+| **First-action success** | User takes correct first action on first try | Observer logs |
+
+### SUS Questionnaire (Post-Evaluation)
+
+Standard 10-item SUS survey administered after completing all test scenarios. Score interpretation:
+- \> 80.3: Excellent
+- 68-80.3: Good
+- 51-67.9: OK
+- < 51: Poor
+
+---
+
+## Test Execution Log
+
+| Date | Evaluator | Type | Scenarios | Findings | Notes |
+|------|-----------|------|-----------|----------|-------|
+| 2026-05-28 | QA Engineer | Heuristic (Day 0) | S1-S4 (spec-only) | 3C, 6M, 5m | No running code; evaluation based on design specs |
+
+*Add rows as evaluations are executed against running code.*
+
+---
+
 ## Next Steps
 
+- [x] Initial usability evaluation documented (this document)
+- [x] Acceptance criteria mapping completed
+- [x] Usability metrics framework defined
 - [ ] CTO reviews critical findings (C1, C2, C3) before implementation begins
 - [ ] Design system updated with tertiary text contrast fix
 - [ ] Error UX spec created (separate document or inline in MVP-SCOPE.md)

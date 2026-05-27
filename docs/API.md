@@ -6,6 +6,30 @@ AgentOpsDesktop exposes IPC channels between the Electron main process and rende
 
 These channels are live in the current codebase.
 
+### Error Responses
+
+When an IPC handler throws an `IpcError`, the router catches it and returns a structured error:
+
+```js
+{
+  ok: false,
+  error: {
+    code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'CONFLICT' | 'FORBIDDEN',
+    message: string,      // Human-readable error description
+    status: number,       // HTTP-like status code (400, 403, 404, 409, 500)
+    field?: string        // Only for VALIDATION_ERROR — the offending field
+  }
+}
+```
+
+**Common error codes:**
+| Code | Status | Meaning |
+|------|--------|---------|
+| `NOT_FOUND` | 404 | Entity does not exist |
+| `VALIDATION_ERROR` | 400 | Invalid input (field constraint violated) |
+| `CONFLICT` | 409 | Duplicate or conflicting state |
+| `FORBIDDEN` | 403 | Auth failure or insufficient permissions |
+
 ### Agents
 
 | Method | Parameters | Returns | Description |
@@ -55,20 +79,29 @@ These channels are live in the current codebase.
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `goals.list()` | — | `Goal[]` | List all goals |
+| `goals.list(params?)` | `{ offset?, limit?, status?, sortBy?, sortOrder? }` | `PaginatedResult<Goal>` | List goals with pagination |
+| `goals.get(id)` | `id: string` | `Goal` | Get a single goal by ID |
 | `goals.create(goal)` | `{ title, description? }` | `Goal` | Create a goal |
-| `goals.update(id, updates)` | `id: string`, `updates: object` | `Goal \| null` | Update goal fields |
-| `goals.delete(id)` | `id: string` | `boolean` | Delete a goal |
+| `goals.update(id, updates)` | `id: string`, `updates: object` | `Goal` | Update goal fields |
+| `goals.delete(id)` | `id: string` | `{ deleted: true, id }` | Delete a goal |
+
+**Pagination params:**
+- `offset` (number, default 0) — items to skip
+- `limit` (number, default 20, max 100) — items per page
+- `status` (string) — filter by status: `active`, `completed`, `archived`
+- `sortBy` (string) — field to sort: `createdAt`, `updatedAt`, `title`, `status`
+- `sortOrder` (string) — `asc` or `desc` (default `desc`)
 
 **Goal object shape:**
 ```js
 {
   id: string,          // "goal-1", "goal-2", ...
   title: string,
-  description: string,
+  description: string | null,
   status: 'active' | 'completed' | 'archived',
   taskIds: string[],
-  createdAt: number
+  createdAt: number,
+  updatedAt: number
 }
 ```
 
@@ -76,23 +109,31 @@ These channels are live in the current codebase.
 
 | Method | Parameters | Returns | Description |
 |--------|-----------|---------|-------------|
-| `tasks.list()` | — | `Task[]` | List all tasks |
-| `tasks.create(task)` | `{ title, description?, goalId?, agentId? }` | `Task` | Create a task (optionally linked to a goal) |
-| `tasks.update(id, updates)` | `id: string`, `updates: object` | `Task \| null` | Update task fields |
-| `tasks.delete(id)` | `id: string` | `boolean` | Delete a task |
+| `tasks.list(params?)` | `{ offset?, limit?, status?, goalId?, sortBy?, sortOrder? }` | `PaginatedResult<Task>` | List tasks with pagination |
+| `tasks.get(id)` | `id: string` | `Task` | Get a single task by ID |
+| `tasks.create(task)` | `{ title, description?, goalId?, assigneeAgentId? }` | `Task` | Create a task (optionally linked to a goal) |
+| `tasks.update(id, updates)` | `id: string`, `updates: object` | `Task` | Update task fields |
+| `tasks.delete(id)` | `id: string` | `{ deleted: true, id }` | Delete a task |
+
+**Pagination params:**
+- `offset` (number, default 0) — items to skip
+- `limit` (number, default 20, max 100) — items per page
+- `status` (string) — filter by status: `pending`, `running`, `done`, `failed`
+- `goalId` (string) — filter by parent goal
+- `sortBy` (string) — field to sort: `createdAt`, `updatedAt`, `title`, `status`
+- `sortOrder` (string) — `asc` or `desc` (default `desc`)
 
 **Task object shape:**
 ```js
 {
   id: string,          // "task-1", "task-2", ...
   title: string,
-  description: string,
-  goalId?: string,
-  agentId?: string,
+  description: string | null,
+  goalId: string | null,
+  assigneeAgentId: string | null,
   status: 'pending' | 'running' | 'done' | 'failed',
   createdAt: number,
-  startedAt?: number,
-  completedAt?: number
+  updatedAt: number
 }
 ```
 
