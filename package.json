@@ -9,8 +9,15 @@
     "lint": "eslint src/",
     "test": "jest"
   },
-  "keywords": ["agentops", "desktop", "electron"],
+  "keywords": [
+    "agentops",
+    "desktop",
+    "electron"
+  ],
   "author": "",
   "license": "UNLICENSED",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "electron": "^42.3.0"
+  }
 }
