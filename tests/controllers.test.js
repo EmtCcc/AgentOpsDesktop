@@ -3,6 +3,69 @@ const { validate, ValidationError } = require('../src/main/ipc/middleware/valida
 const { IpcError } = require('../src/main/ipc/errors');
 const { paginate } = require('../src/main/ipc/pagination');
 
+// ── Regression Tests for CMPAAA-23 ──
+
+describe('regression: list() returns plain array (not paginate object)', () => {
+  it('taskController.list returns array with .length', async () => {
+    const taskController = (await import('../src/main/ipc/controllers/task.controller.js')).default || (await import('../src/main/ipc/controllers/task.controller.js'));
+    await taskController.create(null, { title: 'R1' });
+    await taskController.create(null, { title: 'R2' });
+    const result = await taskController.list();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result.items).toBeUndefined(); // must NOT be a paginate object
+  });
+
+  it('goalController.list returns array', async () => {
+    const goalController = (await import('../src/main/ipc/controllers/goal.controller.js')).default || (await import('../src/main/ipc/controllers/goal.controller.js'));
+    await goalController.create(null, { title: 'G1' });
+    const result = await goalController.list();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.items).toBeUndefined();
+  });
+});
+
+describe('regression: task status vocabulary is consistent', () => {
+  it('new tasks default to pending', async () => {
+    const taskController = (await import('../src/main/ipc/controllers/task.controller.js')).default || (await import('../src/main/ipc/controllers/task.controller.js'));
+    const task = await taskController.create(null, { title: 'Status test' });
+    expect(task.status).toBe('pending');
+  });
+
+  it('task update schema accepts pending/running/done/failed', async () => {
+    const taskController = (await import('../src/main/ipc/controllers/task.controller.js')).default || (await import('../src/main/ipc/controllers/task.controller.js'));
+    const task = await taskController.create(null, { title: 'Schema test' });
+    for (const status of ['pending', 'running', 'done', 'failed']) {
+      const updated = await taskController.update(null, { id: task.id, updates: { status } });
+      expect(updated.status).toBe(status);
+    }
+  });
+
+  it('stats controller uses pending/running/done/failed keys', async () => {
+    const statsController = (await import('../src/main/ipc/controllers/stats.controller.js')).default || (await import('../src/main/ipc/controllers/stats.controller.js'));
+    const stats = await statsController.summary();
+    expect(stats.tasks).toHaveProperty('pending');
+    expect(stats.tasks).toHaveProperty('running');
+    expect(stats.tasks).toHaveProperty('done');
+    expect(stats.tasks).toHaveProperty('failed');
+    expect(stats.tasks).not.toHaveProperty('todo');
+    expect(stats.tasks).not.toHaveProperty('in_progress');
+    expect(stats.tasks).not.toHaveProperty('blocked');
+  });
+});
+
+describe('regression: log buffer is bounded', () => {
+  it('globalLogs does not grow beyond hard limit', async () => {
+    const logController = (await import('../src/main/ipc/controllers/log.controller.js')).default || (await import('../src/main/ipc/controllers/log.controller.js'));
+    // Append more than LOG_HARD_LIMIT (10000) entries
+    for (let i = 0; i < 10100; i++) {
+      await logController.append(null, { message: `log-${i}`, level: 'info' });
+    }
+    const logs = await logController.list(null, { limit: 20000 });
+    expect(logs.length).toBeLessThanOrEqual(10000);
+  });
+});
+
 // ── Validation Middleware ──
 
 describe('validate', () => {

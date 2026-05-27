@@ -1,0 +1,1415 @@
+openapi: 3.0.3
+info:
+  title: AgentOps Desktop API
+  description: IPC API for AgentOps Desktop — an Electron application for managing AI agent sessions, goals, tasks, and logs.
+
+**Transport**: Electron IPC (ipcMain.handle / ipcRenderer.invoke)
+**Auth**: Bearer token via session management
+
+This spec documents the IPC channel interface. Each operation maps to an IPC channel (listed in `x-ipc-channel`). Call via `window.api.invoke(channel, payload)` from the renderer.
+  version: 0.1.0
+  contact:
+    name: AgentOps Team
+  license:
+    name: UNLICENSED
+servers:
+  -
+    url: ipc://localhost
+    description: Electron IPC transport
+tags:
+  -
+    name: Auth
+    description: Session management (login, logout, token rotation)
+  -
+    name: Monitoring
+    description: Health checks and system diagnostics
+  -
+    name: Agents
+    description: Agent configuration CRUD
+  -
+    name: Agent Processes
+    description: Live agent process management (spawn, kill, status)
+  -
+    name: Goals
+    description: Goal management
+  -
+    name: Tasks
+    description: Task management with goal linking
+  -
+    name: Logs
+    description: Log entry management
+  -
+    name: Stats
+    description: Aggregated dashboard statistics
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Session token obtained from POST /auth/login
+  schemas:
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+          example: agent-1
+        name:
+          type: string
+          example: my-claude-agent
+        type:
+          type: string
+          enum:
+            - claude
+            - codex
+            - gemini
+            - opencode
+            - cursor
+            - custom
+        status:
+          type: string
+          enum:
+            - idle
+            - running
+            - error
+            - spawning
+            - stopped
+        command:
+          type: string
+          nullable: true
+        execPath:
+          type: string
+          nullable: true
+        cwd:
+          type: string
+          nullable: true
+        createdAt:
+          type: number
+        updatedAt:
+          type: number
+    Goal:
+      type: object
+      properties:
+        id:
+          type: string
+          example: goal-1
+        title:
+          type: string
+          example: Ship MVP
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+            - archived
+        taskIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: number
+        updatedAt:
+          type: number
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: task-1
+        title:
+          type: string
+          example: Implement auth
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - pending
+            - running
+            - done
+            - failed
+        goalId:
+          type: string
+          nullable: true
+        assigneeAgentId:
+          type: string
+          nullable: true
+        createdAt:
+          type: number
+        updatedAt:
+          type: number
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+          nullable: true
+        message:
+          type: string
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+        stream:
+          type: string
+          enum:
+            - stdout
+            - stderr
+        timestamp:
+          type: number
+    Error:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            status:
+              type: number
+            field:
+              type: string
+paths:
+  /auth/login:
+    post:
+      summary: Create a session
+      description: Creates a new authenticated session and returns a token.
+      operationId: auth_login
+      tags:
+        - Auth
+      x-ipc-channel: auth:login
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Session token
+                  expiresAt:
+                    type: number
+                    description: Token expiration timestamp (ms)
+  /auth/status:
+    get:
+      summary: Check session validity
+      description: Returns the current session info or invalid status.
+      operationId: auth_status
+      tags:
+        - Auth
+      x-ipc-channel: auth:status
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isValid:
+                    type: boolean
+                  token:
+                    type: string
+                  expiresAt:
+                    type: number
+                  createdAt:
+                    type: number
+  /auth/logout:
+    post:
+      summary: Destroy session
+      description: Destroys the current authenticated session.
+      operationId: auth_logout
+      tags:
+        - Auth
+      x-ipc-channel: auth:logout
+      security:
+        -
+          bearerAuth: {}
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        401:
+          description: Unauthorized — invalid or missing token
+  /auth/rotate:
+    post:
+      summary: Rotate session token
+      description: Rotates the current session token and returns a new one.
+      operationId: auth_rotate
+      tags:
+        - Auth
+      x-ipc-channel: auth:rotate
+      security:
+        -
+          bearerAuth: {}
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expiresAt:
+                    type: number
+        401:
+          description: Unauthorized — invalid or missing token
+  /monitor/health:
+    get:
+      summary: System health check
+      description: Returns application health status, version, platform info, and memory usage.
+      operationId: monitor_health
+      tags:
+        - Monitoring
+      x-ipc-channel: monitor:health
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                      - down
+                  version:
+                    type: string
+                  platform:
+                    type: string
+                  arch:
+                    type: string
+                  nodeVersion:
+                    type: string
+                  uptime:
+                    type: number
+                  memory:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      free:
+                        type: number
+                      usage:
+                        type: object
+                  timestamp:
+                    type: number
+  /agents:
+    get:
+      summary: List agent configs
+      description: Lists all registered agent configurations with pagination and optional status filter.
+      operationId: agents_list
+      tags:
+        - Agents
+      x-ipc-channel: agents:list
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: offset
+          in: query
+          required: false
+          schema:
+            type: number
+            description: Pagination offset
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            description: Max items to return
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - idle
+              - running
+              - error
+        -
+          name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - createdAt
+              - updatedAt
+              - name
+              - status
+        -
+          name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: #/components/schemas/Agent
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    post:
+      summary: Create agent config
+      description: Registers a new agent configuration.
+      operationId: agents_create
+      tags:
+        - Agents
+      x-ipc-channel: agents:create
+      security:
+        -
+          bearerAuth: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                type:
+                  type: string
+                  enum:
+                    - claude
+                    - codex
+                    - gemini
+                    - opencode
+                    - cursor
+                    - custom
+                command:
+                  type: string
+                  maxLength: 1000
+                execPath:
+                  type: string
+                  maxLength: 1000
+                cwd:
+                  type: string
+                  maxLength: 500
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Agent
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /agents/{id}:
+    get:
+      summary: Get agent config
+      description: Returns a single agent configuration by ID.
+      operationId: agents_get
+      tags:
+        - Agents
+      x-ipc-channel: agents:get
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Agent
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    patch:
+      summary: Update agent config
+      description: Updates fields on an existing agent configuration.
+      operationId: agents_update
+      tags:
+        - Agents
+      x-ipc-channel: agents:update
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - updates
+              properties:
+                id:
+                  type: string
+                updates:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                      enum:
+                        - claude
+                        - codex
+                        - gemini
+                        - opencode
+                        - cursor
+                        - custom
+                    status:
+                      type: string
+                      enum:
+                        - idle
+                        - running
+                        - error
+                    command:
+                      type: string
+                    execPath:
+                      type: string
+                    cwd:
+                      type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Agent
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    delete:
+      summary: Delete agent config
+      description: Removes an agent configuration.
+      operationId: agents_delete
+      tags:
+        - Agents
+      x-ipc-channel: agents:delete
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  id:
+                    type: string
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /agents/{id}/health-check:
+    post:
+      summary: Validate agent executable
+      description: Checks whether the agent executable exists and is runnable.
+      operationId: agents_health-check
+      tags:
+        - Agents
+      x-ipc-channel: agents:health-check
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  execValid:
+                    type: boolean
+                  processAlive:
+                    type: boolean
+                  status:
+                    type: string
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /agents/spawn:
+    post:
+      summary: Spawn agent process
+      description: Spawns a new CLI agent process and returns session info.
+      operationId: agents_spawn
+      tags:
+        - Agent Processes
+      x-ipc-channel: agents:spawn
+      security:
+        -
+          bearerAuth: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - execPath
+              properties:
+                execPath:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                  maxLength: 200
+                args:
+                  type: array
+                  items:
+                    type: string
+                cwd:
+                  type: string
+                env:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  execPath:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - spawning
+                      - running
+                  pid:
+                    type: number
+                  startedAt:
+                    type: number
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /agents/processes/{id}:
+    get:
+      summary: Get agent session status
+      description: Returns the current status of a live agent process.
+      operationId: agents_status
+      tags:
+        - Agent Processes
+      x-ipc-channel: agents:status
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - spawning
+                      - running
+                      - stopped
+                      - error
+                  pid:
+                    type: number
+                  exitCode:
+                    type: number
+                    nullable: true
+                  error:
+                    type: string
+                    nullable: true
+                  startedAt:
+                    type: number
+                  endedAt:
+                    type: number
+                    nullable: true
+                  logCount:
+                    type: number
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /agents/processes/{id}/kill:
+    post:
+      summary: Kill agent process
+      description: Sends a signal to terminate a live agent process. Defaults to SIGTERM, escalates to SIGKILL after 5s.
+      operationId: agents_kill
+      tags:
+        - Agent Processes
+      x-ipc-channel: agents:kill
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                signal:
+                  type: string
+                  description: Signal to send (default: SIGTERM)
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - stopped
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /goals:
+    get:
+      summary: List goals
+      description: Lists all goals with pagination and optional status filter.
+      operationId: goals_list
+      tags:
+        - Goals
+      x-ipc-channel: goals:list
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: offset
+          in: query
+          required: false
+          schema:
+            type: number
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - active
+              - completed
+              - archived
+        -
+          name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - createdAt
+              - updatedAt
+              - title
+              - status
+        -
+          name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: #/components/schemas/Goal
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    post:
+      summary: Create goal
+      description: Creates a new goal.
+      operationId: goals_create
+      tags:
+        - Goals
+      x-ipc-channel: goals:create
+      security:
+        -
+          bearerAuth: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                description:
+                  type: string
+                  maxLength: 5000
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Goal
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /goals/{id}:
+    get:
+      summary: Get goal
+      description: Returns a single goal by ID.
+      operationId: goals_get
+      tags:
+        - Goals
+      x-ipc-channel: goals:get
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Goal
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    patch:
+      summary: Update goal
+      description: Updates fields on an existing goal.
+      operationId: goals_update
+      tags:
+        - Goals
+      x-ipc-channel: goals:update
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - updates
+              properties:
+                id:
+                  type: string
+                updates:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                        - active
+                        - completed
+                        - archived
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Goal
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    delete:
+      summary: Delete goal
+      description: Removes a goal.
+      operationId: goals_delete
+      tags:
+        - Goals
+      x-ipc-channel: goals:delete
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  id:
+                    type: string
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /tasks:
+    get:
+      summary: List tasks
+      description: Lists all tasks with pagination and optional filters.
+      operationId: tasks_list
+      tags:
+        - Tasks
+      x-ipc-channel: tasks:list
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: offset
+          in: query
+          required: false
+          schema:
+            type: number
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - pending
+              - running
+              - done
+              - failed
+        -
+          name: goalId
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - createdAt
+              - updatedAt
+              - title
+              - status
+        -
+          name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: #/components/schemas/Task
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    post:
+      summary: Create task
+      description: Creates a new task. Optionally links to a parent goal.
+      operationId: tasks_create
+      tags:
+        - Tasks
+      x-ipc-channel: tasks:create
+      security:
+        -
+          bearerAuth: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                description:
+                  type: string
+                  maxLength: 5000
+                goalId:
+                  type: string
+                assigneeAgentId:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Task
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /tasks/{id}:
+    get:
+      summary: Get task
+      description: Returns a single task by ID.
+      operationId: tasks_get
+      tags:
+        - Tasks
+      x-ipc-channel: tasks:get
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Task
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    patch:
+      summary: Update task
+      description: Updates fields on an existing task.
+      operationId: tasks_update
+      tags:
+        - Tasks
+      x-ipc-channel: tasks:update
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - updates
+              properties:
+                id:
+                  type: string
+                updates:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                        - pending
+                        - running
+                        - done
+                        - failed
+                    goalId:
+                      type: string
+                    assigneeAgentId:
+                      type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/Task
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    delete:
+      summary: Delete task
+      description: Removes a task.
+      operationId: tasks_delete
+      tags:
+        - Tasks
+      x-ipc-channel: tasks:delete
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  id:
+                    type: string
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /logs:
+    get:
+      summary: List log entries
+      description: Lists log entries. Filter by agentId for session-specific logs.
+      operationId: logs_list
+      tags:
+        - Logs
+      x-ipc-channel: logs:list
+      security:
+        -
+          bearerAuth: {}
+      parameters:
+        -
+          name: agentId
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+        -
+          name: offset
+          in: query
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: #/components/schemas/LogEntry
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+    post:
+      summary: Append log entry
+      description: Appends a new log entry to the global log buffer.
+      operationId: logs_append
+      tags:
+        - Logs
+      x-ipc-channel: logs:append
+      security:
+        -
+          bearerAuth: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                agentId:
+                  type: string
+                message:
+                  type: string
+                level:
+                  type: string
+                  enum:
+                    - debug
+                    - info
+                    - warn
+                    - error
+                stream:
+                  type: string
+                  enum:
+                    - stdout
+                    - stderr
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/LogEntry
+        401:
+          description: Unauthorized — invalid or missing token
+        422:
+          description: Validation error
+  /stats/summary:
+    get:
+      summary: Dashboard stats
+      description: Returns aggregated counts for agents and tasks by status.
+      operationId: stats_summary
+      tags:
+        - Stats
+      x-ipc-channel: stats:summary
+      security:
+        -
+          bearerAuth: {}
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      running:
+                        type: number
+                      idle:
+                        type: number
+                      error:
+                        type: number
+                      stopped:
+                        type: number
+                  tasks:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      pending:
+                        type: number
+                      running:
+                        type: number
+                      done:
+                        type: number
+                      failed:
+                        type: number
+        401:
+          description: Unauthorized — invalid or missing token

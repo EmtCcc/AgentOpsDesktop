@@ -84,11 +84,139 @@ describe('validate', () => {
   });
 });
 
+describe('validate — number constraints', () => {
+  it('validates min', () => {
+    const schema = { count: { type: 'number', min: 1 } };
+    expect(() => validate(schema, { count: 0 })).toThrow(ValidationError);
+    expect(validate(schema, { count: 1 })).toEqual({ count: 1 });
+    expect(validate(schema, { count: 99 })).toEqual({ count: 99 });
+  });
+
+  it('validates max', () => {
+    const schema = { count: { type: 'number', max: 100 } };
+    expect(() => validate(schema, { count: 101 })).toThrow(ValidationError);
+    expect(validate(schema, { count: 100 })).toEqual({ count: 100 });
+  });
+
+  it('validates min and max together', () => {
+    const schema = { port: { type: 'number', min: 1, max: 65535 } };
+    expect(() => validate(schema, { port: 0 })).toThrow(ValidationError);
+    expect(() => validate(schema, { port: 65536 })).toThrow(ValidationError);
+    expect(validate(schema, { port: 3000 })).toEqual({ port: 3000 });
+  });
+});
+
+describe('validate — nested object schema', () => {
+  it('validates nested object fields', () => {
+    const schema = {
+      config: {
+        type: 'object',
+        schema: {
+          host: { type: 'string', required: true },
+          port: { type: 'number', min: 1, max: 65535 },
+        },
+      },
+    };
+    expect(() => validate(schema, { config: { port: 3000 } })).toThrow(ValidationError);
+    expect(() => validate(schema, { config: { host: 'x', port: 99999 } })).toThrow(ValidationError);
+    expect(validate(schema, { config: { host: 'localhost', port: 3000 } })).toEqual({
+      config: { host: 'localhost', port: 3000 },
+    });
+  });
+
+  it('skips nested validation when object is absent and not required', () => {
+    const schema = {
+      config: {
+        type: 'object',
+        schema: { host: { type: 'string', required: true } },
+      },
+    };
+    expect(validate(schema, {})).toEqual({});
+  });
+});
+
+describe('validate — array item validation', () => {
+  it('validates array items against schema', () => {
+    const schema = {
+      tags: {
+        type: 'array',
+        items: { type: 'string', minLength: 1 },
+      },
+    };
+    expect(() => validate(schema, { tags: ['ok', ''] })).toThrow(ValidationError);
+    expect(validate(schema, { tags: ['a', 'b'] })).toEqual({ tags: ['a', 'b'] });
+  });
+
+  it('validates array item types', () => {
+    const schema = {
+      ids: { type: 'array', items: { type: 'number' } },
+    };
+    expect(() => validate(schema, { ids: [1, 'two', 3] })).toThrow(ValidationError);
+    expect(validate(schema, { ids: [1, 2, 3] })).toEqual({ ids: [1, 2, 3] });
+  });
+
+  it('validates minItems and maxItems', () => {
+    const schema = { tags: { type: 'array', minItems: 1, maxItems: 3 } };
+    expect(() => validate(schema, { tags: [] })).toThrow(ValidationError);
+    expect(() => validate(schema, { tags: [1, 2, 3, 4] })).toThrow(ValidationError);
+    expect(validate(schema, { tags: [1] })).toEqual({ tags: [1] });
+  });
+});
+
+describe('validate — strict mode', () => {
+  it('rejects unknown fields in strict mode', () => {
+    const schema = { name: { type: 'string' } };
+    expect(() => validate(schema, { name: 'x', extra: 'y' }, { strict: true })).toThrow(ValidationError);
+  });
+
+  it('allows unknown fields when strict is false (default)', () => {
+    const schema = { name: { type: 'string' } };
+    expect(validate(schema, { name: 'x', extra: 'y' })).toEqual({ name: 'x', extra: 'y' });
+  });
+
+  it('passes strict mode when no extra fields', () => {
+    const schema = { name: { type: 'string', required: true } };
+    expect(validate(schema, { name: 'x' }, { strict: true })).toEqual({ name: 'x' });
+  });
+});
+
+describe('validate — defaults', () => {
+  it('applies default value for missing optional field', () => {
+    const schema = { status: { type: 'string', default: 'idle' } };
+    expect(validate(schema, {})).toEqual({ status: 'idle' });
+  });
+
+  it('does not override provided values with default', () => {
+    const schema = { status: { type: 'string', default: 'idle' } };
+    expect(validate(schema, { status: 'running' })).toEqual({ status: 'running' });
+  });
+
+  it('supports function defaults', () => {
+    const schema = { id: { type: 'string', default: () => 'generated' } };
+    expect(validate(schema, {})).toEqual({ id: 'generated' });
+  });
+});
+
 describe('ValidationError', () => {
   it('exposes field and message', () => {
     const err = new ValidationError('name', 'name is required');
     expect(err.field).toBe('name');
     expect(err.message).toBe('name is required');
     expect(err.name).toBe('ValidationError');
+  });
+
+  it('exposes structured errors array', () => {
+    const schema = {
+      a: { type: 'string', required: true },
+      b: { type: 'number', required: true },
+    };
+    try {
+      validate(schema, {});
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err.errors).toHaveLength(2);
+      expect(err.errors[0]).toEqual({ field: 'a', message: 'a is required' });
+      expect(err.errors[1]).toEqual({ field: 'b', message: 'b is required' });
+    }
   });
 });

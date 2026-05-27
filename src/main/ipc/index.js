@@ -3,6 +3,7 @@
 const { IpcRouter } = require('./router');
 const { TokenManager } = require('./middleware/token-manager');
 const { createAuthMiddleware } = require('./middleware/auth');
+const { createAuthorizeMiddleware } = require('./middleware/authorize');
 const agentController = require('./controllers/agent.controller');
 const goalController = require('./controllers/goal.controller');
 const taskController = require('./controllers/task.controller');
@@ -50,8 +51,16 @@ const tokenManager = new TokenManager();
  *
  *   stats:summary       — Aggregated dashboard stats
  */
-function bootstrapRoutes(mainWindow) {
+function bootstrapRoutes(mainWindow, repos) {
   logController.setMainWindow(mainWindow);
+
+  // Inject repositories into controllers
+  if (repos) {
+    agentController.setRepository(repos.agents);
+    goalController.setRepository(repos.goals);
+    taskController.setRepository(repos.tasks);
+    logController.setRepository(repos.taskLogs);
+  }
 
   // Initialize token manager
   tokenManager.init();

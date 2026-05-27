@@ -2,7 +2,13 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const logger = require('./logger');
 const monitor = require('./monitor');
+const { dbManager } = require('./db');
+const { createRepositories } = require('./repositories');
 const { bootstrapRoutes } = require('./ipc');
+
+// Initialize database and repositories
+const db = dbManager.init();
+const repos = createRepositories(db);
 
 // Install global error handlers before anything else
 monitor.installGlobalHandlers();
@@ -62,7 +68,7 @@ app.whenReady().then(() => {
   monitor.startHealthLoop();
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
-  bootstrapRoutes(mainWindow);
+  bootstrapRoutes(mainWindow, repos);
   logger.info('ipc.bootstrapped');
 });
 

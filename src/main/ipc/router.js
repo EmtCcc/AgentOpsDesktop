@@ -23,6 +23,7 @@ class IpcRouter {
   constructor() {
     this._routes = new Map();
     this._authMiddleware = null;
+    this._authorizeMiddleware = null;
   }
 
   /**
@@ -35,6 +36,15 @@ class IpcRouter {
   }
 
   /**
+   * Set the authorization middleware function.
+   *
+   * @param {Function} middleware - (event, payload, permission) => void (throws IpcError on failure)
+   */
+  setAuthorizeMiddleware(middleware) {
+    this._authorizeMiddleware = middleware;
+  }
+
+  /**
    * Register a handler for an IPC channel.
    *
    * @param {string} channel - IPC channel name (e.g. 'agents:list')
@@ -42,6 +52,7 @@ class IpcRouter {
    * @param {Object} options
    * @param {Object} [options.schema] - Validation schema for the payload
    * @param {boolean} [options.auth] - Require authentication (default: false)
+   * @param {string} [options.permission] - Required permission (e.g. 'agents:create')
    * @param {boolean} [options.strict] - Reject fields not in schema (default: false)
    */
   register(channel, handler, options = {}) {
@@ -52,17 +63,18 @@ class IpcRouter {
       handler,
       schema: options.schema || null,
       auth: !!options.auth,
+      permission: options.permission || null,
       strict: !!options.strict,
     });
   }
 
   /**
    * Activate all registered routes on ipcMain.
-   * Pipeline: auth check → payload validation → handler invocation.
+   * Pipeline: auth check → authorization check → payload validation → handler invocation.
    * Errors propagate to the monitor wrapper already installed in main/index.js.
    */
   bootstrap() {
-    for (const [channel, { handler, schema, auth, strict }] of this._routes) {
+    for (const [channel, { handler, schema, auth, permission, strict }] of this._routes) {
       ipcMain.handle(channel, async (event, payload) => {
         // Auth check (if route requires it)
         if (auth) {
@@ -70,6 +82,14 @@ class IpcRouter {
             throw new AuthError('Auth middleware not configured', 'AUTH_UNCONFIGURED');
           }
           this._authMiddleware(event, payload);
+        }
+
+        // Authorization check (if route declares a permission)
+        if (permission) {
+          if (!this._authorizeMiddleware) {
+            throw new IpcError('AUTHORIZE_UNCONFIGURED', 'Authorize middleware not configured', 500);
+          }
+          this._authorizeMiddleware(event, payload, permission);
         }
 
         // Strip _auth field before validation and handler

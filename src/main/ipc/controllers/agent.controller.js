@@ -31,6 +31,9 @@ let nextConfigId = 1;
 // ── Live sessions (running processes) ──
 const sessions = new Map();
 
+// ── Repository (injected) ──
+let agentRepo = null;
+
 const AGENT_STATUS = {
   IDLE: 'idle',
   SPAWNING: 'spawning',
@@ -70,6 +73,14 @@ async function _validateExecPath(execPath) {
 }
 
 const agentController = {
+  /**
+   * Set the repository for persistent storage.
+   * @param {import('../../repositories/agent.repository').AgentRepository} repo
+   */
+  setRepository(repo) {
+    agentRepo = repo;
+  },
+
   // ── Config CRUD ──
 
   /**
@@ -77,6 +88,10 @@ const agentController = {
    * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status }
    */
   async list(_event, params = {}) {
+    if (agentRepo) {
+      const result = agentRepo.list(params);
+      return result.items;
+    }
     const filter = params.status
       ? (a) => a.status === params.status
       : undefined;
