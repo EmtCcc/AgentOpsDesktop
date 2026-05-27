@@ -55,6 +55,16 @@ describe('TokenManager', () => {
       const s2 = tm.createSession();
       expect(s1.token).not.toBe(s2.token);
     });
+
+    it('defaults role to operator', () => {
+      const session = tm.createSession();
+      expect(session.role).toBe('operator');
+    });
+
+    it('accepts a custom role', () => {
+      const session = tm.createSession({ role: 'admin' });
+      expect(session.role).toBe('admin');
+    });
   });
 
   describe('validate', () => {
@@ -102,6 +112,7 @@ describe('TokenManager', () => {
       expect(info.isValid).toBe(true);
       expect(info.createdAt).toBeDefined();
       expect(info.expiresAt).toBeDefined();
+      expect(info.role).toBe('operator');
       expect(info.token).toBeUndefined();
     });
   });
@@ -113,6 +124,17 @@ describe('TokenManager', () => {
       tm.destroySession();
       expect(tm.validate(session.token)).toBe(false);
       expect(tm.hasValidSession()).toBe(false);
+    });
+  });
+
+  describe('getRole', () => {
+    it('returns null when no session', () => {
+      expect(tm.getRole()).toBeNull();
+    });
+
+    it('returns the session role', () => {
+      tm.createSession({ role: 'admin' });
+      expect(tm.getRole()).toBe('admin');
     });
   });
 

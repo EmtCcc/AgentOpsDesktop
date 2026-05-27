@@ -56,4 +56,8 @@ contextBridge.exposeInMainWorld('agentOps', {
   monitor: {
     health: () => ipcRenderer.invoke('monitor:health'),
   },
+
+  docs: {
+    openApi: () => ipcRenderer.invoke('docs:api'),
+  },
 });

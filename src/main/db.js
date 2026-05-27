@@ -56,11 +56,11 @@ class DatabaseManager {
           CREATE TABLE IF NOT EXISTS agents (
             id              TEXT PRIMARY KEY,
             name            TEXT NOT NULL,
-            type            TEXT NOT NULL DEFAULT 'custom',
+            agent_type      TEXT NOT NULL DEFAULT 'custom',
             status          TEXT NOT NULL DEFAULT 'idle',
             command         TEXT,
-            exec_path       TEXT,
-            cwd             TEXT,
+            executable_path TEXT,
+            working_directory TEXT,
             config_json     TEXT DEFAULT '{}',
             created_at      TEXT NOT NULL,
             updated_at      TEXT NOT NULL

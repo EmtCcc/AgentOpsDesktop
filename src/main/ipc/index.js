@@ -1,5 +1,7 @@
 'use strict';
 
+const { BrowserWindow } = require('electron');
+const path = require('path');
 const { IpcRouter } = require('./router');
 const { TokenManager } = require('./middleware/token-manager');
 const { createAuthMiddleware } = require('./middleware/auth');
@@ -50,6 +52,8 @@ const tokenManager = new TokenManager();
  *   logs:append         — Append a log entry
  *
  *   stats:summary       — Aggregated dashboard stats
+ *
+ *   docs:api            — Open API documentation in a new window
  */
 function bootstrapRoutes(mainWindow, repos) {
   logController.setMainWindow(mainWindow);
@@ -136,6 +140,20 @@ function bootstrapRoutes(mainWindow, repos) {
 
   // ── Stats (protected) ──
   router.register('stats:summary', statsController.summary, { auth: true, permission: 'stats:summary' });
+
+  // ── Docs (public) ──
+  router.register('docs:api', () => {
+    const docsPath = path.resolve(__dirname, '..', '..', '..', 'docs', 'api-docs.html');
+    const docsWindow = new BrowserWindow({
+      width: 1100,
+      height: 800,
+      title: 'AgentOps API Docs',
+      backgroundColor: '#0d1117',
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    });
+    docsWindow.loadFile(docsPath);
+    return { ok: true };
+  });
 
   router.bootstrap();
   return router;

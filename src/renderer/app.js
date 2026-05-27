@@ -841,6 +841,40 @@ function bindNavigationLinks(ctx) {
   });
 }
 
+// ── Workflows Page ──
+
+function renderWorkflows(container) {
+  container.innerHTML = `
+    <div class="page-container">
+      <div class="page-header">
+        <div class="page-header__content">
+          <h1 class="page-header__title">Workflows</h1>
+          <p class="page-header__desc">Manage automated workflows and pipelines</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" id="btn-create-workflow">
+            ${icons.plus} Create workflow
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state">
+        <div class="empty-state__icon">${landingIcons.workflow}</div>
+        <div class="empty-state__title">No workflows configured</div>
+        <div class="empty-state__desc">Create automated workflows to orchestrate complex agent tasks.</div>
+        <div class="empty-state__actions">
+          <button class="btn btn--primary">
+            ${icons.plus} Create workflow
+          </button>
+          <button class="btn btn--secondary">
+            Learn more
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ── Init ──
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -886,5 +920,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initial page
-  navigate('dashboard');
+  navigate('landing');
 });

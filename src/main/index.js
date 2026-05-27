@@ -2,12 +2,13 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const logger = require('./logger');
 const monitor = require('./monitor');
-const { dbManager } = require('./db');
+const { getDb, closeDb, runMigrations } = require('./db/connection');
 const { createRepositories } = require('./repositories');
 const { bootstrapRoutes } = require('./ipc');
 
 // Initialize database and repositories
-const db = dbManager.init();
+const db = getDb();
+runMigrations(db);
 const repos = createRepositories(db);
 
 // Install global error handlers before anything else
@@ -82,5 +83,6 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   monitor.stopHealthLoop();
+  closeDb();
   logger.info('app.quit');
 });

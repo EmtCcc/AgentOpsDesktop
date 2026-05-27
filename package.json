@@ -19,7 +19,8 @@
     "test:smoke": "node scripts/smoke-test.js",
     "test:smoke:renderer": "npx playwright test smoke",
     "build": "electron-builder --mac",
-    "build:dir": "electron-builder --mac --dir"
+    "build:dir": "electron-builder --mac --dir",
+    "docs:generate": "node scripts/generate-api-docs.js"
   },
   "keywords": [
     "agentops",
