@@ -231,10 +231,67 @@ Until code signing is configured, users may need to:
 1. Right-click the app → Open
 2. Or: System Settings → Privacy & Security → Open Anyway
 
+## Rollback Strategy
+
+If a stable release has a critical issue, use the rollback workflow to revert all users to the previous version.
+
+### When to Roll Back
+
+- App crashes on launch for a significant portion of users
+- Data loss or corruption bug discovered post-release
+- Auto-update delivers a broken build
+- Security vulnerability introduced in the release
+
+### How to Roll Back
+
+1. Go to **Actions** → **Rollback Release** → **Run workflow**
+2. Enter the **target version** (e.g. `v0.1.0`) — the last known-good tag
+3. Enter the **reason** for the rollback
+4. Click **Run workflow**
+
+The workflow will:
+- Check out the target version's code
+- Rebuild signed + notarized DMGs from that version
+- Re-publish to GitHub Releases (updating `latest-mac.yml`)
+- Create a tagged rollback release with the reason documented
+
+Users' `electron-updater` clients will detect the older version in `latest-mac.yml` on their next launch and auto-update back to it.
+
+### Manual Rollback (Emergency)
+
+If the workflow is unavailable, roll back manually:
+
+```bash
+# 1. Check out the last good version
+git checkout v0.1.0
+
+# 2. Install and build
+npm ci
+npm run build
+
+# 3. Re-publish (updates latest-mac.yml)
+gh release create "rollback-manual-$(date +%s)" \
+  release/AgentOps-*.dmg \
+  release/latest-mac.yml \
+  --title "Emergency Rollback to v0.1.0" \
+  --notes "Emergency rollback — <describe issue>" \
+  --latest
+
+# 4. Clean up
+git checkout main
+```
+
+### Post-Rollback Checklist
+
+- [ ] Root cause identified and documented
+- [ ] Fix implemented and tested on a beta release first
+- [ ] New stable release includes the fix
+- [ ] Incident post-mortem written (if data loss or extended outage)
+
 ## Future Improvements
 
 - [x] Add `release` workflow to CI (triggered by `v*` tags)
 - [x] Apple Developer code signing + notarization
 - [ ] Windows and Linux build targets
 - [ ] Automated changelog generation from conventional commits
-- [ ] Release candidate (RC) channel for pre-release testing
+- [x] Release candidate (RC) channel for pre-release testing

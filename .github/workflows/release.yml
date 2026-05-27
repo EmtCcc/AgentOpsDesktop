@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '!v*-beta*'
 
 permissions:
   contents: write
@@ -38,16 +39,25 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-      - name: Build and publish DMG
+      - name: Build DMG
         env:
           CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npx electron-builder --mac --publish never
+
+      - name: Smoke test
+        run: npm run test:smoke
+
+      - name: Publish release
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-builder --mac --publish always
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" release/*.dmg --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
 
       - name: Clean up keychain
         if: always()

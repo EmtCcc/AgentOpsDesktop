@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_version:
-        description: 'Version to roll back to (e.g. v0.1.0). Must be an existing git tag.'
+        description: 'Version to roll back to (e.g. v0.1.0). Must be an existing git tag with a GitHub Release.'
         required: true
         type: string
       reason:
@@ -47,35 +47,39 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-      - name: Build and re-publish ${{ inputs.target_version }}
+      - name: Build DMGs from ${{ inputs.target_version }}
         env:
           CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-builder --mac --publish always
+          npx electron-builder --mac --publish never
 
-      - name: Tag rollback release
+      - name: Re-publish to ${{ inputs.target_version }} release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ROLLBACK_TAG="rollback-$(date +%Y%m%d-%H%M%S)"
-          VERSION=$(node -p "require('./package.json').version")
+          TAG="${{ inputs.target_version }}"
 
-          # Create a release note documenting the rollback
-          gh release create "$ROLLBACK_TAG" \
-            --title "Rollback to ${VERSION}" \
-            --notes "## Rollback
+          # Remove old DMG assets from the release (ignore if absent)
+          gh release delete-asset "$TAG" "AgentOps-$(node -p "require('./package.json').version").dmg" --yes 2>/dev/null || true
+          gh release delete-asset "$TAG" "AgentOps-$(node -p "require('./package.json').version")-arm64.dmg" --yes 2>/dev/null || true
+          gh release delete-asset "$TAG" "latest-mac.yml" --yes 2>/dev/null || true
+
+          # Upload fresh build artifacts
+          gh release upload "$TAG" release/AgentOps-*.dmg release/latest-mac.yml --clobber
+
+          # Mark the release as latest (re-triggers electron-updater)
+          gh release edit "$TAG" --latest --notes "## Rollback Release
 
           **Rolled back to:** ${{ inputs.target_version }}
           **Reason:** ${{ inputs.reason }}
+          **Rollback date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          This release re-publishes ${VERSION} as the latest stable version.
-          electron-updater clients will auto-update to this version on next launch." \
-            --latest
+          This release has been re-published from ${{ inputs.target_version }}.
+          electron-updater clients will auto-update to this version on next launch."
 
       - name: Clean up keychain
         if: always()

@@ -1,0 +1,104 @@
+Category,ID,Page/Section,Element,Content,Type,Quality,Priority,Migration Status,Action Required
+Page,1.1,Dashboard,Page title,Dashboard,Heading,Good,Ship,Ship As-Is,—
+Page,1.1,Dashboard,Page description,Agent operations overview,Subtitle,Good,Ship,Ship As-Is,—
+Page,1.1,Dashboard,Stat: Agents,0 (dynamic),Metric,Good,Ship,Ship As-Is,Add aria-live region
+Page,1.1,Dashboard,Stat: Tasks,0 (dynamic),Metric,Good,Ship,Ship As-Is,Add aria-live region
+Page,1.1,Dashboard,Stat: Running,0 (dynamic),Metric,Good,Ship,Ship As-Is,Add aria-live region
+Page,1.1,Dashboard,Stat: Errors,0 (dynamic),Metric,Good,Ship,Ship As-Is,Add aria-live region
+Page,1.1,Dashboard,Recent activity,No recent activity,Empty state,Fair,P1,Rewrite,Add actionable guidance
+Page,1.1,Dashboard,Quick action: Add agent,Add agent,Button,Good,Ship,Ship As-Is,Add aria-label
+Page,1.1,Dashboard,Quick action: Create task,Create task,Button,Good,Ship,Ship As-Is,Add aria-label
+Page,1.1,Dashboard,Quick action: View settings,View settings,Button,Fair,P2,Fix,Change icon from barChart to gear
+Page,1.2,Agents,Page title,Agents,Heading,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Page description,Manage connected CLI agents,Subtitle,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Empty state title,No agents configured,Empty state,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Empty state desc,Add a CLI agent to start orchestrating tasks.,Guidance,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Modal: title,Add agent,Modal heading,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Modal: name label,Agent name,Form label,Good,P0,Ship With Fixes,Add for/id linking
+Page,1.2,Agents,Modal: name placeholder,e.g. Claude Code,Placeholder,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Modal: type label,Type,Form label,Fair,P2,Rewrite,Change to Agent type
+Page,1.2,Agents,Modal: type options,"Claude Code, Codex, Gemini CLI, OpenCode, Cursor, Custom",Select,Good,Ship,Ship As-Is,Add descriptions per type
+Page,1.2,Agents,Modal: path label,Executable path,Form label,Good,P0,Ship With Fixes,Add for/id linking
+Page,1.2,Agents,Modal: path placeholder,/usr/local/bin/claude,Placeholder,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Modal: cwd label,Working directory,Form label,Good,P0,Ship With Fixes,Add for/id linking
+Page,1.2,Agents,Modal: cwd placeholder,/path/to/project,Placeholder,Good,Ship,Ship As-Is,—
+Page,1.2,Agents,Agent row: status,Status dot + badge,Visual,Good,P2,Fix,Capitalize badge text
+Page,1.2,Agents,Agent row: actions,"Health check, Remove",Icon buttons,Fair,P0,Ship With Fixes,Add delete confirmation dialog
+Page,1.3,Tasks,Page title,Tasks,Heading,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Page description,Track goals and task assignments,Subtitle,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Column: Pending,Pending + count,Kanban header,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Column: Running,Running + count,Kanban header,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Column: Done,Done + count,Kanban header,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Column: Failed,Failed + count,Kanban header,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Empty column,No tasks,Empty state,Fair,P1,Rewrite,Add dashed border + icon
+Page,1.3,Tasks,Modal: title,New task,Modal heading,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Modal: title placeholder,Implement user auth,Placeholder,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Modal: desc placeholder,Details about the task...,Placeholder,Fair,P2,Rewrite,More specific guidance
+Page,1.3,Tasks,Modal: agent label,Assign to agent,Form label,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Modal: agent default,Unassigned,Option,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Modal: goal label,Goal (optional),Form label,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Modal: goal default,No goal,Option,Good,Ship,Ship As-Is,—
+Page,1.3,Tasks,Task card,Title + agent + timestamp,Card,Good,P2,Fix,Resolve agent ID to name
+Page,1.4,Logs,Page title,Logs,Heading,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Page description,Real-time agent output,Subtitle,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Filter: agents,All agents,Select default,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Filter: levels,"All levels, Debug, Info, Warning, Error",Select options,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Empty state title,No logs yet,Empty state,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Empty state desc,Logs from agent sessions will appear here in real time.,Guidance,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Clear button,Trash icon + Clear,Button,Fair,P0,Fix,Add confirmation dialog
+Page,1.4,Logs,Refresh button,Refresh icon + Refresh,Button,Good,Ship,Ship As-Is,—
+Page,1.4,Logs,Log entry,Timestamp + agent tag + stream tag + message,Log line,Good,P0,Fix,Fix word-break
+Page,1.4,Logs,Cleared state,Logs cleared,Feedback,Fair,Ship,Ship As-Is,—
+Page,1.5,Settings,Page title,Settings,Heading,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,Page description,Application preferences,Subtitle,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,Section: General,General,Section heading,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,App version,v0.1.0 (hardcoded),Badge,Poor,P0,Rewrite,Read from package.json
+Page,1.5,Settings,Platform,Dynamic,Badge,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,Section: Agents,Agents,Section heading,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,Max parallel,3 (hardcoded),Input,Poor,P0,Rewrite,Wire to store via IPC
+Page,1.5,Settings,Task timeout,30 min (hardcoded),Input,Poor,P0,Rewrite,Wire to store via IPC
+Page,1.5,Settings,Section: Logs,Logs,Section heading,Good,Ship,Ship As-Is,—
+Page,1.5,Settings,Log retention,10000 (hardcoded),Input,Poor,P0,Rewrite,Wire to store via IPC
+Shell,0,index.html,title tag,AgentOps,Meta,Good,P2,Fix,Add dynamic page title
+Shell,0,index.html,Header title,AgentOps,Text,Good,P3,Ship,Add logo/icon
+Shell,0,index.html,Sidebar: Overview,Dashboard,Nav,Good,Ship,Ship As-Is,—
+Shell,0,index.html,Sidebar: Operations,"Agents, Tasks, Logs",Nav,Good,Ship,Ship As-Is,—
+Shell,0,index.html,Sidebar: footer,Settings,Nav,Good,Ship,Ship As-Is,—
+Shell,0,index.html,Footer status,System ready,Status,Good,P2,Fix,Make dynamic
+Shell,0,index.html,Footer agent count,0 agents,Status,Good,Ship,Ship As-Is,Dynamic
+Shell,0,index.html,Footer version,v0.1.0,Status,Fair,P2,Fix,Read from package.json
+Shell,0,index.html,Notifications button,Bell icon no label,Button,Fair,P3,Fix,Remove or implement
+Doc,3,VISION.md,Full document,,Vision,Excellent,Ship,Ship As-Is,—
+Doc,3,MVP-SCOPE.md,Full document,,Scope,Excellent,Ship,Ship As-Is,—
+Doc,3,ARCHITECTURE.md,Full document,,Architecture,Excellent,Ship,Ship As-Is,—
+Doc,3,DESIGN-SYSTEM.md,Full document,,Design,Excellent,P2,Fix,Resolve color token conflict
+Doc,3,BRAND-IDENTITY.md,Full document,,Brand,Excellent,P2,Fix,Resolve blue accent conflict
+Doc,3,DESIGN-SPEC.md,Full document,,Design,Good,P2,Fix,Fix font size base 16→14px
+Doc,3,DESIGN-AUDIT.md,Full document,,Audit,Good,Ship,Ship As-Is,—
+Doc,3,DESIGN-AUDIT-LIVE.md,Full document,,Audit,Good,Ship,Ship As-Is,—
+Doc,3,CONTENT-AUDIT.md,Full document,,Audit,Good,Ship,Ship As-Is,—
+Doc,3,ACCESSIBILITY-AUDIT.md,Full document,,Audit,Good,Ship,Ship As-Is,—
+Doc,3,CODEBASE-AUDIT.md,Full document,,Audit,Good,Ship,Ship As-Is,—
+Doc,3,COMPETITIVE-LANDSCAPE.md,Full document,,Research,Good,Ship,Ship As-Is,—
+Doc,3,MARKET-ANALYSIS.md,Full document,,Research,Good,Ship,Ship As-Is,—
+Doc,3,TECH-STACK.md,Full document,,Technical,Good,Ship,Ship As-Is,—
+Doc,3,API.md,Full document,,Technical,Good,Ship,Ship As-Is,—
+Doc,3,SECURITY-REVIEW.md,Full document,,Security,Good,Ship,Ship As-Is,—
+Doc,3,THREAT-MODEL.md,Full document,,Security,Good,Ship,Ship As-Is,—
+Doc,3,CODE-SIGNING.md,Full document,,Security,Good,Ship,Ship As-Is,—
+Doc,3,DEPENDENCY-AUDIT.md,Full document,,Security,Good,Ship,Ship As-Is,—
+Doc,3,PERFORMANCE-BUDGET.md,Full document,,Performance,Good,Ship,Ship As-Is,—
+Doc,3,MONITORING.md,Full document,,Operations,Good,Ship,Ship As-Is,—
+Doc,3,RELEASE-PROCESS.md,Full document,,Operations,Good,Ship,Ship As-Is,—
+Doc,3,FEEDBACK-TRIAGE.md,Full document,,Process,Good,Ship,Ship As-Is,—
+Doc,3,USER-TESTING.md,Full document,,Process,Good,Ship,Ship As-Is,—
+Doc,3,getting-started.md,Full document,,Onboarding,Good,P2,Fix,Fix placeholder URLs
+Doc,3,CONTENT-INVENTORY.md,Full document,,Inventory,Fair,Deprecated,Remove,Superseded by this document
+Doc,3,README.md,Full document,,Overview,Basic,P1,Rewrite,Full rewrite needed
+Asset,6,assets/,App icon (icns),icon.icns,Icon,Missing,P0,Create,Required for macOS build
+Asset,6,assets/,Logo PNGs,logo-icon-*.png,Image,Missing,P1,Create,From brand spec
+Asset,6,assets/,Logo lockup SVGs,logo-lockup-*.svg,Vector,Missing,P2,Create,From brand spec
+Asset,6,assets/,Custom icon SVGs,icon-*.svg,Vector,Missing,P3,Create,Currently inline SVGs
+Asset,6,assets/,UI sound effects,sfx-*.ogg,Audio,Missing,P3,Create,Planned in brand spec
+Asset,6,assets/,Web fonts,fonts/,Font,Missing,P3,Create,System font stack fallback
+Asset,6,assets/,Screenshots,assets/screenshots/,Image,Missing,P2,Create,For marketing site

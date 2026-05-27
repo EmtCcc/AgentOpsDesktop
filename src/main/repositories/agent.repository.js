@@ -4,6 +4,10 @@ const { randomUUID } = require('crypto');
 
 /**
  * Repository for agent CRUD operations against SQLite.
+ * Maps API fields (camelCase) to DB columns (snake_case).
+ *
+ * DB schema: agents(id, name, executable_path, working_directory, agent_type, config_json, status, created_at, updated_at)
+ * API fields: id, name, execPath, cwd, type, config, status, createdAt, updatedAt
  */
 class AgentRepository {
   constructor(db) {
@@ -14,13 +18,13 @@ class AgentRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO agents (id, name, type, status, command, exec_path, cwd, config_json, created_at, updated_at)
-        VALUES (@id, @name, @type, @status, @command, @execPath, @cwd, @configJson, @createdAt, @updatedAt)
+        INSERT INTO agents (id, name, executable_path, working_directory, agent_type, config_json, status, created_at, updated_at)
+        VALUES (@id, @name, @executablePath, @workingDirectory, @agentType, @configJson, @status, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE agents
-        SET name = @name, type = @type, status = @status, command = @command,
-            exec_path = @execPath, cwd = @cwd, config_json = @configJson, updated_at = @updatedAt
+        SET name = @name, executable_path = @executablePath, working_directory = @workingDirectory,
+            agent_type = @agentType, config_json = @configJson, status = @status, updated_at = @updatedAt
         WHERE id = @id
       `),
       delete: this.db.prepare('DELETE FROM agents WHERE id = @id'),
@@ -35,12 +39,11 @@ class AgentRepository {
     return {
       id: row.id,
       name: row.name,
-      type: row.type,
-      status: row.status,
-      command: row.command,
-      execPath: row.exec_path,
-      cwd: row.cwd,
+      type: row.agent_type,
+      execPath: row.executable_path,
+      cwd: row.working_directory,
       config: row.config_json ? JSON.parse(row.config_json) : {},
+      status: row.status,
       createdAt: new Date(row.created_at).getTime(),
       updatedAt: new Date(row.updated_at).getTime(),
     };
@@ -51,12 +54,11 @@ class AgentRepository {
     return {
       id: agent.id || randomUUID(),
       name: agent.name,
-      type: agent.type || 'custom',
-      status: agent.status || 'idle',
-      command: agent.command || null,
-      execPath: agent.execPath || null,
-      cwd: agent.cwd || null,
+      executablePath: agent.execPath || null,
+      workingDirectory: agent.cwd || null,
+      agentType: agent.type || 'custom',
       configJson: JSON.stringify(agent.config || {}),
+      status: agent.status || 'idle',
       createdAt: agent.createdAt ? new Date(agent.createdAt).toISOString() : now,
       updatedAt: now,
     };
@@ -65,7 +67,7 @@ class AgentRepository {
   create(agent) {
     const params = this._toDbParams(agent);
     this._stmts.insert.run(params);
-    return this._toDbParams({ ...agent, id: params.id, createdAt: Date.now(), updatedAt: Date.now() });
+    return this._toRecord({ ...this._toDbParams({ ...agent, id: params.id, createdAt: Date.now(), updatedAt: Date.now() }) });
   }
 
   update(id, updates) {

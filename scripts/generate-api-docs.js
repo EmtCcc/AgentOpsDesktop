@@ -838,62 +838,112 @@ function buildSpec() {
 
 // ── YAML serialization (minimal, no dependency) ──
 
-function toYAML(obj, indent = 0) {
-  const pad = '  '.repeat(indent);
-  let out = '';
-
-  if (obj === null || obj === undefined) return `${pad}null\n`;
-  if (typeof obj === 'boolean') return `${pad}${obj}\n`;
-  if (typeof obj === 'number') return `${pad}${obj}\n`;
-  if (typeof obj === 'string') {
-    if (obj.includes('\n')) {
-      // Use YAML literal block scalar for multiline strings
-      const lines = obj.split('\n');
-      let result = `${pad}|\n`;
+function yamlScalar(value, pad) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean') return String(value);
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') {
+    if (value.includes('\n')) {
+      // YAML literal block scalar
+      const lines = value.split('\n');
+      let result = '|\n';
       for (const line of lines) {
         result += `${pad}  ${line}\n`;
       }
-      return result;
+      return result.trimEnd();
     }
-    if (obj.includes(':') || obj.includes('#') || obj.includes('"') || obj.includes("'") || obj.includes('{') || obj.includes('[') || obj === '' || /^\d/.test(obj) || /^(true|false|null|yes|no|on|off)$/i.test(obj)) {
-      return `${pad}"${obj.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
+    // Quote strings with special YAML chars
+    if (value.includes(': ') || value.includes('#') || value.includes('"') ||
+        value.includes("'") || value === '' || /^\d/.test(value) ||
+        /^(true|false|null|yes|no|on|off)$/i.test(value)) {
+      return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     }
-    return `${pad}${obj}\n`;
+    return value;
   }
+  return JSON.stringify(value);
+}
 
+function toYAML(obj, indent = 0) {
+  const pad = '  '.repeat(indent);
+
+  // Primitives
+  if (obj === null || obj === undefined) return `${pad}null\n`;
+  if (typeof obj !== 'object') return `${pad}${yamlScalar(obj, pad)}\n`;
+
+  // Array
   if (Array.isArray(obj)) {
     if (obj.length === 0) return `${pad}[]\n`;
+    let out = '';
     for (const item of obj) {
-      if (typeof item === 'object' && item !== null) {
-        out += `${pad}-\n`;
-        out += toYAML(item, indent + 2);
+      if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+        // Array of objects: "- key: val" on first line, rest indented
+        const entries = Object.entries(item).filter(([, v]) => v !== undefined);
+        if (entries.length === 0) {
+          out += `${pad}- {}\n`;
+        } else {
+          const [firstKey, firstVal] = entries[0];
+          const scalar = yamlScalar(firstVal, pad);
+          if (scalar.includes('\n')) {
+            // Multiline first value
+            const [firstLine, ...rest] = scalar.split('\n');
+            out += `${pad}- ${firstKey}: ${firstLine}\n`;
+            for (const line of rest) {
+              out += `${pad}  ${line}\n`;
+            }
+          } else {
+            out += `${pad}- ${firstKey}: ${scalar}\n`;
+          }
+          for (let i = 1; i < entries.length; i++) {
+            const [k, v] = entries[i];
+            const s = yamlScalar(v, `${pad}  `);
+            if (s.includes('\n')) {
+              const [firstLine, ...rest] = s.split('\n');
+              out += `${pad}  ${k}: ${firstLine}\n`;
+              for (const line of rest) {
+                out += `${pad}    ${line}\n`;
+              }
+            } else {
+              out += `${pad}  ${k}: ${s}\n`;
+            }
+          }
+        }
       } else {
-        out += `${pad}- ${typeof item === 'string' ? item : JSON.stringify(item)}\n`;
+        const s = yamlScalar(item, pad);
+        if (s.includes('\n')) {
+          const [firstLine, ...rest] = s.split('\n');
+          out += `${pad}- ${firstLine}\n`;
+          for (const line of rest) {
+            out += `${pad}  ${line}\n`;
+          }
+        } else {
+          out += `${pad}- ${s}\n`;
+        }
       }
     }
     return out;
   }
 
-  if (typeof obj === 'object') {
-    for (const [key, value] of Object.entries(obj)) {
-      if (value === undefined) continue;
-      if (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0) {
-        out += `${pad}${key}:\n`;
-        out += toYAML(value, indent + 1);
-      } else if (Array.isArray(value) && value.length > 0) {
-        out += `${pad}${key}:\n`;
-        out += toYAML(value, indent + 1);
-      } else if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-        out += `${pad}${key}: {}\n`;
+  // Object
+  let out = '';
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    if (typeof value === 'object' && value !== null) {
+      out += `${pad}${key}:\n`;
+      out += toYAML(value, indent + 1);
+    } else {
+      const s = yamlScalar(value, pad);
+      if (s.includes('\n')) {
+        const [firstLine, ...rest] = s.split('\n');
+        out += `${pad}${key}: ${firstLine}\n`;
+        for (const line of rest) {
+          out += `${pad}  ${line}\n`;
+        }
       } else {
-        const valStr = typeof value === 'string' ? value : JSON.stringify(value);
-        out += `${pad}${key}: ${valStr}\n`;
+        out += `${pad}${key}: ${s}\n`;
       }
     }
-    return out;
   }
-
-  return `${pad}${JSON.stringify(obj)}\n`;
+  return out;
 }
 
 // ── HTML generation ──

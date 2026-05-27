@@ -14,33 +14,33 @@ This spec documents the IPC channel interface. Each operation maps to an IPC cha
     name: UNLICENSED
 servers:
   -
-    url: ipc://localhost
-    description: Electron IPC transport
+      url: ipc://localhost
+      description: Electron IPC transport
 tags:
   -
-    name: Auth
-    description: Session management (login, logout, token rotation)
+      name: Auth
+      description: Session management (login, logout, token rotation)
   -
-    name: Monitoring
-    description: Health checks and system diagnostics
+      name: Monitoring
+      description: Health checks and system diagnostics
   -
-    name: Agents
-    description: Agent configuration CRUD
+      name: Agents
+      description: Agent configuration CRUD
   -
-    name: Agent Processes
-    description: Live agent process management (spawn, kill, status)
+      name: Agent Processes
+      description: Live agent process management (spawn, kill, status)
   -
-    name: Goals
-    description: Goal management
+      name: Goals
+      description: Goal management
   -
-    name: Tasks
-    description: Task management with goal linking
+      name: Tasks
+      description: Task management with goal linking
   -
-    name: Logs
-    description: Log entry management
+      name: Logs
+      description: Log entry management
   -
-    name: Stats
-    description: Aggregated dashboard statistics
+      name: Stats
+      description: Aggregated dashboard statistics
 components:
   securitySchemes:
     bearerAuth:
@@ -241,7 +241,7 @@ paths:
       x-ipc-channel: auth:logout
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       responses:
         200:
           description: Success
@@ -264,7 +264,7 @@ paths:
       x-ipc-channel: auth:rotate
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       responses:
         200:
           description: Success
@@ -332,52 +332,52 @@ paths:
       x-ipc-channel: agents:list
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: offset
-          in: query
-          required: false
-          schema:
-            type: number
-            description: Pagination offset
+            name: offset
+            in: query
+            required: false
+            schema:
+              type: number
+              description: Pagination offset
         -
-          name: limit
-          in: query
-          required: false
-          schema:
-            type: number
-            description: Max items to return
+            name: limit
+            in: query
+            required: false
+            schema:
+              type: number
+              description: Max items to return
         -
-          name: status
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - idle
-              - running
-              - error
+            name: status
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - idle
+                - running
+                - error
         -
-          name: sortBy
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - createdAt
-              - updatedAt
-              - name
-              - status
+            name: sortBy
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - createdAt
+                - updatedAt
+                - name
+                - status
         -
-          name: sortOrder
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - asc
-              - desc
+            name: sortOrder
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - asc
+                - desc
       responses:
         200:
           description: Success
@@ -400,7 +400,7 @@ paths:
       x-ipc-channel: agents:create
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       requestBody:
         required: true
         content:
@@ -453,14 +453,14 @@ paths:
       x-ipc-channel: agents:get
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       responses:
         200:
           description: Success
@@ -481,14 +481,14 @@ paths:
       x-ipc-channel: agents:update
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -547,14 +547,14 @@ paths:
       x-ipc-channel: agents:delete
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -592,14 +592,14 @@ paths:
       x-ipc-channel: agents:health-check
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -641,7 +641,7 @@ paths:
       x-ipc-channel: agents:spawn
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       requestBody:
         required: true
         content:
@@ -705,14 +705,14 @@ paths:
       x-ipc-channel: agents:status
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       responses:
         200:
           description: Success
@@ -761,14 +761,14 @@ paths:
       x-ipc-channel: agents:kill
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -811,50 +811,50 @@ paths:
       x-ipc-channel: goals:list
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: offset
-          in: query
-          required: false
-          schema:
-            type: number
+            name: offset
+            in: query
+            required: false
+            schema:
+              type: number
         -
-          name: limit
-          in: query
-          required: false
-          schema:
-            type: number
+            name: limit
+            in: query
+            required: false
+            schema:
+              type: number
         -
-          name: status
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - active
-              - completed
-              - archived
+            name: status
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - active
+                - completed
+                - archived
         -
-          name: sortBy
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - createdAt
-              - updatedAt
-              - title
-              - status
+            name: sortBy
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - createdAt
+                - updatedAt
+                - title
+                - status
         -
-          name: sortOrder
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - asc
-              - desc
+            name: sortOrder
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - asc
+                - desc
       responses:
         200:
           description: Success
@@ -877,7 +877,7 @@ paths:
       x-ipc-channel: goals:create
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       requestBody:
         required: true
         content:
@@ -915,14 +915,14 @@ paths:
       x-ipc-channel: goals:get
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       responses:
         200:
           description: Success
@@ -943,14 +943,14 @@ paths:
       x-ipc-channel: goals:update
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -996,14 +996,14 @@ paths:
       x-ipc-channel: goals:delete
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -1041,57 +1041,57 @@ paths:
       x-ipc-channel: tasks:list
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: offset
-          in: query
-          required: false
-          schema:
-            type: number
+            name: offset
+            in: query
+            required: false
+            schema:
+              type: number
         -
-          name: limit
-          in: query
-          required: false
-          schema:
-            type: number
+            name: limit
+            in: query
+            required: false
+            schema:
+              type: number
         -
-          name: status
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - pending
-              - running
-              - done
-              - failed
+            name: status
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - pending
+                - running
+                - done
+                - failed
         -
-          name: goalId
-          in: query
-          required: false
-          schema:
-            type: string
+            name: goalId
+            in: query
+            required: false
+            schema:
+              type: string
         -
-          name: sortBy
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - createdAt
-              - updatedAt
-              - title
-              - status
+            name: sortBy
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - createdAt
+                - updatedAt
+                - title
+                - status
         -
-          name: sortOrder
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - asc
-              - desc
+            name: sortOrder
+            in: query
+            required: false
+            schema:
+              type: string
+              enum:
+                - asc
+                - desc
       responses:
         200:
           description: Success
@@ -1114,7 +1114,7 @@ paths:
       x-ipc-channel: tasks:create
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       requestBody:
         required: true
         content:
@@ -1156,14 +1156,14 @@ paths:
       x-ipc-channel: tasks:get
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       responses:
         200:
           description: Success
@@ -1184,14 +1184,14 @@ paths:
       x-ipc-channel: tasks:update
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -1242,14 +1242,14 @@ paths:
       x-ipc-channel: tasks:delete
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: id
-          in: path
-          required: true
-          schema:
-            type: string
+            name: id
+            in: path
+            required: true
+            schema:
+              type: string
       requestBody:
         required: true
         content:
@@ -1287,26 +1287,26 @@ paths:
       x-ipc-channel: logs:list
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       parameters:
         -
-          name: agentId
-          in: query
-          required: false
-          schema:
-            type: string
+            name: agentId
+            in: query
+            required: false
+            schema:
+              type: string
         -
-          name: limit
-          in: query
-          required: false
-          schema:
-            type: number
+            name: limit
+            in: query
+            required: false
+            schema:
+              type: number
         -
-          name: offset
-          in: query
-          required: false
-          schema:
-            type: number
+            name: offset
+            in: query
+            required: false
+            schema:
+              type: number
       responses:
         200:
           description: Success
@@ -1329,7 +1329,7 @@ paths:
       x-ipc-channel: logs:append
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       requestBody:
         required: true
         content:
@@ -1376,7 +1376,7 @@ paths:
       x-ipc-channel: stats:summary
       security:
         -
-          bearerAuth: {}
+            bearerAuth: {}
       responses:
         200:
           description: Success

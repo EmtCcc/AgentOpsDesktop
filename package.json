@@ -16,6 +16,8 @@
     "test:perf": "npx playwright test performance",
     "test:cross-browser": "npx playwright test cross-browser",
     "test:report": "npx playwright show-report",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:smoke:renderer": "npx playwright test smoke",
     "build": "electron-builder --mac",
     "build:dir": "electron-builder --mac --dir"
   },
