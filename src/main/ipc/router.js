@@ -42,6 +42,7 @@ class IpcRouter {
    * @param {Object} options
    * @param {Object} [options.schema] - Validation schema for the payload
    * @param {boolean} [options.auth] - Require authentication (default: false)
+   * @param {boolean} [options.strict] - Reject fields not in schema (default: false)
    */
   register(channel, handler, options = {}) {
     if (this._routes.has(channel)) {
@@ -51,6 +52,7 @@ class IpcRouter {
       handler,
       schema: options.schema || null,
       auth: !!options.auth,
+      strict: !!options.strict,
     });
   }
 
@@ -60,7 +62,7 @@ class IpcRouter {
    * Errors propagate to the monitor wrapper already installed in main/index.js.
    */
   bootstrap() {
-    for (const [channel, { handler, schema, auth }] of this._routes) {
+    for (const [channel, { handler, schema, auth, strict }] of this._routes) {
       ipcMain.handle(channel, async (event, payload) => {
         // Auth check (if route requires it)
         if (auth) {
@@ -76,7 +78,7 @@ class IpcRouter {
           : payload;
 
         if (schema) {
-          validate(schema, cleanPayload);
+          validate(schema, cleanPayload, { strict });
         }
 
         try {

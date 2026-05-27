@@ -149,7 +149,7 @@ async function loadStats() {
     const footerCount = el('footer-agent-count');
     if (footerCount) footerCount.textContent = `${stats.agents.total} agent${stats.agents.total !== 1 ? 's' : ''}`;
   } catch {
-    // IPC not available yet
+    // IPC not available yet — expected during initial load
   }
 }
 
@@ -255,6 +255,7 @@ async function loadAgents() {
         <div class="agent-row__info">
           <div class="agent-row__name">${escapeHtml(a.name)}</div>
           <div class="agent-row__type">${escapeHtml(a.type || 'unknown')}</div>
+          ${a.status === 'error' ? `<div class="agent-row__error" style="color:var(--color-danger);font-size:var(--text-xs);margin-top:var(--space-1);">Agent encountered an error. Check executable path and try a health check.</div>` : ''}
         </div>
         <span class="status-badge status-badge--${a.status}">${a.status}</span>
         <div class="agent-row__actions">

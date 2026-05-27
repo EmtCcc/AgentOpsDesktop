@@ -100,8 +100,22 @@ class TokenManager {
     return {
       createdAt: this._session.createdAt,
       expiresAt: this._session.expiresAt,
+      role: this._session.role,
       isValid: true,
     };
+  }
+
+  /**
+   * Get the role for the current session.
+   * @returns {string|null}
+   */
+  getRole() {
+    if (!this._session) return null;
+    if (Date.now() > this._session.expiresAt) {
+      this.destroySession();
+      return null;
+    }
+    return this._session.role || null;
   }
 
   /**
