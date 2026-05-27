@@ -111,7 +111,8 @@ export default routes;
 
 /**
  * Build a redirect map: old path → canonical path.
- * Useful for router <Redirect> entries or a global catch-all.
+ * Derived from route aliases. For full redirect resolution (including
+ * parameterized patterns and 410 Gone), use redirect-resolver.ts instead.
  */
 export function buildRedirectMap(): Record<string, string> {
   const map: Record<string, string> = {};

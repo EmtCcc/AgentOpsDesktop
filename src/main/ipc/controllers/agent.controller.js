@@ -104,12 +104,20 @@ const agentController = {
    * @param {string} id
    */
   async get(_event, { id }) {
+    if (agentRepo) {
+      const agent = agentRepo.getById(id);
+      if (!agent) throw IpcError.notFound('Agent', id);
+      return agent;
+    }
     const agent = agentConfigs.get(id);
     if (!agent) throw IpcError.notFound('Agent', id);
     return agent;
   },
 
   async create(_event, agent) {
+    if (agentRepo) {
+      return agentRepo.create(agent);
+    }
     const id = `agent-${nextConfigId++}`;
     const record = {
       id,
@@ -127,6 +135,11 @@ const agentController = {
   },
 
   async update(_event, { id, updates }) {
+    if (agentRepo) {
+      const updated = agentRepo.update(id, updates);
+      if (!updated) throw IpcError.notFound('Agent', id);
+      return updated;
+    }
     const existing = agentConfigs.get(id);
     if (!existing) throw IpcError.notFound('Agent', id);
     const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
@@ -135,6 +148,11 @@ const agentController = {
   },
 
   async delete(_event, { id }) {
+    if (agentRepo) {
+      const deleted = agentRepo.delete(id);
+      if (!deleted) throw IpcError.notFound('Agent', id);
+      return { deleted: true, id };
+    }
     if (!agentConfigs.has(id)) throw IpcError.notFound('Agent', id);
     agentConfigs.delete(id);
     return { deleted: true, id };

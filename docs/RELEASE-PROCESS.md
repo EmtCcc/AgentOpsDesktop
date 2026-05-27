@@ -118,17 +118,25 @@ Runs on every push and PR to `main`:
 |-----|-------------|
 | `lint` | `npm run lint` |
 | `test` | `npm run test` |
+| `e2e` | Playwright tests (uploads report artifact) |
 | `build-mac` | Builds DMG on macOS runner (unsigned, for verification) |
 
 ### Release (`.github/workflows/release.yml`)
 
-Triggered automatically when a `v*` tag is pushed:
+Triggered automatically when a `v*` tag is pushed (excluding beta tags):
 
-1. Lint + test (via CI)
-2. Import Apple Developer certificate from GitHub Secrets
-3. Build signed DMGs (arm64 + x64)
-4. Notarize with Apple
-5. Publish to GitHub Releases with artifacts
+1. Import Apple Developer certificate from GitHub Secrets
+2. Build signed DMGs (arm64 + x64)
+3. Notarize with Apple
+4. Publish to GitHub Releases with artifacts
+
+### Beta Release (`.github/workflows/beta.yml`)
+
+Triggered when a `v*-beta*` tag is pushed. Same build pipeline as stable, but marks the GitHub Release as **pre-release**. Use this to test builds with a subset of users before going stable.
+
+### Rollback (`.github/workflows/rollback.yml`)
+
+Manually triggered via GitHub Actions UI. Re-builds and re-publishes a previous stable version, causing `electron-updater` clients to auto-update back to that version. See [Rollback Strategy](#rollback-strategy) below.
 
 **Required GitHub Secrets** (see [CODE-SIGNING.md](CODE-SIGNING.md) for setup):
 
@@ -140,25 +148,60 @@ Triggered automatically when a `v*` tag is pushed:
 | `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password |
 | `APPLE_TEAM_ID` | Apple Developer Team ID |
 
-### Release Flow
+### Deployment Pipeline
 
 ```
+         PR / push to main
+               │
+               ▼
+┌──────────────────────────────────┐
+│  CI: lint → test → e2e → build  │
+└──────────────────────────────────┘
+               │
+       merge to main
+               │
+     ┌─────────┴──────────┐
+     ▼                    ▼
+  Beta tag             Stable tag
+  v0.2.0-beta.1        v0.2.0
+     │                    │
+     ▼                    ▼
+┌──────────────┐  ┌──────────────┐
+│ beta.yml     │  │ release.yml  │
+│ (pre-release)│  │ (stable)     │
+└──────────────┘  └──────────────┘
+     │                    │
+     ▼                    ▼
+  Beta users           All users
+  test & verify        auto-update
+     │                    │
+     └─── confirmed ──────┘
+               │
+          If issue found:
+               │
+               ▼
+┌──────────────────────────┐
+│  rollback.yml            │
+│  (manual trigger)        │
+│  Re-publishes previous   │
+│  stable version          │
+└──────────────────────────┘
+```
+
+### Release Flow
+
+**Stable release:**
+```bash
 git tag v0.2.0 && git push origin v0.2.0
-        │
-        ▼
-┌─────────────────────────────────┐
-│  GitHub Actions: release.yml    │
-│                                 │
-│  1. Lint + Test                 │
-│  2. Import certificate          │
-│  3. Build signed DMGs           │
-│  4. Notarize with Apple         │
-│  5. Publish to GitHub Releases  │
-└─────────────────────────────────┘
-        │
-        ▼
-  electron-updater picks up latest-mac.yml
-  Users auto-update on next launch
+# → release.yml builds, signs, notarizes, publishes
+# → electron-updater delivers to all users on next launch
+```
+
+**Beta release:**
+```bash
+git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1
+# → beta.yml builds, signs, notarizes, publishes as pre-release
+# → Beta testers with opted-in update configs receive the update
 ```
 
 ## Troubleshooting

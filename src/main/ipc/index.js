@@ -67,14 +67,21 @@ function bootstrapRoutes(mainWindow, repos) {
 
   // Create auth middleware bound to the token manager
   const authMiddleware = createAuthMiddleware(tokenManager);
+  const authorizeMiddleware = createAuthorizeMiddleware(tokenManager);
 
   const router = new IpcRouter();
   router.setAuthMiddleware(authMiddleware);
+  router.setAuthorizeMiddleware(authorizeMiddleware);
 
   // ── Auth (public) ──
-  router.register('auth:login', () => {
-    const session = tokenManager.createSession();
-    return { token: session.token, expiresAt: session.expiresAt };
+  router.register('auth:login', (_event, payload) => {
+    const role = payload?.role || 'operator';
+    const session = tokenManager.createSession({ role });
+    return { token: session.token, role: session.role, expiresAt: session.expiresAt };
+  }, {
+    schema: {
+      role: { type: 'string', enum: ['admin', 'operator', 'viewer'] },
+    },
   });
 
   router.register('auth:status', () => {
@@ -86,49 +93,49 @@ function bootstrapRoutes(mainWindow, repos) {
   router.register('auth:logout', () => {
     tokenManager.destroySession();
     return { ok: true };
-  }, { auth: true });
+  }, { auth: true, permission: 'auth:logout' });
 
   router.register('auth:rotate', () => {
     const session = tokenManager.rotateSession();
-    return { token: session.token, expiresAt: session.expiresAt };
-  }, { auth: true });
+    return { token: session.token, role: session.role, expiresAt: session.expiresAt };
+  }, { auth: true, permission: 'auth:rotate' });
 
   // ── Monitoring (public) ──
   router.register('monitor:health', () => monitor.getHealth());
 
   // ── Agents: config CRUD (protected) ──
-  router.register('agents:list', agentController.list, { schema: agentController.schemas.list, auth: true });
-  router.register('agents:get', agentController.get, { schema: agentController.schemas.get, auth: true });
-  router.register('agents:create', agentController.create, { schema: agentController.schemas.create, auth: true });
-  router.register('agents:update', agentController.update, { schema: agentController.schemas.update, auth: true });
-  router.register('agents:delete', agentController.delete, { schema: agentController.schemas.delete, auth: true });
-  router.register('agents:health-check', agentController.healthCheck, { schema: agentController.schemas.healthCheck, auth: true });
+  router.register('agents:list', agentController.list, { schema: agentController.schemas.list, auth: true, permission: 'agents:list' });
+  router.register('agents:get', agentController.get, { schema: agentController.schemas.get, auth: true, permission: 'agents:get' });
+  router.register('agents:create', agentController.create, { schema: agentController.schemas.create, auth: true, permission: 'agents:create' });
+  router.register('agents:update', agentController.update, { schema: agentController.schemas.update, auth: true, permission: 'agents:update' });
+  router.register('agents:delete', agentController.delete, { schema: agentController.schemas.delete, auth: true, permission: 'agents:delete' });
+  router.register('agents:health-check', agentController.healthCheck, { schema: agentController.schemas.healthCheck, auth: true, permission: 'agents:health-check' });
 
   // ── Agents: live process management (protected) ──
-  router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn, auth: true });
-  router.register('agents:status', agentController.status, { schema: agentController.schemas.status, auth: true });
-  router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill, auth: true });
+  router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn, auth: true, permission: 'agents:spawn' });
+  router.register('agents:status', agentController.status, { schema: agentController.schemas.status, auth: true, permission: 'agents:status' });
+  router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill, auth: true, permission: 'agents:kill' });
 
   // ── Goals (protected) ──
-  router.register('goals:list', goalController.list, { schema: goalController.schemas.list, auth: true });
-  router.register('goals:get', goalController.get, { schema: goalController.schemas.get, auth: true });
-  router.register('goals:create', goalController.create, { schema: goalController.schemas.create, auth: true });
-  router.register('goals:update', goalController.update, { schema: goalController.schemas.update, auth: true });
-  router.register('goals:delete', goalController.delete, { schema: goalController.schemas.delete, auth: true });
+  router.register('goals:list', goalController.list, { schema: goalController.schemas.list, auth: true, permission: 'goals:list' });
+  router.register('goals:get', goalController.get, { schema: goalController.schemas.get, auth: true, permission: 'goals:get' });
+  router.register('goals:create', goalController.create, { schema: goalController.schemas.create, auth: true, permission: 'goals:create' });
+  router.register('goals:update', goalController.update, { schema: goalController.schemas.update, auth: true, permission: 'goals:update' });
+  router.register('goals:delete', goalController.delete, { schema: goalController.schemas.delete, auth: true, permission: 'goals:delete' });
 
   // ── Tasks (protected) ──
-  router.register('tasks:list', taskController.list, { schema: taskController.schemas.list, auth: true });
-  router.register('tasks:get', taskController.get, { schema: taskController.schemas.get, auth: true });
-  router.register('tasks:create', taskController.create, { schema: taskController.schemas.create, auth: true });
-  router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true });
-  router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true });
+  router.register('tasks:list', taskController.list, { schema: taskController.schemas.list, auth: true, permission: 'tasks:list' });
+  router.register('tasks:get', taskController.get, { schema: taskController.schemas.get, auth: true, permission: 'tasks:get' });
+  router.register('tasks:create', taskController.create, { schema: taskController.schemas.create, auth: true, permission: 'tasks:create' });
+  router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true, permission: 'tasks:update' });
+  router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true, permission: 'tasks:delete' });
 
   // ── Logs (protected) ──
-  router.register('logs:list', logController.list, { schema: logController.schemas.list, auth: true });
-  router.register('logs:append', logController.append, { schema: logController.schemas.append, auth: true });
+  router.register('logs:list', logController.list, { schema: logController.schemas.list, auth: true, permission: 'logs:list' });
+  router.register('logs:append', logController.append, { schema: logController.schemas.append, auth: true, permission: 'logs:append' });
 
   // ── Stats (protected) ──
-  router.register('stats:summary', statsController.summary, { auth: true });
+  router.register('stats:summary', statsController.summary, { auth: true, permission: 'stats:summary' });
 
   router.bootstrap();
   return router;

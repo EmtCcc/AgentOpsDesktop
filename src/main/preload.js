@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('agentOps', {
 
   // ── Auth ──
   auth: {
-    login: () => ipcRenderer.invoke('auth:login'),
+    login: (role) => ipcRenderer.invoke('auth:login', role ? { role } : undefined),
     logout: () => ipcRenderer.invoke('auth:logout'),
     status: () => ipcRenderer.invoke('auth:status'),
     rotate: () => ipcRenderer.invoke('auth:rotate'),

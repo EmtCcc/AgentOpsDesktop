@@ -11,12 +11,27 @@ const { paginate } = require('../pagination');
 const goals = new Map();
 let nextId = 1;
 
+// ── Repository (injected) ──
+let goalRepo = null;
+
 const goalController = {
+  /**
+   * Set the repository for persistent storage.
+   * @param {import('../../repositories/goal.repository').GoalRepository} repo
+   */
+  setRepository(repo) {
+    goalRepo = repo;
+  },
+
   /**
    * List goals with pagination.
    * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status }
    */
   async list(_event, params = {}) {
+    if (goalRepo) {
+      const result = goalRepo.list(params);
+      return result.items;
+    }
     const filter = params.status
       ? (g) => g.status === params.status
       : undefined;
@@ -29,12 +44,20 @@ const goalController = {
    * @param {string} id
    */
   async get(_event, { id }) {
+    if (goalRepo) {
+      const goal = goalRepo.getById(id);
+      if (!goal) throw IpcError.notFound('Goal', id);
+      return goal;
+    }
     const goal = goals.get(id);
     if (!goal) throw IpcError.notFound('Goal', id);
     return goal;
   },
 
   async create(_event, goal) {
+    if (goalRepo) {
+      return goalRepo.create(goal);
+    }
     const id = `goal-${nextId++}`;
     const record = {
       id,
@@ -50,6 +73,11 @@ const goalController = {
   },
 
   async update(_event, { id, updates }) {
+    if (goalRepo) {
+      const updated = goalRepo.update(id, updates);
+      if (!updated) throw IpcError.notFound('Goal', id);
+      return updated;
+    }
     const existing = goals.get(id);
     if (!existing) throw IpcError.notFound('Goal', id);
     const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
@@ -58,6 +86,11 @@ const goalController = {
   },
 
   async delete(_event, { id }) {
+    if (goalRepo) {
+      const deleted = goalRepo.delete(id);
+      if (!deleted) throw IpcError.notFound('Goal', id);
+      return { deleted: true, id };
+    }
     if (!goals.has(id)) throw IpcError.notFound('Goal', id);
     goals.delete(id);
     return { deleted: true, id };

@@ -846,8 +846,17 @@ function toYAML(obj, indent = 0) {
   if (typeof obj === 'boolean') return `${pad}${obj}\n`;
   if (typeof obj === 'number') return `${pad}${obj}\n`;
   if (typeof obj === 'string') {
-    if (obj.includes('\n') || obj.includes(':') || obj.includes('#') || obj.startsWith('"')) {
-      return `${pad}"${obj.replace(/"/g, '\\"')}"\n`;
+    if (obj.includes('\n')) {
+      // Use YAML literal block scalar for multiline strings
+      const lines = obj.split('\n');
+      let result = `${pad}|\n`;
+      for (const line of lines) {
+        result += `${pad}  ${line}\n`;
+      }
+      return result;
+    }
+    if (obj.includes(':') || obj.includes('#') || obj.includes('"') || obj.includes("'") || obj.includes('{') || obj.includes('[') || obj === '' || /^\d/.test(obj) || /^(true|false|null|yes|no|on|off)$/i.test(obj)) {
+      return `${pad}"${obj.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
     }
     return `${pad}${obj}\n`;
   }
@@ -857,7 +866,7 @@ function toYAML(obj, indent = 0) {
     for (const item of obj) {
       if (typeof item === 'object' && item !== null) {
         out += `${pad}-\n`;
-        out += toYAML(item, indent + 1);
+        out += toYAML(item, indent + 2);
       } else {
         out += `${pad}- ${typeof item === 'string' ? item : JSON.stringify(item)}\n`;
       }

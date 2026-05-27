@@ -1,173 +1,230 @@
-# Security Review — AgentOpsDesktop
+# Security Review — AgentOps Desktop
 
 **Date**: 2026-05-28
 **Reviewer**: Security Engineer
-**Scope**: Full codebase audit (initial)
-**Repo state**: Day 0 — documentation and scaffolding only, no application code
+**Scope**: Full codebase — OWASP Top 10, dependency CVEs, secrets exposure, configuration
+**Repo state**: Full implementation (Electron main + renderer, IPC, SQLite, agent runtime)
+**Previous review**: Scaffolding-phase review (F-001 through F-006) — see git history
 
 ---
 
 ## Summary
 
-The repository contains **no application code** — only documentation, a `package.json` manifest, CI workflow, and empty source directories. There are no runtime dependencies to audit. The primary security value of this review is establishing a baseline and identifying risks that must be addressed as implementation begins.
+| Severity | Count | Status |
+|----------|-------|--------|
+| Critical | 0 | — |
+| High | 2 | Open |
+| Medium | 5 | Open |
+| Low | 4 | Open |
 
-**Overall risk**: Low (current state) → **High** (projected, once implementation begins)
+The Electron security baseline (contextIsolation, nodeIntegration, contextBridge, spawn with shell:false, parameterized SQL) is solid. The findings below are in the IPC handler layer and supporting modules.
 
 ---
 
 ## Findings
 
-### F-001: CI Workflow — GitHub Actions Not Pinned by SHA
+### H-1: Arbitrary environment variable injection via `agents:spawn`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **OWASP** | A03:2021 — Injection |
+| **Location** | `src/main/ipc/controllers/agent.controller.js:152-164` |
+
+The `agents:spawn` handler accepts an `env` object from the renderer that is merged directly into `process.env` for the child process. An attacker with a session token could inject `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES`, `NODE_OPTIONS`, or manipulate `PATH` to achieve arbitrary code execution.
+
+```js
+env: { ...process.env, ...(env || {}) },  // line 160
+```
+
+**Fix**: Allowlist safe env keys. Strip or reject dangerous keys (`LD_PRELOAD`, `DYLD_*`, `NODE_OPTIONS`, `NODE_PATH`, `PATH`, `PYTHONPATH`, etc.).
+
+---
+
+### H-2: Arbitrary signal injection via `agents:kill`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **OWASP** | A03:2021 — Injection |
+| **Location** | `src/main/ipc/controllers/agent.controller.js:236-257` |
+
+The `kill` handler passes a user-supplied `signal` string directly to `process.kill()`:
+
+```js
+const sig = signal || 'SIGTERM';
+session.process.kill(sig);  // line 244
+```
+
+An attacker could bypass graceful shutdown (`SIGKILL` immediately) or send unexpected signals.
+
+**Fix**: Validate `signal` against an allowlist: `['SIGTERM', 'SIGKILL', 'SIGINT']`.
+
+---
+
+### M-1: Token stored as base64 (not encrypted) when safeStorage unavailable
 
 | Field | Value |
 |-------|-------|
 | **Severity** | Medium |
-| **Category** | Supply Chain (A08:2021 — Software and Data Integrity Failures) |
-| **Location** | `.github/workflows/ci.yml:12, 13, 20, 21` |
+| **OWASP** | A02:2021 — Cryptographic Failures |
+| **Location** | `src/main/ipc/middleware/token-manager.js:127-131` |
 
-**Description**: The CI workflow references `actions/checkout@v4` and `actions/setup-node@v4` by mutable tag. A compromised or hijacked tag could inject malicious code into the build pipeline.
+When `safeStorage.isEncryptionAvailable()` returns false, the session token is persisted as base64-encoded JSON. Base64 is encoding, not encryption — any process with file read access can decode it.
 
-**Evidence**:
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-node@v4
+**Fix**: When safeStorage is unavailable, do not persist the session (in-memory only). Or derive an encryption key from a user-provided credential.
+
+---
+
+### M-2: No rate limiting on `auth:login`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **OWASP** | A07:2021 — Identification and Authentication Failures |
+| **Location** | `src/main/ipc/index.js:66-69` |
+
+`auth:login` is public and creates a new session on every call with no throttling. While Electron IPC is local-only, a compromised renderer could rapidly create sessions.
+
+**Fix**: Add rate limiting (e.g., 5 attempts/minute) or require proof-of-possession of a pre-shared credential.
+
+---
+
+### M-3: Predictable gate IDs using `Math.random()`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **OWASP** | A04:2021 — Insecure Design |
+| **Location** | `src/main/ipc/controllers/governance.controller.js:41` |
+
+Gate IDs are generated with `Math.random()` which is predictable:
+
+```js
+const gateId = `gate_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 ```
 
-**Recommendation**: Pin actions to full SHA digests. Example:
-```yaml
-- uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-- uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-```
-
-Verify SHAs against the official GitHub repository before pinning.
+**Fix**: Use `crypto.randomUUID()` consistent with the rest of the codebase.
 
 ---
 
-### F-002: No Dependency Manifest — Cannot Audit CVEs
+### M-4: Prototype pollution risk in Store update methods
 
 | Field | Value |
 |-------|-------|
-| **Severity** | Informational |
-| **Category** | Vulnerable and Outdated Components (A06:2021) |
-| **Location** | `package.json` |
+| **Severity** | Medium |
+| **OWASP** | A03:2021 — Injection |
+| **Location** | `src/main/store.js:97, 131` |
 
-**Description**: The `package.json` declares no `dependencies` or `devDependencies` fields. Once dependencies are added, they must be audited for known CVEs before each release.
+`Store.updateGoal()` and `Store.updateTask()` use `Object.assign(target, updates)` with user-supplied data. If `updates` contains `__proto__` or `constructor`, prototype pollution is possible. The IPC-level schema validation has allowlists, but the Store itself does not.
 
-**Recommendation**: 
-- Add `npm audit` or `snyk test` to the CI pipeline as soon as dependencies are introduced.
-- Use a lockfile (`package-lock.json`) and commit it to the repo.
-- Enable Dependabot or Renovate for automated vulnerability alerts.
+**Fix**: Add key allowlist filtering in Store update methods, or freeze prototypes.
 
 ---
 
-### F-003: Electron Security Posture — Not Yet Configured
+### M-5: Unsanitized renderer-supplied log entries
 
 | Field | Value |
 |-------|-------|
-| **Severity** | High (projected) |
-| **Category** | Architecture — Attack Surface |
-| **Location** | `src/main/`, `src/renderer/` (empty) |
+| **Severity** | Medium |
+| **OWASP** | A03:2021 — Injection |
+| **Location** | `src/main/ipc/controllers/log.controller.js:34-46` |
 
-**Description**: Per `docs/VISION.md` and `docs/MVP-SCOPE.md`, the application will use Electron with:
-- **Main process**: Agent lifecycle management, subprocess spawning (CLI agents)
-- **Renderer process**: UI with real-time log streaming
-- **Local SQLite**: Data persistence
+`logs:append` accepts arbitrary entries from the renderer and stores them without sanitization. While `escapeHtml()` is used for display, raw payloads persist and could be consumed by other tools (export, log aggregation).
 
-Electron applications are high-risk if misconfigured. Common vulnerabilities:
-1. **Remote Code Execution via `nodeIntegration: true`** — renderer can execute arbitrary Node.js code
-2. **Prototype pollution** in IPC message handlers
-3. **Unvalidated subprocess arguments** — command injection via agent configuration
-4. **Path traversal** in file operations (agent output preview)
-5. **XSS in renderer** — if agent output is rendered as HTML without sanitization
-
-**Recommendation (must implement before any Electron code)**:
-- Set `nodeIntegration: false` and `contextIsolation: true` in `BrowserWindow` options
-- Use `contextBridge` and `preload.js` for secure IPC
-- Validate and sanitize all IPC inputs in the main process
-- Never pass user-controlled data to `child_process.exec()` — use `execFile()` or `spawn()` with argument arrays
-- Implement Content Security Policy (CSP) headers
-- Use `webSecurity: true` (default) — never disable it
-
-Create an architecture decision record (ADR) documenting these choices before scaffolding.
+**Fix**: Validate log entry fields. Consider making `logs:append` internal-only (not renderer-accessible).
 
 ---
 
-### F-004: Subprocess Execution Risk — CLI Agent Spawning
+### L-1: No Content-Security-Policy configured
 
 | Field | Value |
 |-------|-------|
-| **Severity** | High (projected) |
-| **Category** | Injection (A03:2021 — Injection) |
-| **Location** | `src/main/` (not yet implemented) |
+| **Severity** | Low |
+| **OWASP** | A05:2021 — Security Misconfiguration |
+| **Location** | `src/main/index.js:28-43` |
 
-**Description**: Per `docs/MVP-SCOPE.md`, the app will "configure local CLI Agent executable paths and working directories" and spawn them as subprocesses. This creates direct command injection vectors:
-- User-configured executable path → arbitrary binary execution
-- Agent arguments constructed from user input → argument injection
-- Working directory path → path traversal
+The `BrowserWindow` has no CSP. Weakens XSS defense if any injection point exists in the renderer.
 
-**Recommendation (must implement with agent runtime)**:
-- Validate executable paths against an allowlist or confirm they resolve to known binaries
-- Use `child_process.spawn()` with explicit argument arrays, never string concatenation
-- Sanitize working directory paths — reject paths with `..`, null bytes, or symlink escapes
-- Implement a sandbox or permission boundary for agent subprocesses
-- Log all subprocess executions with full argument lists for auditability
+**Fix**: Add CSP via `session.defaultSession.webRequest.onHeadersReceived` or `<meta>` tag: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';`.
 
 ---
 
-### F-005: Local Data Storage — No Encryption Planned
+### L-2: Fallback paths use `process.cwd()`
 
 | Field | Value |
 |-------|-------|
-| **Severity** | Medium (projected) |
-| **Category** | Sensitive Data Exposure (A01:2021 — Broken Access Control) |
-| **Location** | SQLite database (not yet created) |
+| **Severity** | Low |
+| **Location** | `src/main/logger.js:14`, `src/main/ipc/middleware/token-manager.js:27` |
 
-**Description**: The app stores agent history, task data, and potentially API keys locally in SQLite. On a shared or compromised machine, this data is readable in plaintext.
+When `app.getPath('userData')` is unavailable, both logger and token manager fall back to `process.cwd()`, which could be attacker-controlled.
 
-**Recommendation**:
-- Encrypt API keys and credentials at rest using OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- Do not store credentials in SQLite or config files
-- If sensitive data must be in SQLite, use SQLCipher for encrypted storage
-- Document what data is stored locally in the privacy policy
+**Fix**: Use `os.tmpdir()` or `os.homedir()` as fallback.
 
 ---
 
-### F-006: No Content Security Policy (CSP)
+### L-3: Error messages leak internal file paths
 
 | Field | Value |
 |-------|-------|
-| **Severity** | Medium (projected) |
-| **Category** | Security Misconfiguration (A05:2021) |
-| **Location** | Electron app (not yet configured) |
+| **Severity** | Low |
+| **Location** | `agent.controller.js`, `agent-runtime.js`, `store.js` |
 
-**Description**: No CSP is configured for the Electron renderer process. Without CSP, XSS vulnerabilities can execute inline scripts, load external resources, or exfiltrate data.
+Error messages include full system paths returned to the renderer, aiding reconnaissance.
 
-**Recommendation**: Implement a strict CSP:
-```
-default-src 'self';
-script-src 'self';
-style-src 'self' 'unsafe-inline';
-img-src 'self' data:;
-connect-src 'self';
-font-src 'self';
-object-src 'none';
-base-uri 'none';
-frame-ancestors 'none';
-```
+**Fix**: Redact file paths from renderer-facing errors. Log full details server-side only.
 
-Apply via `session.defaultSession.webRequest.onHeadersReceived` in the main process.
+---
+
+### L-4: No lockfile — dependency audit blocked
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Location** | Project root |
+
+No `package-lock.json` exists, preventing `npm audit`. Dependencies cannot be checked for known CVEs.
+
+**Fix**: Generate and commit `package-lock.json`. Add `npm audit` to CI.
+
+---
+
+## Previous Review Status (F-001 through F-006)
+
+| ID | Finding | Status |
+|----|---------|--------|
+| F-001 | CI actions not SHA-pinned | Still open — `.github/workflows/ci.yml` still uses `@v4` tags |
+| F-002 | No dependency manifest | Partially addressed — `package.json` has deps, but no lockfile |
+| F-003 | Electron security posture | **Resolved** — `contextIsolation: true`, `nodeIntegration: false`, contextBridge used |
+| F-004 | Subprocess execution risk | **Partially resolved** — `shell: false` set, `_validateExecPath` checks existence, but H-1/H-2 remain |
+| F-005 | Local data storage encryption | **Partially resolved** — `safeStorage` used for token, but M-1 fallback is weak |
+| F-006 | No CSP | Still open — see L-1 |
+
+---
+
+## Positive Observations
+
+- **Electron hardening**: `contextIsolation: true`, `nodeIntegration: false`, proper `contextBridge` usage
+- **Token security**: `crypto.timingSafeEqual()` prevents timing attacks; 48-byte random tokens
+- **IPC auth pipeline**: Clean middleware pattern — auth → validate → handler. Most mutation routes require auth
+- **Input validation**: Schema-based with type checks, length limits, enums, and field allowlists
+- **SQLite**: Parameterized queries via `better-sqlite3` prepared statements — no SQL injection
+- **XSS prevention**: `escapeHtml()` used in renderer for dynamic content
+- **Process spawning**: `shell: false` prevents shell injection in `spawn()` calls
 
 ---
 
 ## Dependency Audit
 
-| Status | Details |
-|--------|---------|
-| **Total dependencies** | 0 (no dependencies declared) |
-| **Known CVEs** | N/A |
-| **Outdated packages** | N/A |
+`npm audit` could not run (no `package-lock.json`). Manual review of declared dependencies:
 
-**Action required**: Re-run `npm audit` after `npm install` adds dependencies. Add to CI pipeline.
+| Package | Version | Notes |
+|---------|---------|-------|
+| `better-sqlite3` | ^11.9.1 | Native addon; check for CVEs after lockfile generated |
+| `electron-updater` | ^6.3.9 | Auto-update mechanism — verify signature validation is configured |
+| `uuid` | ^11.1.0 | Low risk — pure JS |
+| `electron` | ^42.3.0 (dev) | Large attack surface; keep updated |
+| `@electron/notarize` | ^3.0.0 (dev) | Dev-only, not shipped |
 
 ---
 
@@ -176,64 +233,21 @@ Apply via `session.defaultSession.webRequest.onHeadersReceived` in the main proc
 | Check | Result |
 |-------|--------|
 | Hardcoded API keys | None found |
-| `.env` files committed | None (`.gitignore` excludes `.env`, `.env.local`, `.env.*.local`) |
+| `.env` files committed | None (`.gitignore` correctly excludes) |
 | Private keys / certs | None found |
 | Tokens in config | None found |
-| Lock files committed | None (`.gitignore` excludes `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) |
-
-**Note**: The `.gitignore` correctly excludes lock files, but this is **not recommended** — lock files should be committed for reproducible builds. Remove those entries from `.gitignore` when dependencies are added.
-
----
-
-## OWASP Top 10 Coverage (2021)
-
-| ID | Category | Status | Notes |
-|----|----------|--------|-------|
-| A01 | Broken Access Control | N/A | No code yet; projected risk with local data storage |
-| A02 | Cryptographic Failures | N/A | No code yet; projected risk with credential storage |
-| A03 | Injection | N/A | No code yet; **high projected risk** with subprocess execution |
-| A04 | Insecure Design | Review | Architecture documents reviewed — no security section in design docs |
-| A05 | Security Misconfiguration | **Finding** | CI actions not SHA-pinned (F-001) |
-| A06 | Vulnerable Components | **Finding** | No deps yet; need audit pipeline (F-002) |
-| A07 | Identification and Auth Failures | N/A | MVP scope explicitly excludes multi-user auth |
-| A08 | Software and Data Integrity | **Finding** | CI supply chain risk (F-001) |
-| A09 | Security Logging and Monitoring | N/A | No code yet; plan audit logging for agent execution |
-| A10 | Server-Side Request Forgery | N/A | No server component in MVP |
-
----
-
-## Threat Model Summary
-
-### Attack Surfaces (Projected)
-
-| Surface | Entry Point | Risk |
-|---------|-------------|------|
-| **CLI Agent Configuration** | User-supplied executable path | Arbitrary code execution |
-| **IPC Channel** | Renderer ↔ Main process | RCE if `nodeIntegration` enabled |
-| **Agent Output** | stdout/stderr from subprocess | XSS if rendered unsanitized |
-| **SQLite Database** | Local file on disk | Data exposure if unencrypted |
-| **GitHub Actions** | CI pipeline | Supply chain compromise |
-
-### Trust Boundaries
-
-1. **Main process ↔ Renderer**: Must use `contextBridge` with strict input validation
-2. **Main process ↔ Agent subprocess**: Must use argument arrays, no shell interpolation
-3. **Local storage ↔ OS**: Credentials must use OS keychain, not flat files
+| Apple credentials | `scripts/notarize.js` reads from env vars (correct pattern) |
 
 ---
 
 ## Follow-Up Issues
 
-| Issue | Severity | Description |
-|-------|----------|-------------|
-| CMPAA-61 | Medium | Pin GitHub Actions to SHA digests in CI workflow |
-| CMPAA-62 | High | Define Electron security configuration (CSP, nodeIntegration, contextIsolation) as ADR before implementation |
-| CMPAA-63 | High | Implement secure subprocess execution patterns for CLI agent runtime |
-
----
-
-## Conclusion
-
-The repository is in a safe initial state with no exploitable vulnerabilities. However, the planned architecture (Electron + subprocess execution + local storage) presents **significant projected risk** if security is not baked in from the start. The three follow-up issues above should be addressed before or during the first implementation sprint.
-
-**Next review**: After project scaffolding and first feature implementation.
+| ID | Finding | Severity | Description |
+|----|---------|----------|-------------|
+| CMPAAA-49 | H-1 | High | Allowlist env vars in `agents:spawn` |
+| CMPAAA-50 | H-2 | High | Allowlist signals in `agents:kill` |
+| CMPAAA-51 | M-1 | Medium | Fix base64 token fallback |
+| CMPAAA-52 | M-2 | Medium | Add rate limiting on `auth:login` |
+| CMPAAA-53 | M-3 | Medium | Use `crypto.randomUUID()` for gate IDs |
+| CMPAAA-54 | M-4 | Medium | Harden Store update methods against prototype pollution |
+| CMPAAA-55 | M-5 | Medium | Sanitize or restrict `logs:append` |

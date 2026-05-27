@@ -99,3 +99,92 @@ describe('validate', () => {
     expect(() => validate(schema, { id: 'agent-42' })).not.toThrow();
   });
 });
+
+describe('validate — number constraints', () => {
+  it('validates min', () => {
+    const schema = { count: { type: 'number', min: 1 } };
+    expect(() => validate(schema, { count: 0 })).toThrow(ValidationError);
+    expect(validate(schema, { count: 1 })).toEqual({ count: 1 });
+  });
+
+  it('validates max', () => {
+    const schema = { count: { type: 'number', max: 100 } };
+    expect(() => validate(schema, { count: 101 })).toThrow(ValidationError);
+    expect(validate(schema, { count: 100 })).toEqual({ count: 100 });
+  });
+});
+
+describe('validate — nested object schema', () => {
+  it('validates nested fields', () => {
+    const schema = {
+      config: {
+        type: 'object',
+        schema: {
+          host: { type: 'string', required: true },
+          port: { type: 'number', min: 1, max: 65535 },
+        },
+      },
+    };
+    expect(() => validate(schema, { config: { port: 3000 } })).toThrow(ValidationError);
+    expect(validate(schema, { config: { host: 'localhost', port: 3000 } })).toEqual({
+      config: { host: 'localhost', port: 3000 },
+    });
+  });
+});
+
+describe('validate — array item validation', () => {
+  it('validates array items', () => {
+    const schema = {
+      tags: { type: 'array', items: { type: 'string', minLength: 1 } },
+    };
+    expect(() => validate(schema, { tags: ['ok', ''] })).toThrow(ValidationError);
+    expect(validate(schema, { tags: ['a', 'b'] })).toEqual({ tags: ['a', 'b'] });
+  });
+
+  it('validates minItems and maxItems', () => {
+    const schema = { tags: { type: 'array', minItems: 1, maxItems: 3 } };
+    expect(() => validate(schema, { tags: [] })).toThrow(ValidationError);
+    expect(() => validate(schema, { tags: [1, 2, 3, 4] })).toThrow(ValidationError);
+    expect(validate(schema, { tags: [1] })).toEqual({ tags: [1] });
+  });
+});
+
+describe('validate — strict mode', () => {
+  it('rejects unknown fields', () => {
+    const schema = { name: { type: 'string' } };
+    expect(() => validate(schema, { name: 'x', extra: 'y' }, { strict: true })).toThrow(ValidationError);
+  });
+
+  it('allows unknown fields by default', () => {
+    const schema = { name: { type: 'string' } };
+    expect(validate(schema, { name: 'x', extra: 'y' })).toEqual({ name: 'x', extra: 'y' });
+  });
+});
+
+describe('validate — defaults', () => {
+  it('applies default for missing field', () => {
+    const schema = { status: { type: 'string', default: 'idle' } };
+    expect(validate(schema, {})).toEqual({ status: 'idle' });
+  });
+
+  it('does not override provided value', () => {
+    const schema = { status: { type: 'string', default: 'idle' } };
+    expect(validate(schema, { status: 'running' })).toEqual({ status: 'running' });
+  });
+});
+
+describe('ValidationError', () => {
+  it('exposes structured errors array', () => {
+    const schema = {
+      a: { type: 'string', required: true },
+      b: { type: 'number', required: true },
+    };
+    try {
+      validate(schema, {});
+    } catch (err) {
+      expect(err.errors).toHaveLength(2);
+      expect(err.errors[0].field).toBe('a');
+      expect(err.errors[1].field).toBe('b');
+    }
+  });
+});
