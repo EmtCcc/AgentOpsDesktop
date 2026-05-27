@@ -38,4 +38,8 @@ contextBridge.exposeInMainWorld('agentOps', {
   stats: {
     summary: () => ipcRenderer.invoke('stats:summary'),
   },
+
+  monitor: {
+    health: () => ipcRenderer.invoke('monitor:health'),
+  },
 });

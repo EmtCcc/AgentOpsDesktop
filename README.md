@@ -41,7 +41,7 @@ AgentOpsDesktop/
 ### Install
 
 ```bash
-git clone https://github.com/your-org/AgentOpsDesktop.git
+git clone https://github.com/EmtCcc/AgentOpsDesktop.git
 cd AgentOpsDesktop
 npm install
 ```

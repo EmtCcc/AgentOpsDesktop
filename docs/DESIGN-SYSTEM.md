@@ -220,26 +220,17 @@ Base unit: **4px**
 
 ---
 
-## Audio Design Notes
+## Responsive Breakpoints
 
-As the Audio Designer, here are the audio-visual integration points:
+Desktop-only application. Window resize triggers layout adjustments:
 
-| Event | Sound | Trigger |
-|-------|-------|---------|
-| Agent spawn | Soft rising tone | Status changes to "Spawning" |
-| Agent complete | Gentle chime | Status changes to "Running" → complete |
-| Agent error | Low alert tone | Status changes to "Error" |
-| Task queued | Subtle tick | New task added to queue |
-| Notification | Brief attention tone | System notification |
-| Button click | None (visual only) | — |
-| Panel open/close | None | — |
+| Name | Width | Behavior |
+|------|-------|----------|
+| `compact` | < 960px | Sidebar collapses to icon rail (48px), data tables switch to card view |
+| `default` | 960–1279px | Standard layout, sidebar 240px |
+| `wide` | ≥ 1280px | Full layout, optional secondary panels |
 
-**Audio principles**:
-- All sounds are opt-in, muted by default
-- Maximum duration: 800ms for alerts, 400ms for feedback
-- No looping sounds in UI
-- Volume controlled independently from system audio
-- Web Audio API preferred for procedural generation
+Modal behavior: modals become full-screen below 640px width.
 
 ---
 
@@ -294,6 +285,27 @@ All tokens are exposed as CSS custom properties on `:root`. Example:
   --motion-normal: 200ms ease-in-out;
   --motion-slow: 300ms ease-in-out;
 }
+```
+
+---
+
+## Implementation Notes
+
+### For Engineers
+
+1. **Design Tokens** — Create `src/renderer/styles/tokens.css` with all CSS custom properties from this document
+2. **Base Styles** — Create `src/renderer/styles/base.css` with reset, typography, and global styles
+3. **Component Library** — Scaffold components in `src/renderer/components/` following the patterns defined above
+4. **Dark Mode** — Default theme is dark; light mode support is planned but not required for v1
+
+### File Structure
+
+```
+src/renderer/styles/
+├── tokens.css      # All CSS custom properties
+├── base.css        # Reset, typography, global styles
+├── components/     # Component-specific styles
+└── utilities/      # Helper classes (spacing, text, etc.)
 ```
 
 ---

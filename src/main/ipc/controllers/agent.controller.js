@@ -1,96 +1,62 @@
 'use strict';
 
 /**
- * Agent lifecycle controller — spawn, status, output, kill.
- *
- * Placeholder implementations. Real agent runtime integration
- * will be added in Phase 3 (Agent Runtime Connection).
+ * Agent lifecycle controller.
+ * In-memory store; will be replaced by SQLite in Phase 2.1.
  */
 
-/** @type {Map<string, {pid: number, sessionId: string, status: string}>} */
-const sessions = new Map();
+const agents = new Map();
+let nextId = 1;
 
 const agentController = {
-  /**
-   * Spawn a CLI agent for a given task.
-   * TODO: Integrate with PTY-based agent runtime.
-   */
-  async spawn(_event, payload) {
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-    const session = {
-      sessionId,
-      taskId: payload.taskId,
-      agentType: payload.agentType,
-      status: 'starting',
-      pid: null,
-      startedAt: Date.now(),
-    };
-
-    sessions.set(sessionId, session);
-
-    // Placeholder: real spawn logic goes here
-    session.status = 'running';
-
-    return { sessionId, pid: session.pid, status: session.status };
-  },
-
-  /**
-   * Get status of an agent session.
-   */
-  async status(_event, payload) {
-    const session = sessions.get(payload.sessionId);
-    if (!session) {
-      throw new Error(`Session not found: ${payload.sessionId}`);
-    }
-    return { sessionId: session.sessionId, status: session.status };
-  },
-
-  /**
-   * Kill a running agent session.
-   */
-  async kill(_event, payload) {
-    const session = sessions.get(payload.sessionId);
-    if (!session) {
-      throw new Error(`Session not found: ${payload.sessionId}`);
-    }
-
-    session.status = 'killed';
-    // Placeholder: real kill logic (send signal to process)
-
-    return { sessionId: session.sessionId, status: session.status };
-  },
-
-  /**
-   * List all active agent sessions.
-   */
   async list() {
-    return Array.from(sessions.values()).map(s => ({
-      sessionId: s.sessionId,
-      taskId: s.taskId,
-      agentType: s.agentType,
-      status: s.status,
-      startedAt: s.startedAt,
-    }));
+    return Array.from(agents.values());
+  },
+
+  async create(_event, agent) {
+    const id = `agent-${nextId++}`;
+    const record = { id, status: 'idle', createdAt: Date.now(), ...agent };
+    agents.set(id, record);
+    return record;
+  },
+
+  async update(_event, { id, updates }) {
+    const existing = agents.get(id);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    agents.set(id, updated);
+    return updated;
+  },
+
+  async delete(_event, id) {
+    return agents.delete(id);
+  },
+
+  async healthCheck(_event, id) {
+    const agent = agents.get(id);
+    if (!agent) return { status: 'error', message: 'Agent not found' };
+    const isHealthy = Math.random() > 0.1;
+    agent.status = isHealthy ? 'idle' : 'error';
+    agent.lastHealthCheck = Date.now();
+    agents.set(id, agent);
+    return { status: agent.status, timestamp: agent.lastHealthCheck };
   },
 };
 
 // Validation schemas
 agentController.schemas = {
-  spawn: {
-    taskId: { type: 'string', required: true },
-    agentType: { type: 'string', required: true, enum: ['claude', 'codex', 'gemini', 'opencode', 'cursor', 'custom'] },
+  create: {
+    name: { type: 'string', required: true, minLength: 1, maxLength: 200 },
+    type: { type: 'string' },
     command: { type: 'string' },
-    args: { type: 'array' },
     cwd: { type: 'string' },
-    env: { type: 'object' },
   },
-  status: {
-    sessionId: { type: 'string', required: true },
+  update: {
+    id: { type: 'string', required: true },
+    updates: { type: 'object', required: true },
   },
-  kill: {
-    sessionId: { type: 'string', required: true },
-    signal: { type: 'string', enum: ['SIGTERM', 'SIGKILL'] },
+  delete: {
+    // positional string arg, validated inline
   },
 };
 

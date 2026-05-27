@@ -2,6 +2,25 @@
 
 > 版本：MVP (v0.1) | 最后更新：2026-05-28
 
+## 实现状态
+
+| 组件 | 状态 | 说明 |
+|------|------|------|
+| Electron 主进程框架 | ✅ 已实现 | 窗口创建、应用生命周期 |
+| IPC 路由 + 验证中间件 | ✅ 已实现 | `IpcRouter` 类 + schema 验证 |
+| Agent 控制器 | ✅ 已实现 | spawn/kill/status/list（占位实现） |
+| Task 控制器 | ✅ 已实现 | CRUD + 状态更新（内存存储） |
+| Governance 控制器 | ✅ 已实现 | approve/list/register（占位实现） |
+| 监控模块 | ✅ 已实现 | 健康检查、指标采集、告警阈值 |
+| 结构化日志 | ✅ 已实现 | JSONL 文件输出 + 控制台 |
+| Preload 安全桥 | ✅ 已实现 | contextBridge 暴露 platform |
+| CSP 配置 | ✅ 已实现 | HTML meta 标签 |
+| SQLite 数据层 | ⏳ 待实现 | 当前使用内存 Map |
+| React 渲染层 | ⏳ 待实现 | 当前为静态 HTML |
+| PTY 进程管理 | ⏳ 待实现 | 当前为占位 spawn |
+| Zustand 状态管理 | ⏳ 待实现 | — |
+| xterm.js 终端 | ⏳ 待实现 | — |
+
 ## 设计原则
 
 | 原则 | 含义 |

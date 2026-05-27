@@ -1,109 +1,61 @@
 'use strict';
 
 /**
- * Task management controller — CRUD and status updates.
- *
- * Placeholder implementations. Real data layer will use
- * local SQLite via the Paperclip client adapter.
+ * Task management controller.
+ * In-memory store; will be replaced by SQLite in Phase 2.1.
+ * Maintains bidirectional link with goals via goalId.
  */
 
-/** @type {Map<string, object>} */
+const goals = require('./goal.controller');
+
 const tasks = new Map();
+let nextId = 1;
 
 const taskController = {
-  /**
-   * Create a new task.
-   */
-  async create(_event, payload) {
-    const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-    const task = {
-      taskId,
-      title: payload.title,
-      description: payload.description || '',
-      goalId: payload.goalId || null,
-      status: 'todo',
-      assigneeAgentId: null,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    tasks.set(taskId, task);
-    return task;
+  async list() {
+    return Array.from(tasks.values());
   },
 
-  /**
-   * Get a task by ID.
-   */
-  async get(_event, payload) {
-    const task = tasks.get(payload.taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${payload.taskId}`);
+  async create(_event, task) {
+    const id = `task-${nextId++}`;
+    const record = { id, status: 'pending', createdAt: Date.now(), ...task };
+    tasks.set(id, record);
+
+    // Link task to parent goal
+    if (task.goalId) {
+      const goal = goals.get(task.goalId);
+      if (goal) {
+        goal.taskIds = [...(goal.taskIds || []), id];
+        goals.set(task.goalId, goal);
+      }
     }
-    return task;
+
+    return record;
   },
 
-  /**
-   * List all tasks, optionally filtered by goalId.
-   */
-  async list(_event, payload) {
-    let results = Array.from(tasks.values());
-    if (payload?.goalId) {
-      results = results.filter(t => t.goalId === payload.goalId);
-    }
-    return results;
+  async update(_event, { id, updates }) {
+    const existing = tasks.get(id);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    tasks.set(id, updated);
+    return updated;
   },
 
-  /**
-   * Update task fields (status, assignee, metadata).
-   */
-  async update(_event, payload) {
-    const task = tasks.get(payload.taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${payload.taskId}`);
-    }
-
-    if (payload.status) task.status = payload.status;
-    if (payload.assigneeAgentId !== undefined) task.assigneeAgentId = payload.assigneeAgentId;
-    if (payload.metadata) task.metadata = { ...task.metadata, ...payload.metadata };
-    task.updatedAt = Date.now();
-
-    return task;
-  },
-
-  /**
-   * Delete a task.
-   */
-  async remove(_event, payload) {
-    if (!tasks.has(payload.taskId)) {
-      throw new Error(`Task not found: ${payload.taskId}`);
-    }
-    tasks.delete(payload.taskId);
-    return { deleted: true, taskId: payload.taskId };
+  async delete(_event, id) {
+    return tasks.delete(id);
   },
 };
 
-// Validation schemas
 taskController.schemas = {
   create: {
     title: { type: 'string', required: true, minLength: 1, maxLength: 500 },
     description: { type: 'string', maxLength: 5000 },
     goalId: { type: 'string' },
-  },
-  get: {
-    taskId: { type: 'string', required: true },
-  },
-  list: {
-    goalId: { type: 'string' },
+    assigneeAgentId: { type: 'string' },
   },
   update: {
-    taskId: { type: 'string', required: true },
-    status: { type: 'string', enum: ['todo', 'in_progress', 'in_review', 'done', 'blocked'] },
-    assigneeAgentId: { type: 'string' },
-    metadata: { type: 'object' },
-  },
-  remove: {
-    taskId: { type: 'string', required: true },
+    id: { type: 'string', required: true },
+    updates: { type: 'object', required: true },
   },
 };
 

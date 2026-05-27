@@ -27,6 +27,7 @@
   "author": "",
   "license": "UNLICENSED",
   "private": true,
+  "type": "module",
   "dependencies": {
     "electron-updater": "^6.3.9"
   },

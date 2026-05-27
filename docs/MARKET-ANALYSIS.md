@@ -1,5 +1,49 @@
 # Market Analysis — AgentOps Desktop
 
+## Target Users
+
+### User Profiles
+
+**Profile 1: The Multi-CLI Power User**
+- **Who**: Solo developer or tech lead, 5–15 years experience, runs 2–4 AI agents daily (Claude Code + Codex + Cursor, or similar combos)
+- **Current workflow**: Opens multiple terminal tabs, manually copies task context between agents, uses tmux/screen to manage parallel sessions, tracks costs in a spreadsheet
+- **Pain points**: Context is lost between agent switches; no unified view of what each agent is doing; accidentally gives overlapping tasks to different agents; discovers cost overruns after the fact
+- **Workarounds**: tmux sessions with named windows, shell aliases for agent launch, manual git branch management per agent, Slack/webhook hacks for notifications
+- **What they say they want**: "A single dashboard to see all my agents"
+- **What they actually need**: Reducing the cognitive load of being a "human orchestrator" — they're doing the coordination work that should be automated
+
+**Profile 2: The Small Team Adapter**
+- **Who**: Engineering manager or tech lead at a 3–10 person startup, responsible for AI tool adoption decisions
+- **Current workflow**: Each team member picks their own agent; no shared visibility; manager discovers what agents did only during code review
+- **Pain points**: No team-level view of agent usage; can't enforce standards (which agent for which task type); budget is invisible until the API bill arrives; junior devs misuse agents
+- **Workarounds**: Shared Notion/Google Doc with "agent guidelines", weekly sync meetings to discuss agent usage, ad-hoc Slack channels per agent
+- **What they say they want**: "Visibility and control over how the team uses AI agents"
+- **What they actually need**: A governance layer that makes agent usage auditable and consistent without micromanaging
+
+**Profile 3: The Automation Builder**
+- **Who**: DevOps/platform engineer, builds internal tooling, sees agents as programmable workers
+- **Current workflow**: Writes wrapper scripts around agent CLIs, pipes output to logging systems, builds custom dashboards with Grafana/Datadog
+- **Pain points**: Agent CLIs have unstable output formats; no programmatic way to chain agent tasks; error handling is manual; can't retry failed agent runs automatically
+- **Workarounds**: Bash/Python wrapper scripts, cron jobs for scheduled agent tasks, custom parsers for agent output
+- **What they say they want**: "A better API for agent orchestration"
+- **What they actually need**: A reliable, scriptable orchestration layer with structured output and retry semantics
+
+### User Segments
+
+| Segment | Size (est.) | Priority | Why |
+|---------|-------------|----------|-----|
+| **Primary**: Multi-agent power users (2+ agents daily) | 200K–500K | P0 | Highest pain, earliest adopters, vocal advocates |
+| **Secondary**: Small teams adopting AI agents (3–10 people) | 100K–300K | P1 | Willing to pay for governance, larger deal size |
+| **Edge-case**: Automation builders / DevOps engineers | 50K–100K | P2 | High technical bar, low tolerance for GUI, but strong word-of-mouth |
+| **Future**: Enterprise teams (10+ agents, compliance needs) | TBD | P3 | Post-MVP, requires SSO/SAML, audit trails |
+
+### Behavioral Insights
+
+- **The "second agent moment"**: Developers don't seek orchestration tools until they hit the pain of managing a 2nd agent. Before that, a single agent feels sufficient. The trigger is usually: "I want to run Codex on this task while I keep using Claude Code on another."
+- **Context copying is the #1 friction**: The most common complaint isn't cost or speed — it's "I have to re-explain my project to each agent." Shared context is the killer feature.
+- **tmux is the incumbent**: Most power users already have a tmux-based workflow. Any replacement must be dramatically better, not just "as good." The bar is: "would I give up my tmux setup for this?"
+- **Cost awareness is reactive, not proactive**: Users discover overspending after the bill, not during execution. Real-time cost visibility is a feature users don't know they need until they see it.
+
 ## Target Market
 
 - **Users**: Solo developers and small engineering teams (1–10 people) who already use multiple AI coding agents (Claude Code, Codex, Gemini CLI, Cursor, etc.) and struggle to coordinate them across tasks, workspaces, and budgets.
