@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;">
+  <title>AgentOps</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #0D1117;
+      color: #E6EDF3;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .titlebar {
+      height: 48px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      -webkit-app-region: drag;
+    }
+    .titlebar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #8B949E;
+      margin-left: 76px;
+    }
+    .content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: no-drag;
+    }
+    .welcome {
+      text-align: center;
+    }
+    .welcome h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .welcome p {
+      font-size: 14px;
+      color: #8B949E;
+    }
+    .status-bar {
+      height: 28px;
+      background: #161B22;
+      border-top: 1px solid #21262D;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: #8B949E;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #3FB950;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <h1>AgentOps</h1>
+  </div>
+  <div class="content">
+    <div class="welcome">
+      <h2>AgentOps Desktop</h2>
+      <p>Orchestrate AI agents from a single control plane.</p>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="status-dot"></span>
+    <span>Ready</span>
+    <span style="margin-left: auto;" id="platform"></span>
+  </div>
+  <script>
+    document.getElementById('platform').textContent = window.agentOps?.platform || '';
+  </script>
+</body>
+</html>

@@ -3,11 +3,13 @@ import { test as base, type Page } from '@playwright/test';
 /**
  * Shared fixtures for AgentOps Desktop E2E tests.
  *
- * Once the Electron app has a renderer, update `appUrl` to point at the
- * dev server URL or the built renderer entry point.
+ * Uses the design system harness HTML for cross-browser and performance
+ * tests until the Electron app renderer is built. Once the app has a dev
+ * server, set APP_URL=http://localhost:3000 to test the real renderer.
  */
 
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const HARNESS_PATH = new URL('../design-system-harness.html', import.meta.url).pathname;
+const APP_URL = process.env.APP_URL || `file://${HARNESS_PATH}`;
 
 type AppFixtures = {
   appUrl: string;

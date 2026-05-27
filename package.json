@@ -8,6 +8,14 @@
     "dev": "electron . --dev",
     "lint": "eslint src/",
     "test": "vitest run",
+    "test:e2e": "npx playwright test",
+    "test:e2e:chromium": "npx playwright test --project=chromium",
+    "test:e2e:firefox": "npx playwright test --project=firefox",
+    "test:e2e:webkit": "npx playwright test --project=webkit",
+    "test:e2e:mobile": "npx playwright test --project=mobile-chrome --project=mobile-safari",
+    "test:perf": "npx playwright test performance",
+    "test:cross-browser": "npx playwright test cross-browser",
+    "test:report": "npx playwright show-report",
     "build": "electron-builder --mac",
     "build:dir": "electron-builder --mac --dir"
   },
@@ -23,6 +31,7 @@
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "electron": "^42.3.0",
     "electron-builder": "^25.1.8",
     "eslint": "^9.14.0",
