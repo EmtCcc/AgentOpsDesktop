@@ -69,7 +69,7 @@ function renderDashboard(container) {
       </div>
     </div>
 
-    <div class="dashboard-stats">
+    <div class="dashboard-stats" role="region" aria-label="Dashboard statistics" aria-live="polite">
       <div class="card">
         <div class="stat__icon stat__icon--accent">${icons.bot}</div>
         <div class="stat">
@@ -106,7 +106,7 @@ function renderDashboard(container) {
           <h3 class="card__title">Recent activity</h3>
           <button class="btn btn--ghost btn--sm" data-navigate="logs">View all</button>
         </div>
-        <div class="card__body" id="activity-feed">
+        <div class="card__body" id="activity-feed" role="log" aria-label="Recent activity" aria-live="polite">
           <div class="empty-state" style="padding: var(--space-8) 0;">
             <div style="color: var(--color-text-tertiary); margin-bottom: var(--space-2);">${icons.terminal}</div>
             <div style="font-size: var(--text-sm); color: var(--color-text-tertiary);">No recent activity</div>
@@ -187,7 +187,7 @@ function renderAgents(container) {
       </div>
     </div>
 
-    <div id="agent-list" class="agent-list">
+    <div id="agent-list" class="agent-list" role="list" aria-label="Agent list" aria-live="polite">
       <div class="empty-state">
         <div class="empty-state__icon">${icons.bot}</div>
         <div class="empty-state__title">No agents configured</div>
@@ -430,7 +430,7 @@ async function loadTasks() {
         <div class="task-card">
           <div class="task-card__title">${escapeHtml(t.title)}</div>
           <div class="task-card__meta">
-            <span class="task-card__agent">${escapeHtml(t.agentId || 'unassigned')}</span>
+            <span class="task-card__agent">${escapeHtml(t.assigneeAgentId || 'unassigned')}</span>
             <span>${formatTime(t.createdAt)}</span>
           </div>
         </div>

@@ -1,135 +1,310 @@
-# Content Audit — AgentOpsDesktop
+# Content Audit — AgentOps Desktop
 
 **Date**: 2026-05-28
-**Auditor**: CTO
-**Scope**: All documentation files in `docs/` and root `README.md`
+**Auditor**: Engineer
+**Scope**: All documentation, application UI content, media assets, SEO metadata
 
 ---
 
 ## Summary
 
-The project is at **Day 0 state** with documentation-only content. No application code, no live website, no marketing pages. The existing documentation provides a solid foundation for the product vision, architecture, and design system, but lacks implementation details and user-facing content.
+The project has evolved from Day 0 documentation-only to a **functional Electron desktop app** with 5 implemented pages, a design system, and 25+ documentation files. The app renders all UI content via JavaScript `innerHTML` injection — no static HTML pages, no SSR, no marketing site.
 
 ---
 
-## Content Inventory
+## 1. Application Pages — Content Audit
 
-### Root Level
+### 1.1 Dashboard (`/`)
 
-| File | Status | Word Count | Purpose | Quality |
-|------|--------|------------|---------|---------|
-| `README.md` | ✅ Complete | ~100 | Project overview, setup instructions | Good — concise, actionable |
+| Element | Content | Type | Quality | Issues |
+|---------|---------|------|---------|--------|
+| Page title | "Dashboard" | Heading | Good | — |
+| Page description | "Agent operations overview" | Subtitle | Good | — |
+| Stats: Agents | `0` (dynamic) | Metric | Good | No empty-state explanation |
+| Stats: Tasks | `0` (dynamic) | Metric | Good | — |
+| Stats: Running | `0` (dynamic) | Metric | Good | — |
+| Stats: Errors | `0` (dynamic) | Metric | Good | — |
+| Recent activity | "No recent activity" | Empty state | Fair | No guidance on how to generate activity |
+| Quick actions | "Add agent", "Create task", "View settings" | Buttons | Good | "View settings" uses barChart icon — misleading |
 
-### Documentation Directory
+**Content type**: Operational dashboard
+**Key messages**: System status at a glance, quick entry points
+**Gaps**: No onboarding guidance for first-time users; empty states don't explain next steps
 
-| File | Status | Word Count | Purpose | Quality |
-|------|--------|------------|---------|---------|
-| `VISION.md` | ✅ Complete | ~800 | Product vision, mission, success metrics | Excellent — comprehensive, well-structured |
-| `MVP-SCOPE.md` | ✅ Complete | ~1,200 | MVP features, user journeys, acceptance criteria | Excellent — detailed, actionable |
-| `ARCHITECTURE.md` | ✅ Complete | ~1,000 | System architecture, data flow, API boundaries | Excellent — technical depth |
-| `DESIGN-SYSTEM.md` | ✅ Complete | ~2,000 | UI components, colors, typography, spacing | Excellent — comprehensive design tokens |
-| `BRAND-IDENTITY.md` | ✅ Complete | ~1,800 | Brand guidelines, logo, voice, tone | Excellent — thorough brand system |
-| `CODEBASE-AUDIT.md` | ✅ Complete | ~500 | Current state assessment | Good — honest, actionable |
-| `getting-started.md` | ✅ Complete | ~600 | User onboarding guide | Good — clear, step-by-step |
+### 1.2 Agents (`/agents`)
+
+| Element | Content | Type | Quality | Issues |
+|---------|---------|------|---------|--------|
+| Page title | "Agents" | Heading | Good | — |
+| Page description | "Manage connected CLI agents" | Subtitle | Good | — |
+| Empty state title | "No agents configured" | Empty state | Good | — |
+| Empty state desc | "Add a CLI agent to start orchestrating tasks." | Guidance | Good | — |
+| Modal: title | "Add agent" | Modal heading | Good | — |
+| Modal: name label | "Agent name" | Form label | Good | — |
+| Modal: name placeholder | "e.g. Claude Code" | Placeholder | Good | — |
+| Modal: type label | "Type" | Form label | Fair | Could be "Agent type" for clarity |
+| Modal: type options | Claude Code, Codex, Gemini CLI, OpenCode, Cursor, Custom | Select options | Good | No descriptions for each type |
+| Modal: path label | "Executable path" | Form label | Good | — |
+| Modal: path placeholder | "/usr/local/bin/claude" | Placeholder | Good | — |
+| Modal: cwd label | "Working directory" | Form label | Good | — |
+| Modal: cwd placeholder | "/path/to/project" | Placeholder | Good | — |
+| Agent row: status | Status dot + badge | Visual | Good | — |
+| Agent row: actions | Health check, Remove | Icon buttons | Fair | No tooltips beyond `title` attr; no confirmation on delete |
+
+**Content type**: CRUD management
+**Key messages**: Add, monitor, remove CLI agents
+**Gaps**: No agent type descriptions; delete has no confirmation dialog; no agent detail view (planned in routes.ts)
+
+### 1.3 Tasks (`/tasks`)
+
+| Element | Content | Type | Quality | Issues |
+|---------|---------|------|---------|--------|
+| Page title | "Tasks" | Heading | Good | — |
+| Page description | "Track goals and task assignments" | Subtitle | Good | — |
+| Column: Pending | "Pending" + count | Kanban header | Good | — |
+| Column: Running | "Running" + count | Kanban header | Good | — |
+| Column: Done | "Done" + count | Kanban header | Good | — |
+| Column: Failed | "Failed" + count | Kanban header | Good | — |
+| Empty column | "No tasks" | Empty state | Fair | No guidance per column |
+| Modal: title | "New task" | Modal heading | Good | — |
+| Modal: title placeholder | "Implement user auth" | Placeholder | Good | — |
+| Modal: desc placeholder | "Details about the task..." | Placeholder | Fair | Could be more specific |
+| Modal: agent label | "Assign to agent" | Form label | Good | — |
+| Modal: agent default | "Unassigned" | Option | Good | — |
+| Modal: goal label | "Goal (optional)" | Form label | Good | — |
+| Modal: goal default | "No goal" | Option | Good | — |
+| Task card | Title + agent + timestamp | Card | Good | No priority indicator; no status badge on card |
+
+**Content type**: Kanban task board
+**Key messages**: Create, assign, track task lifecycle
+**Gaps**: No priority/severity field; no task detail view; no drag-and-drop; agent shown as ID not name when unassigned
+
+### 1.4 Logs (`/logs`)
+
+| Element | Content | Type | Quality | Issues |
+|---------|---------|------|---------|--------|
+| Page title | "Logs" | Heading | Good | — |
+| Page description | "Real-time agent output" | Subtitle | Good | — |
+| Filter: agents | "All agents" | Select default | Good | — |
+| Filter: levels | "All levels", Debug, Info, Warning, Error | Select options | Good | — |
+| Empty state title | "No logs yet" | Empty state | Good | — |
+| Empty state desc | "Logs from agent sessions will appear here in real time." | Guidance | Good | — |
+| Clear button | Trash icon + "Clear" | Button | Fair | No confirmation; icon-only meaning unclear |
+| Refresh button | Refresh icon + "Refresh" | Button | Good | — |
+| Log entry | Timestamp + agent tag + stream tag + message | Log line | Good | No search/filter by text |
+| Cleared state | "Logs cleared" | Feedback | Fair | No undo option |
+
+**Content type**: Real-time log viewer
+**Key messages**: Monitor agent output, filter by agent/level
+**Gaps**: No text search; no export; no log level color coding beyond error/warn; clear is destructive with no confirmation
+
+### 1.5 Settings (`/settings`)
+
+| Element | Content | Type | Quality | Issues |
+|---------|---------|------|---------|--------|
+| Page title | "Settings" | Heading | Good | — |
+| Page description | "Application preferences" | Subtitle | Good | — |
+| Section: General | "General" | Section heading | Good | — |
+| App version | "v0.1.0" (hardcoded) | Badge | Fair | Should be dynamic from package.json |
+| Platform | Dynamic from `window.agentOps.platform` | Badge | Good | — |
+| Section: Agents | "Agents" | Section heading | Good | — |
+| Max parallel | "3" (hardcoded) | Input | Poor | Not persisted; no save button |
+| Task timeout | "30" min (hardcoded) | Input | Poor | Not persisted; no save button |
+| Section: Logs | "Logs" | Section heading | Good | — |
+| Log retention | "10000" (hardcoded) | Input | Poor | Not persisted; no save button |
+
+**Content type**: Configuration
+**Key messages**: App info, agent limits, log retention
+**Gaps**: Settings are not persisted (no save mechanism); values are hardcoded defaults; no validation feedback; planned sub-pages (Agent Settings, Governance) not implemented
 
 ---
 
-## Content Analysis
+## 2. Shell Content (index.html)
 
-### Strengths
-
-1. **Clear Product Vision** — VISION.md defines the mission, success metrics, and strategic milestones
-2. **Technical Depth** — ARCHITECTURE.md provides detailed system design with data flow diagrams
-3. **Design System** — DESIGN-SYSTEM.md and BRAND-IDENTITY.md establish comprehensive UI/UX guidelines
-4. **User-Centric** — getting-started.md provides clear onboarding steps
-5. **Honest Assessment** — CODEBASE-AUDIT.md transparently documents current state
-
-### Gaps
-
-| Gap | Priority | Impact | Recommendation |
-|-----|----------|--------|----------------|
-| **No live website** | High | No public presence | Create landing page with product overview |
-| **No API documentation** | Medium | Developer experience | Document Paperclip API integration |
-| **No changelog** | Medium | Version tracking | Create CHANGELOG.md for release notes |
-| **No contributing guide** | Low | Open source readiness | Create CONTRIBUTING.md if open sourcing |
-| **No license file** | Medium | Legal clarity | Add LICENSE file (currently "Proprietary") |
-| **No screenshots/mockups** | Medium | Visual communication | Add UI mockups to design system |
-
-### Content Quality Issues
-
-| Issue | File | Description | Fix |
-|-------|------|-------------|-----|
-| Placeholder URLs | `getting-started.md` | GitHub URL uses `<your-org>` placeholder | Update with actual org |
-| Missing cross-links | Multiple | Docs don't link to each other consistently | Add "See also" sections |
-| No versioning | All | No version numbers on docs | Add version headers |
+| Element | Content | Quality | Issues |
+|---------|---------|---------|--------|
+| `<title>` | "AgentOps" | Good | No dynamic page title |
+| Header title | "AgentOps" | Good | — |
+| Sidebar: Overview | "Dashboard" | Good | — |
+| Sidebar: Operations | "Agents", "Tasks", "Logs" | Good | — |
+| Sidebar: footer | "Settings" | Good | — |
+| Footer status | "System ready" | Good | Static text, not dynamic |
+| Footer agent count | "0 agents" | Good | Dynamic |
+| Footer version | "v0.1.0" | Fair | Hardcoded |
+| Notifications button | Bell icon, no label | Fair | No notification system implemented |
 
 ---
 
-## Documentation Coverage
+## 3. Documentation Content
 
-### Product Documentation
+| File | Words | Quality | Status |
+|------|-------|---------|--------|
+| `README.md` | ~100 | Good | Active |
+| `VISION.md` | ~850 | Excellent | Active |
+| `MVP-SCOPE.md` | ~1,200 | Excellent | Active |
+| `ARCHITECTURE.md` | ~1,000 | Excellent | Active |
+| `DESIGN-SYSTEM.md` | ~2,000 | Excellent | Active |
+| `BRAND-IDENTITY.md` | ~1,800 | Excellent | Active |
+| `DESIGN-SPEC.md` | ~1,500 | Good | Active |
+| `DESIGN-AUDIT.md` | ~800 | Good | Active |
+| `DESIGN-AUDIT-LIVE.md` | ~600 | Good | Active |
+| `ACCESSIBILITY-AUDIT.md` | ~700 | Good | Active |
+| `CODEBASE-AUDIT.md` | ~500 | Good | Active |
+| `COMPETITIVE-LANDSCAPE.md` | ~900 | Good | Active |
+| `MARKET-ANALYSIS.md` | ~800 | Good | Active |
+| `TECH-STACK.md` | ~600 | Good | Active |
+| `API.md` | ~500 | Good | Active |
+| `SECURITY-REVIEW.md` | ~600 | Good | Active |
+| `THREAT-MODEL.md` | ~700 | Good | Active |
+| `CODE-SIGNING.md` | ~400 | Good | Active |
+| `DEPENDENCY-AUDIT.md` | ~500 | Good | Active |
+| `PERFORMANCE-BUDGET.md` | ~400 | Good | Active |
+| `MONITORING.md` | ~500 | Good | Active |
+| `RELEASE-PROCESS.md` | ~600 | Good | Active |
+| `FEEDBACK-TRIAGE.md` | ~400 | Good | Active |
+| `USER-TESTING.md` | ~500 | Good | Active |
+| `CONTENT-INVENTORY.md` | ~300 | Fair | Outdated — references Day 0 state |
+| `getting-started.md` | ~600 | Good | Active |
 
-| Category | Coverage | Notes |
-|----------|----------|-------|
-| Vision & Strategy | ✅ Complete | VISION.md covers mission, metrics, milestones |
-| Product Requirements | ✅ Complete | MVP-SCOPE.md defines features and acceptance criteria |
-| User Documentation | ✅ Complete | getting-started.md provides onboarding |
-| Architecture | ✅ Complete | ARCHITECTURE.md details system design |
-| Design System | ✅ Complete | DESIGN-SYSTEM.md and BRAND-IDENTITY.md |
-| API Documentation | ❌ Missing | No Paperclip API docs |
-| Release Notes | ❌ Missing | No CHANGELOG.md |
-| Contributing Guide | ❌ Missing | No CONTRIBUTING.md |
-
-### Technical Documentation
-
-| Category | Coverage | Notes |
-|----------|----------|-------|
-| Setup Instructions | ✅ Complete | README.md and getting-started.md |
-| Code Structure | ✅ Complete | README.md outlines project structure |
-| Testing Guide | ❌ Missing | No test documentation |
-| Deployment Guide | ❌ Missing | No deployment instructions |
-| Troubleshooting | ❌ Missing | No FAQ or troubleshooting guide |
-
----
-
-## Recommendations
-
-### Immediate Actions
-
-1. **Create LICENSE file** — Clarify proprietary license status
-2. **Update placeholder URLs** — Replace `<your-org>` with actual GitHub org
-3. **Add cross-links** — Connect related documentation sections
-
-### Short-term (Sprint 1-2)
-
-1. **Create API documentation** — Document Paperclip integration
-2. **Add CHANGELOG.md** — Track version history
-3. **Create UI mockups** — Visual representations of key screens
-
-### Medium-term (Sprint 3-4)
-
-1. **Create contributing guide** — If open sourcing
-2. **Add troubleshooting guide** — Common issues and solutions
-3. **Create deployment documentation** — Build and release process
+**Total documentation**: ~18,000 words across 26 files
 
 ---
 
-## Content Metrics
+## 4. Media Assets
+
+| Asset | Status | Notes |
+|-------|--------|-------|
+| App icon (`assets/icon.icns`) | **Missing** | Referenced in package.json build config |
+| Logo PNGs (16–1024px) | **Missing** | Planned in Brand Identity |
+| Logo lockup SVGs | **Missing** | Planned in Brand Identity |
+| Custom icon SVGs | **Missing** | All icons are inline Feather-style SVGs in JS |
+| UI sound effects | **Missing** | Planned in Brand Identity |
+| Web fonts (Inter, JetBrains Mono) | **Missing** | System font stack used as fallback |
+| Screenshots/mockups | **Missing** | No visual documentation of the app |
+
+**Current approach**: All icons are inline SVGs defined in `app.js` and `index.html`. No external asset files.
+
+---
+
+## 5. SEO / Metadata
+
+This is an Electron desktop app, not a public website. SEO is not applicable.
+
+| Metadata | Status | Notes |
+|----------|--------|-------|
+| `<meta charset>` | Present | UTF-8 |
+| `<meta viewport>` | Present | Standard |
+| `<title>` | Present | "AgentOps" — static |
+| CSP | Present | Restrictive policy |
+| Open Graph | N/A | Desktop app |
+| robots.txt | N/A | Desktop app |
+| sitemap.xml | N/A | Desktop app |
+
+---
+
+## 6. Content Quality Issues
+
+### Critical
+
+| Issue | Location | Impact | Fix |
+|-------|----------|--------|-----|
+| Settings not persisted | Settings page | User changes lost on reload | Wire inputs to store.js via IPC |
+| Hardcoded version | Settings + footer | Stale version display | Read from package.json at runtime |
+| No delete confirmation | Agents page | Accidental agent deletion | Add confirmation modal |
+
+### High
+
+| Issue | Location | Impact | Fix |
+|-------|----------|--------|-----|
+| No onboarding flow | Dashboard | New users don't know where to start | Add first-run wizard or tour |
+| No empty-state guidance | Dashboard, Tasks | Users see blank screens | Add actionable next-step hints |
+| Missing app icon | assets/ | Build fails, no dock icon | Create icon.icns |
+| No text search in logs | Logs page | Can't find specific entries | Add search input |
+
+### Medium
+
+| Issue | Location | Impact | Fix |
+|-------|----------|--------|-----|
+| No agent type descriptions | Add agent modal | Users don't know differences | Add help text per option |
+| "View settings" icon mismatch | Dashboard | barChart icon for settings | Use settings/gear icon |
+| No task priority | Tasks kanban | All tasks look equal | Add priority badge |
+| CONTENT-INVENTORY.md outdated | docs/ | Misleading project state | Update or remove |
+| No dynamic page title | index.html | Can't distinguish pages in taskbar | Update document.title on navigate |
+
+### Low
+
+| Issue | Location | Impact | Fix |
+|-------|----------|--------|-----|
+| No keyboard shortcuts | Global | Power user friction | Add shortcut hints |
+| No export for logs | Logs page | Can't share/debug externally | Add export button |
+| Notifications button dead | Header | False affordance | Remove or implement |
+| No version in page title | index.html | — | Append version to title |
+
+---
+
+## 7. Migration Strategy
+
+### Content that ships as-is
+- All 5 page renderers (Dashboard, Agents, Tasks, Logs, Settings)
+- Shell layout (header, sidebar, footer)
+- Inline SVG icon system
+- CSS design system (5 files)
+
+### Content that needs work before launch
+- Settings persistence (critical)
+- App icon asset (critical for build)
+- Delete confirmation flows (high)
+- Onboarding content (high)
+
+### Content planned but not started
+- Agent detail page (`/agents/:agentId`)
+- Task detail page (`/tasks/:taskId`)
+- Workflows page (`/workflows`)
+- Governance settings (`/settings/governance`)
+- Agent settings (`/settings/agents`)
+
+### Content to deprecate
+- `CONTENT-INVENTORY.md` — references Day 0 state, superseded by this audit
+
+---
+
+## 8. Content Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total documentation files | 8 |
-| Total word count | ~8,000 |
-| Documentation coverage | 60% |
-| Missing critical docs | 3 (LICENSE, API docs, CHANGELOG) |
-| Quality score | 8/10 |
+| Implemented pages | 5 |
+| Planned pages | 6 (in routes.ts) |
+| Documentation files | 26 |
+| Total doc word count | ~18,000 |
+| Media assets | 0 (all inline SVG) |
+| Missing critical assets | 1 (app icon) |
+| Settings fields | 5 (none persisted) |
+| Empty states | 4 (2 with guidance, 2 without) |
+| Modals | 2 (add agent, new task) |
+| Content quality score | 7/10 |
 
 ---
 
-## Conclusion
+## 9. Recommendations
 
-The existing documentation provides a strong foundation for the AgentOpsDesktop project. The vision, architecture, and design system are well-defined and comprehensive. The primary gaps are in operational documentation (API docs, changelog, deployment) and legal documentation (LICENSE). Addressing these gaps will improve developer experience and project maturity.
+### Immediate (before next release)
+1. Wire settings inputs to IPC/store persistence
+2. Create app icon (icon.icns) for macOS build
+3. Add delete confirmation for agent removal
+4. Update hardcoded version to dynamic
+
+### Short-term (Sprint 1-2)
+1. Add onboarding/first-run content to Dashboard
+2. Improve empty states with actionable guidance
+3. Add text search to Logs page
+4. Fix "View settings" icon on Dashboard
+
+### Medium-term (Sprint 3-4)
+1. Implement Agent Detail and Task Detail pages
+2. Add task priority/severity to kanban cards
+3. Implement Workflows page
+4. Add keyboard shortcuts with help overlay
 
 ---
 
-*This audit was generated on 2026-05-28. Re-audit after Sprint 1 completion.*
+*This audit covers the full application state as of 2026-05-28. Re-audit after Sprint 1 completion.*
