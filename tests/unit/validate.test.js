@@ -1,7 +1,5 @@
-'use strict';
-
-const { describe, it, expect } = require('vitest');
-const { validate, ValidationError } = require('../../src/main/ipc/middleware/validate');
+import { describe, it, expect } from 'vitest';
+import { validate, ValidationError } from '../../src/main/ipc/middleware/validate.js';
 
 describe('validate', () => {
   it('returns payload unchanged when no schema is provided', () => {

@@ -1,113 +1,182 @@
 # API Reference
 
-AgentOpsDesktop exposes IPC channels between the Electron main process and renderer, and communicates with the Paperclip control plane via REST.
+AgentOpsDesktop exposes IPC channels between the Electron main process and renderer via `window.agentOps` (set up in `src/main/preload.js`). The renderer calls these methods; the main process handles them in `src/main/index.js`.
 
-## IPC Channels
+## Implemented IPC Channels
 
-All IPC uses Electron's `ipcMain` / `ipcRenderer` bridge. Channels are namespaced by domain.
+These channels are live in the current codebase.
 
-### Agent Lifecycle
+### Agents
 
-#### `agent:spawn`
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `agents.list()` | — | `Agent[]` | List all configured agents |
+| `agents.create(agent)` | `{ name, execPath, args?, cwd?, label? }` | `Agent` | Register a new agent |
+| `agents.update(id, updates)` | `id: string`, `updates: object` | `Agent \| null` | Update agent fields |
+| `agents.delete(id)` | `id: string` | `boolean` | Remove an agent |
+| `agents.healthCheck(id)` | `id: string` | `{ status, timestamp }` | Check if agent executable is reachable |
 
-Spawn a CLI agent for a given task.
-
-**Request** (Renderer → Main):
-```typescript
+**Agent object shape:**
+```js
 {
-  taskId: string;          // Paperclip task ID
-  agentType: 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor' | 'custom';
-  command?: string;        // Override default command
-  args?: string[];         // Additional CLI arguments
-  cwd?: string;            // Working directory
-  env?: Record<string, string>;  // Environment variables
+  id: string,          // "agent-1", "agent-2", ...
+  name: string,
+  execPath: string,
+  args: string[],
+  cwd: string,
+  label: string,
+  status: 'idle' | 'running' | 'error',
+  createdAt: number,   // Date.now() timestamp
+  lastHealthCheck?: number
 }
 ```
 
-**Response** (Main → Renderer):
-```typescript
+### Goals
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `goals.list()` | — | `Goal[]` | List all goals |
+| `goals.create(goal)` | `{ title, description? }` | `Goal` | Create a goal |
+| `goals.update(id, updates)` | `id: string`, `updates: object` | `Goal \| null` | Update goal fields |
+| `goals.delete(id)` | `id: string` | `boolean` | Delete a goal |
+
+**Goal object shape:**
+```js
 {
-  pid: number;             // Process ID
-  sessionId: string;       // Internal session identifier
+  id: string,          // "goal-1", "goal-2", ...
+  title: string,
+  description: string,
+  status: 'active' | 'completed' | 'archived',
+  taskIds: string[],
+  createdAt: number
 }
 ```
 
-#### `agent:output`
+### Tasks
 
-Stream agent stdout/stderr to the renderer.
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `tasks.list()` | — | `Task[]` | List all tasks |
+| `tasks.create(task)` | `{ title, description?, goalId?, agentId? }` | `Task` | Create a task (optionally linked to a goal) |
+| `tasks.update(id, updates)` | `id: string`, `updates: object` | `Task \| null` | Update task fields |
+| `tasks.delete(id)` | `id: string` | `boolean` | Delete a task |
 
-**Payload** (Main → Renderer):
-```typescript
+**Task object shape:**
+```js
 {
-  sessionId: string;
-  stream: 'stdout' | 'stderr';
-  data: string;
-  timestamp: number;
+  id: string,          // "task-1", "task-2", ...
+  title: string,
+  description: string,
+  goalId?: string,
+  agentId?: string,
+  status: 'pending' | 'running' | 'done' | 'failed',
+  createdAt: number,
+  startedAt?: number,
+  completedAt?: number
 }
 ```
 
-#### `agent:status`
+### Logs
 
-Agent lifecycle events.
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `logs.list(opts?)` | `{ agentId?, limit? }` | `LogEntry[]` | Fetch logs, optionally filtered by agent. Default limit: 200. |
+| `logs.append(entry)` | `{ agentId, message, level? }` | `LogEntry` | Append a log entry. Also pushes to renderer via `logs:new` event. |
+| `logs.onNew(callback)` | `(entry: LogEntry) => void` | `() => void` (unsubscribe) | Subscribe to real-time log entries. Returns an unsubscribe function. |
 
-**Payload** (Main → Renderer):
-```typescript
+**LogEntry shape:**
+```js
 {
-  sessionId: string;
-  status: 'starting' | 'running' | 'paused' | 'completed' | 'failed' | 'killed';
-  exitCode?: number;
-  error?: string;
+  id: string,          // "log-{timestamp}-{random}"
+  agentId: string,
+  message: string,
+  level?: string,
+  timestamp: number
 }
 ```
 
-#### `agent:kill`
+### Stats
 
-Terminate a running agent.
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `stats.summary()` | — | `StatsSummary` | Aggregate counts for agents and tasks |
 
-**Request** (Renderer → Main):
-```typescript
+**StatsSummary shape:**
+```js
 {
-  sessionId: string;
-  signal?: 'SIGTERM' | 'SIGKILL';  // Default: SIGTERM
+  agents: { total, running, idle, error },
+  tasks: { total, pending, running, done, failed }
 }
 ```
 
-### Task Management
+### Monitor
 
-#### `task:update`
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `monitor.health()` | — | `HealthReport` | Full application health snapshot |
 
-Update task state. Bidirectional — UI changes propagate to Paperclip, Paperclip webhooks propagate to UI.
+**HealthReport includes:** status, uptime, memory usage (RSS, heap), system info (total/free memory, load average, CPU count), IPC metrics (call count, error count, avg latency), renderer crash/unresponsive counts, and app error counts.
 
-**Payload**:
-```typescript
-{
-  taskId: string;
-  status?: 'todo' | 'in_progress' | 'in_review' | 'done' | 'blocked';
-  assigneeAgentId?: string;
-  metadata?: Record<string, unknown>;
-}
+## Agent Runtime (Main Process Module)
+
+`src/main/agent-runtime.js` exports `AgentRuntime`, a class for managing CLI agent processes. This module is available in the main process but not yet wired to IPC handlers.
+
+```js
+const { AgentRuntime, AGENT_STATUS } = require('./agent-runtime');
+
+const runtime = new AgentRuntime();
+
+// Health check
+const result = await runtime.healthCheck('/usr/local/bin/claude');
+// { ok: true } or { ok: false, error: '...' }
+
+// Spawn an agent
+const { agentId } = runtime.spawnAgent({
+  execPath: '/usr/local/bin/claude',
+  args: ['--print'],
+  cwd: '/path/to/project',
+  env: { ANTHROPIC_API_KEY: '...' },
+  label: 'claude-code'
+});
+
+// Listen for events
+runtime.on('log', ({ agentId, type, data }) => { /* stdout/stderr */ });
+runtime.on('status-change', ({ agentId, status }) => { /* SPAWNING/RUNNING/STOPPED/ERROR */ });
+runtime.on('exit', ({ agentId, code, signal }) => { /* process exited */ });
+
+// Control
+runtime.stopAgent(agentId);   // SIGTERM, then SIGKILL after 5s
+runtime.getAgent(agentId);    // current state
+runtime.listAgents();         // all agents
+runtime.getLogs(agentId);     // captured output
+runtime.removeAgent(agentId); // clean up (must be stopped first)
 ```
 
-### Governance
+## Data Store (Main Process Module)
 
-#### `governance:approve`
+`src/main/store.js` exports `Store`, a JSON file-based persistence layer. Data is saved to `~/.agentops/data.json`.
 
-Respond to an approval gate.
+```js
+const { Store } = require('./store');
+const store = new Store();
 
-**Request** (Renderer → Main):
-```typescript
-{
-  gateId: string;
-  decision: 'approve' | 'reject' | 'rollback';
-  comment?: string;
-}
+store.addAgent({ name: 'claude', execPath: '/usr/local/bin/claude' });
+store.getAgents();
+store.getAgent(id);
+store.removeAgent(id);
+
+store.addGoal({ title: 'Implement API', description: '...' });
+store.getGoals();
+store.updateGoal(id, { status: 'completed' });
+
+store.addTask({ goalId, title: 'Design schema', agentId });
+store.getTasks(goalId);
+store.updateTask(id, { status: 'done' });
 ```
 
-## Paperclip REST API
+## Paperclip REST API (Planned)
 
-AgentOpsDesktop communicates with the Paperclip control plane for goal/task CRUD and governance. See the [Paperclip API documentation](https://paperclip.dev/docs/api) for full reference.
-
-### Key Endpoints Used
+AgentOpsDesktop will communicate with the Paperclip control plane for goal/task CRUD and governance. Key endpoints:
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
@@ -116,37 +185,12 @@ AgentOpsDesktop communicates with the Paperclip control plane for goal/task CRUD
 | `PATCH` | `/api/goals/{id}` | Update goal status |
 | `GET` | `/api/projects/{id}/issues` | List project issues/tasks |
 | `POST` | `/api/issues` | Create an issue |
-| `PATCH` | `/api/issues/{id}` | Update issue (status, assignee, etc.) |
+| `PATCH` | `/api/issues/{id}` | Update issue |
 | `POST` | `/api/issues/{id}/checkout` | Claim an issue |
 | `POST` | `/api/issues/{id}/comments` | Post a comment |
-| `POST` | `/api/issues/{id}/interactions` | Create interaction (approval, question) |
 
-### Authentication
+Authentication: bearer token via `Authorization` header, stored in OS keychain.
 
-All Paperclip API requests require a bearer token passed via the `Authorization` header. The token is configured in the application settings and stored in the OS keychain.
+## Target IPC Protocol (Planned)
 
-## Agent CLI Protocols
-
-Each supported agent has a runtime adapter that handles:
-
-| Agent | Communication | Notes |
-|-------|--------------|-------|
-| Claude Code | `stdin`/`stdout` JSON lines | Supports tool use, streaming |
-| Codex | `stdin`/`stdout` | OpenAI Codex CLI |
-| Gemini CLI | `stdin`/`stdout` | Google Gemini CLI |
-| OpenCode | `stdin`/`stdout` | Open-source coding agent |
-| Cursor | Background process | IDE-integrated agent |
-| Custom | Configurable | User-defined command + args |
-
-### Adapter Interface
-
-```typescript
-interface AgentAdapter {
-  type: string;
-  spawn(config: SpawnConfig): Promise<AgentSession>;
-  send(session: AgentSession, input: string): Promise<void>;
-  kill(session: AgentSession, signal?: string): Promise<void>;
-  onOutput(session: AgentSession, handler: (data: OutputChunk) => void): void;
-  onStatus(session: AgentSession, handler: (status: AgentStatus) => void): void;
-}
-```
+The [Architecture doc](ARCHITECTURE.md) describes the target IPC protocol with channels like `agent:spawn`, `agent:output`, `task:start`, `task:stop`, etc. These will replace the current flat handler pattern when the project moves to TypeScript and structured IPC routing.

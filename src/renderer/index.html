@@ -3,88 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; script-src 'self';">
   <title>AgentOps</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-      background: #0D1117;
-      color: #E6EDF3;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      -webkit-app-region: drag;
-      user-select: none;
-    }
-    .titlebar {
-      height: 48px;
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      -webkit-app-region: drag;
-    }
-    .titlebar h1 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #8B949E;
-      margin-left: 76px;
-    }
-    .content {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      -webkit-app-region: no-drag;
-    }
-    .welcome {
-      text-align: center;
-    }
-    .welcome h2 {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .welcome p {
-      font-size: 14px;
-      color: #8B949E;
-    }
-    .status-bar {
-      height: 28px;
-      background: #161B22;
-      border-top: 1px solid #21262D;
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      font-size: 11px;
-      color: #8B949E;
-    }
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #3FB950;
-      margin-right: 6px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/pages.css">
 </head>
 <body>
-  <div class="titlebar">
-    <h1>AgentOps</h1>
+  <div class="app" id="app">
+
+    <!-- ── Header ── -->
+    <header class="header titlebar-drag">
+      <div class="header__left">
+        <button class="header__toggle" id="sidebar-toggle" title="Toggle sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span class="header__title">AgentOps</span>
+      </div>
+      <div class="header__right">
+        <button class="btn btn--ghost btn--sm btn--icon" title="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <button class="btn btn--ghost btn--sm btn--icon" title="Settings" data-page="settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Overview</div>
+        <a class="sidebar__item sidebar__item--active" data-page="dashboard">
+          <span class="sidebar__item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </div>
+
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Operations</div>
+        <a class="sidebar__item" data-page="agents">
+          <span class="sidebar__item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>
+          </span>
+          <span class="sidebar__label">Agents</span>
+        </a>
+        <a class="sidebar__item" data-page="tasks">
+          <span class="sidebar__item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </span>
+          <span class="sidebar__label">Tasks</span>
+        </a>
+      </div>
+
+      <div class="sidebar__spacer"></div>
+
+      <div class="sidebar__footer">
+        <a class="sidebar__item" data-page="settings">
+          <span class="sidebar__item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <span class="sidebar__label">Settings</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- ── Main Content ── -->
+    <main class="main" id="main-content">
+      <!-- Pages rendered by JS -->
+    </main>
+
+    <!-- ── Footer / Status Bar ── -->
+    <footer class="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running" id="footer-status-dot"></span>
+          <span id="footer-status-text">System ready</span>
+        </div>
+      </div>
+      <div class="footer__right">
+        <span id="footer-agent-count">0 agents</span>
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+
   </div>
-  <div class="content">
-    <div class="welcome">
-      <h2>AgentOps Desktop</h2>
-      <p>Orchestrate AI agents from a single control plane.</p>
-    </div>
-  </div>
-  <div class="status-bar">
-    <span class="status-dot"></span>
-    <span>Ready</span>
-    <span style="margin-left: auto;" id="platform"></span>
-  </div>
-  <script>
-    document.getElementById('platform').textContent = window.agentOps?.platform || '';
-  </script>
+
+  <script src="app.js"></script>
 </body>
 </html>

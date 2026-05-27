@@ -6,6 +6,7 @@ pnpm-lock.yaml
 # Build output
 dist/
 build/
+!build/entitlements.mac.plist
 out/
 
 # Environment
