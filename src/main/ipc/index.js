@@ -11,7 +11,9 @@ const goalController = require('./controllers/goal.controller');
 const taskController = require('./controllers/task.controller');
 const logController = require('./controllers/log.controller');
 const statsController = require('./controllers/stats.controller');
+const settingsController = require('./controllers/settings.controller');
 const monitor = require('../monitor');
+const updater = require('../updater');
 
 /** Shared token manager instance */
 const tokenManager = new TokenManager();
@@ -64,10 +66,17 @@ function bootstrapRoutes(mainWindow, repos) {
     goalController.setRepository(repos.goals);
     taskController.setRepository(repos.tasks);
     logController.setRepository(repos.taskLogs);
+    settingsController.setRepository(repos.settings);
   }
 
   // Initialize token manager
   tokenManager.init();
+
+  // Auto-create session for local desktop app if none exists
+  if (!tokenManager.hasValidSession()) {
+    tokenManager.createSession({ role: 'admin' });
+    logger.info('ipc.auto-session-created');
+  }
 
   // Create auth middleware bound to the token manager
   const authMiddleware = createAuthMiddleware(tokenManager);
@@ -140,6 +149,26 @@ function bootstrapRoutes(mainWindow, repos) {
 
   // ── Stats (protected) ──
   router.register('stats:summary', statsController.summary, { auth: true, permission: 'stats:summary' });
+
+  // ── Settings (protected) ──
+  router.register('settings:get', settingsController.get, { schema: settingsController.schemas.get, auth: true, permission: 'settings:get' });
+  router.register('settings:update', settingsController.update, { schema: settingsController.schemas.update, auth: true, permission: 'settings:update' });
+
+  // ── Updates (protected) ──
+  router.register('update:check', async () => {
+    await updater.checkForUpdates();
+    return { ok: true };
+  }, { auth: true, permission: 'update:check' });
+
+  router.register('update:download', async () => {
+    await updater.downloadUpdate();
+    return { ok: true };
+  }, { auth: true, permission: 'update:download' });
+
+  router.register('update:install', () => {
+    updater.quitAndInstall();
+    return { ok: true };
+  }, { auth: true, permission: 'update:install' });
 
   // ── Docs (public) ──
   router.register('docs:api', () => {

@@ -2,9 +2,11 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const logger = require('./logger');
 const monitor = require('./monitor');
-const { getDb, closeDb, runMigrations } = require('./db/connection');
+const { getDb, closeDb } = require('./db/connection');
+const { runMigrations } = require('./db/migrations');
 const { createRepositories } = require('./repositories');
 const { bootstrapRoutes } = require('./ipc');
+const updater = require('./updater');
 
 // Initialize database and repositories
 const db = getDb();
@@ -70,6 +72,8 @@ app.whenReady().then(() => {
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
   bootstrapRoutes(mainWindow, repos);
+  updater.init(mainWindow);
+  updater.checkForUpdates();
   logger.info('ipc.bootstrapped');
 });
 
