@@ -80,7 +80,8 @@ const agentController = {
     const filter = params.status
       ? (a) => a.status === params.status
       : undefined;
-    return paginate(agentConfigs, { ...params, filter });
+    const result = paginate(agentConfigs, { ...params, filter });
+    return result.items;
   },
 
   /**

@@ -10,8 +10,11 @@ const taskController = require('./task.controller');
 
 const statsController = {
   async summary() {
-    const agentList = await agentController.list();
-    const taskList = await taskController.list();
+    // Fetch all items (high limit) for aggregation
+    const agentResult = await agentController.list(null, { limit: 10000 });
+    const taskResult = await taskController.list(null, { limit: 10000 });
+    const agentList = agentResult.items;
+    const taskList = taskResult.items;
 
     return {
       agents: {

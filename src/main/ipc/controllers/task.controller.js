@@ -24,7 +24,8 @@ const taskController = {
       if (params.goalId && t.goalId !== params.goalId) return false;
       return true;
     };
-    return paginate(tasks, { ...params, filter });
+    const result = paginate(tasks, { ...params, filter });
+    return result.items;
   },
 
   /**

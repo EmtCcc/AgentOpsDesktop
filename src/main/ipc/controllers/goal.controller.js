@@ -20,7 +20,8 @@ const goalController = {
     const filter = params.status
       ? (g) => g.status === params.status
       : undefined;
-    return paginate(goals, { ...params, filter });
+    const result = paginate(goals, { ...params, filter });
+    return result.items;
   },
 
   /**
