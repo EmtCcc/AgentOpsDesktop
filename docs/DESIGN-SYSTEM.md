@@ -1,4 +1,4 @@
-# AgentOps Desktop — Design System
+# AgentOps Desktop — Design System v2.0
 
 ## Brand Identity
 
@@ -8,47 +8,67 @@
 
 **Tagline**: *Operational control for autonomous agents.*
 
+### Logo Assets
+
+| Asset | File | Usage |
+|-------|------|-------|
+| Full logo (light) | `designs/logo.svg` | Header, onboarding |
+| Full logo (dark) | `designs/logo-dark.svg` | Dark mode header |
+| Icon mark | `designs/logo-mark.svg` | App icon, favicon |
+| Icon sprite | `designs/icons.svg` | Custom UI icons |
+
+**Clear space**: Minimum 1x the mark height on all sides.
+**Minimum size**: 120px wide (full logo), 24px (icon mark).
+
 ---
 
 ## Color Palette
 
-### Core
+### Core (Light Mode Default)
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-bg-primary` | `#0D1117` | App background, main canvas |
-| `--color-bg-secondary` | `#161B22` | Panels, cards, sidebar |
-| `--color-bg-tertiary` | `#21262D` | Elevated surfaces, modals |
-| `--color-border` | `#30363D` | Default borders, dividers |
-| `--color-border-subtle` | `#21262D` | Subtle separations |
+| `--color-bg-primary` | `#FFFFFF` | App background, main canvas |
+| `--color-bg-secondary` | `#F9FAFB` | Panels, cards, sidebar |
+| `--color-bg-tertiary` | `#F3F4F6` | Elevated surfaces, hover states |
+| `--color-bg-elevated` | `#FFFFFF` | Modals, dropdowns |
+| `--color-border` | `#E5E7EB` | Default borders, dividers |
+| `--color-border-subtle` | `#F3F4F6` | Subtle separations |
+| `--color-border-focus` | `#6366F1` | Focus rings |
 
 ### Text
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-text-primary` | `#E6EDF3` | Headings, primary content |
-| `--color-text-secondary` | `#8B949E` | Descriptions, metadata |
-| `--color-text-tertiary` | `#484F58` | Disabled, placeholder |
+| `--color-text-primary` | `#111827` | Headings, primary content |
+| `--color-text-secondary` | `#6B7280` | Descriptions, metadata |
+| `--color-text-tertiary` | `#71717A` | Disabled, placeholder |
+| `--color-text-inverse` | `#FFFFFF` | Text on primary backgrounds |
 
 ### Accent / Semantic
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-accent` | `#58A6FF` | Links, focus rings, active states |
-| `--color-accent-hover` | `#79C0FF` | Hover state for accent |
-| `--color-success` | `#3FB950` | Agent healthy, task complete |
-| `--color-warning` | `#D29922` | Agent degraded, task queued |
-| `--color-danger` | `#F85149` | Agent offline, task failed |
-| `--color-info` | `#58A6FF` | Logs, informational |
+| `--color-primary` | `#6366F1` | Links, focus rings, primary actions |
+| `--color-primary-hover` | `#4F46E5` | Hover state for primary |
+| `--color-primary-light` | `rgba(99,102,241,0.1)` | Selection highlights, badges |
+| `--color-success` | `#10B981` | Agent healthy, task complete |
+| `--color-warning` | `#F59E0B` | Agent degraded, task queued |
+| `--color-danger` | `#EF4444` | Agent offline, task failed |
+| `--color-info` | `#3B82F6` | Logs, informational |
 
 ### Agent Status Colors
 
-| Status | Hex | Semantic |
-|--------|-----|----------|
-| Running | `#3FB950` | Agent actively executing |
-| Idle | `#8B949E` | Agent waiting for work |
-| Error | `#F85149` | Agent in fault state |
-| Spawning | `#D29922` | Agent initializing |
+| Token | Hex | Semantic |
+|-------|-----|----------|
+| `--status-running` | `#10B981` | Agent actively executing |
+| `--status-idle` | `#6B7280` | Agent waiting for work |
+| `--status-error` | `#EF4444` | Agent in fault state |
+| `--status-spawning` | `#F59E0B` | Agent initializing |
+
+### Dark Mode
+
+All tokens have dark mode variants via `@media (prefers-color-scheme: dark)`. See `src/renderer/styles/tokens.css` for the full mapping.
 
 ---
 
@@ -56,51 +76,51 @@
 
 ### Font Stack
 
-```css
---font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
---font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-```
-
-**Primary font**: Inter — used for all UI text.
-**Mono font**: JetBrains Mono — used for logs, code, terminal output, agent IDs.
+| Role | Font | Fallback |
+|------|------|----------|
+| UI Text | Inter | -apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif |
+| Code/Paths | JetBrains Mono | Fira Code, Cascadia Code, monospace |
 
 ### Type Scale
 
-| Token | Size | Weight | Line Height | Usage |
-|-------|------|--------|-------------|-------|
-| `--text-xs` | 11px | 400 | 16px | Timestamps, badges |
-| `--text-sm` | 13px | 400 | 20px | Secondary text, metadata |
-| `--text-base` | 14px | 400 | 22px | Body text, list items |
-| `--text-lg` | 16px | 600 | 24px | Card titles, section headers |
-| `--text-xl` | 20px | 600 | 28px | Page titles |
-| `--text-2xl` | 24px | 700 | 32px | App title, hero text |
+| Token | Size | Line Height | Usage |
+|-------|------|-------------|-------|
+| `--text-xs` | 12px | 16px | Timestamps, badges, metadata |
+| `--text-sm` | 14px | 20px | Body, descriptions, navigation |
+| `--text-base` | 16px | 22px | Default body text |
+| `--text-lg` | 18px | 24px | Section titles, card headers |
+| `--text-xl` | 20px | 28px | Card titles |
+| `--text-2xl` | 24px | 32px | Page titles |
+| `--text-3xl` | 30px | 36px | Hero headings |
 
-### Mono Scale (for logs / terminal)
+### Font Weights
 
-| Token | Size | Usage |
-|-------|------|-------|
-| `--text-mono-sm` | 12px | Inline code, agent IDs |
-| `--text-mono-base` | 13px | Log output, terminal |
-| `--text-mono-lg` | 15px | Code blocks, highlighted output |
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--font-normal` | 400 | Body text |
+| `--font-medium` | 500 | Labels, navigation items |
+| `--font-semibold` | 600 | Headings, emphasis |
+| `--font-bold` | 700 | Hero text, brand |
 
 ---
 
-## Spacing Scale
+## Spacing
 
 Base unit: **4px**
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--space-0` | 0 | Reset |
-| `--space-1` | 4px | Tight gaps, icon padding |
-| `--space-2` | 8px | Compact element spacing |
-| `--space-3` | 12px | Default inner padding |
-| `--space-4` | 16px | Card padding, list item gaps |
+| `--space-1` | 4px | Tight gaps, inline elements |
+| `--space-2` | 8px | Small gaps, compact layouts |
+| `--space-3` | 12px | Default internal padding |
+| `--space-4` | 16px | Standard gaps, card padding |
 | `--space-5` | 20px | Section gaps |
-| `--space-6` | 24px | Panel padding |
-| `--space-8` | 32px | Major section separation |
-| `--space-10` | 40px | Page margins |
-| `--space-12` | 48px | Top-level layout gaps |
+| `--space-6` | 24px | Panel padding, large gaps |
+| `--space-8` | 32px | Page margins, major sections |
+| `--space-10` | 40px | Hero spacing |
+| `--space-12` | 48px | Page-level spacing |
+| `--space-16` | 64px | Major layout gaps |
 
 ---
 
@@ -108,10 +128,12 @@ Base unit: **4px**
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--radius-sm` | 4px | Badges, tags, small buttons |
-| `--radius-md` | 6px | Cards, inputs, standard elements |
-| `--radius-lg` | 8px | Modals, panels |
-| `--radius-full` | 9999px | Avatars, status dots |
+| `--radius-sm` | 4px | Inline code, small badges |
+| `--radius-md` | 6px | Inputs, buttons, small cards |
+| `--radius-lg` | 8px | Cards, panels, modals |
+| `--radius-xl` | 12px | Large cards, hero sections |
+| `--radius-2xl` | 16px | Feature cards |
+| `--radius-full` | 9999px | Avatars, status dots, pills |
 
 ---
 
@@ -119,9 +141,68 @@ Base unit: **4px**
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.3)` | Subtle lift, tooltips |
-| `--shadow-md` | `0 4px 8px rgba(0,0,0,0.4)` | Dropdowns, popovers |
-| `--shadow-lg` | `0 8px 24px rgba(0,0,0,0.5)` | Modals, dialogs |
+| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift, cards |
+| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.07)` | Dropdowns, popovers |
+| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dialogs |
+| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.12)` | Toast notifications |
+| `--shadow-inner` | `inset 0 2px 4px rgba(0,0,0,0.05)` | Inset elements |
+
+---
+
+## Motion
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--motion-fast` | 150ms ease | Hover states, focus rings |
+| `--motion-normal` | 200ms ease | Transitions, toggles |
+| `--motion-slow` | 300ms ease | Page transitions, modals |
+| `--motion-spring` | 300ms cubic-bezier(0.34,1.56,0.64,1) | Bouncy entrances |
+
+**Reduced motion**: All animations respect `prefers-reduced-motion: reduce`.
+
+---
+
+## Layout
+
+### App Shell
+
+```
+┌─────────────────────────────────────────────┐
+│                  Header (64px)               │
+├──────────┬──────────────────────────────────┤
+│          │                                  │
+│ Sidebar  │          Content                 │
+│ (240px)  │                                  │
+│          │                                  │
+├──────────┴──────────────────────────────────┤
+│               Footer (32px)                 │
+└─────────────────────────────────────────────┘
+```
+
+### Dimensions
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--sidebar-width` | 240px | Default sidebar width |
+| `--sidebar-collapsed` | 64px | Collapsed sidebar |
+| `--header-height` | 64px | Header bar |
+| `--footer-height` | 32px | Status bar |
+| `--content-min-width` | 320px | Minimum content area |
+| `--max-content-width` | 1280px | Max content width |
+
+### Responsive
+
+| Breakpoint | Width | Sidebar | Grid |
+|------------|-------|---------|------|
+| Desktop | >1024px | Full (240px) | 4 columns |
+| Tablet | 960-1024px | Collapsed (64px) | 2 columns |
+| Mobile | <960px | Hidden | 1 column |
+
+### Grid
+
+- 12-column grid with 24px gutter
+- Max content width: 1280px
+- CSS Grid for dashboard layouts
 
 ---
 
@@ -131,26 +212,28 @@ Base unit: **4px**
 
 | Variant | Background | Text | Border | Usage |
 |---------|-----------|------|--------|-------|
-| Primary | `--color-accent` | `#FFFFFF` | none | Main CTAs |
-| Secondary | transparent | `--color-text-primary` | `--color-border` | Secondary actions |
-| Danger | `--color-danger` | `#FFFFFF` | none | Destructive actions |
-| Ghost | transparent | `--color-text-secondary` | none | Tertiary, toolbar |
+| Primary | `--color-primary` | White | None | Main CTAs |
+| Secondary | `--color-bg-tertiary` | `--color-text-primary` | `--color-border` | Secondary actions |
+| Ghost | Transparent | `--color-text-secondary` | None | Tertiary, toolbar |
+| Danger | `--color-danger` | White | None | Destructive actions |
 
-**Sizes**: sm (28px h), md (32px h), lg (36px h)
+**Sizes**: `btn--sm` (28px), default (36px), `btn--lg` (44px)
+
+**States**: Default → Hover (darken 5%) → Active (darken 10%) → Disabled (50% opacity)
 
 ### Inputs
 
-- Background: `--color-bg-primary`
-- Border: `--color-border`
-- Focus ring: `--color-accent` 2px outline
+- Height: 36px
+- Border: 1px solid `--color-border`
+- Focus: border `--color-border-focus`, ring `0 0 0 3px --color-primary-light`
 - Placeholder: `--color-text-tertiary`
-- Height: 32px (standard), 28px (compact)
 
 ### Cards / Panels
 
-- Background: `--color-bg-secondary`
+- Background: `--color-bg-elevated`
 - Border: 1px solid `--color-border`
-- Border radius: `--radius-md`
+- Radius: `--radius-lg`
+- Shadow: `--shadow-sm`
 - Padding: `--space-4`
 
 ### Status Indicators
@@ -161,131 +244,56 @@ Base unit: **4px**
 ### Scrollbars
 
 - Track: `--color-bg-primary`
-- Thumb: `--color-border`, rounded, 6px wide
+- Thumb: `--color-border`, rounded, 8px wide
 - Hover thumb: `--color-text-tertiary`
 
 ---
 
-## Layout
+## Z-Index Scale
 
-### App Shell
-
-```
-┌──────────────────────────────────────────────┐
-│  Header (48px)                               │
-├────────┬─────────────────────────────────────┤
-│        │                                     │
-│ Side   │  Main Content Area                  │
-│ bar    │  (scrollable)                       │
-│ 240px  │                                     │
-│        │                                     │
-├────────┴─────────────────────────────────────┤
-│  Footer / Status Bar (28px)                  │
-└──────────────────────────────────────────────┘
-```
-
-- Sidebar: collapsible, 240px default, 48px collapsed
-- Content: fluid, min-width 320px
-- Header: fixed, 48px, contains navigation and global actions
-- Footer: fixed, 28px, contains status and connection info
-
-### Grid
-
-- Use CSS Grid for dashboard layouts
-- Default column gap: `--space-4` (16px)
-- Default row gap: `--space-4` (16px)
-- Breakpoints not needed (desktop-only), but support window resize down to 960px wide
-
----
-
-## Motion
-
-| Token | Duration | Easing | Usage |
-|-------|----------|--------|-------|
-| `--motion-fast` | 100ms | `ease-out` | Hover states, toggles |
-| `--motion-normal` | 200ms | `ease-in-out` | Panel transitions, expansions |
-| `--motion-slow` | 300ms | `ease-in-out` | Modal open/close, page transitions |
-
-- Prefer instant feedback for clicks (< 50ms)
-- Use `prefers-reduced-motion` media query to disable animations
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--z-base` | 0 | Default stacking |
+| `--z-dropdown` | 100 | Dropdowns, popovers |
+| `--z-sticky` | 200 | Header, sidebar |
+| `--z-modal` | 300 | Modal overlays |
+| `--z-toast` | 400 | Toast notifications |
+| `--z-tooltip` | 500 | Tooltips |
 
 ---
 
 ## Iconography
 
-- **Library**: Lucide Icons (consistent stroke-based icon set)
-- **Size**: 16px (inline), 20px (toolbar), 24px (navigation)
-- **Stroke width**: 1.5px (default), 2px (emphasis)
+- **Library**: Lucide Icons (stroke-based, consistent)
+- **Sizes**: 14px (inline), 16px (toolbar), 18px (navigation), 20px (sidebar)
+- **Stroke width**: 2px
 - **Color**: `currentColor` — inherits from text color
-
----
-
-## Responsive Breakpoints
-
-Desktop-only application. Window resize triggers layout adjustments:
-
-| Name | Width | Behavior |
-|------|-------|----------|
-| `compact` | < 960px | Sidebar collapses to icon rail (48px), data tables switch to card view |
-| `default` | 960–1279px | Standard layout, sidebar 240px |
-| `wide` | ≥ 1280px | Full layout, optional secondary panels |
-
-Modal behavior: modals become full-screen below 640px width.
+- **Custom icons**: `designs/icons.svg` sprite sheet
 
 ---
 
 ## Accessibility
 
 - Minimum contrast ratio: 4.5:1 for text, 3:1 for large text and UI components
-- All interactive elements must have visible focus indicators (`--color-accent` ring)
+- All interactive elements have visible focus indicators (`outline: 2px solid --color-border-focus`)
 - Support keyboard navigation throughout
 - Status conveyed through color AND iconography (never color alone)
 - `prefers-reduced-motion` respected
-- `prefers-color-scheme: light` support planned (dark is default)
+- `aria-live="polite"` for real-time content updates
+- Semantic HTML with ARIA labels for dynamic regions
 
 ---
 
-## CSS Custom Properties Summary
+## Design Token Files
 
-All tokens are exposed as CSS custom properties on `:root`. Example:
-
-```css
-:root {
-  /* Colors */
-  --color-bg-primary: #0D1117;
-  --color-bg-secondary: #161B22;
-  --color-bg-tertiary: #21262D;
-  --color-border: #30363D;
-  --color-text-primary: #E6EDF3;
-  --color-text-secondary: #8B949E;
-  --color-accent: #58A6FF;
-  --color-success: #3FB950;
-  --color-warning: #D29922;
-  --color-danger: #F85149;
-
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-
-  /* Motion */
-  --motion-fast: 100ms ease-out;
-  --motion-normal: 200ms ease-in-out;
-  --motion-slow: 300ms ease-in-out;
-}
-```
+| File | Format | Purpose |
+|------|--------|---------|
+| `src/renderer/styles/tokens.css` | CSS Custom Properties | Runtime tokens |
+| `src/renderer/styles/tokens.json` | JSON | Tooling, code generation |
+| `designs/logo.svg` | SVG | Brand asset (light) |
+| `designs/logo-dark.svg` | SVG | Brand asset (dark) |
+| `designs/logo-mark.svg` | SVG | App icon basis |
+| `designs/icons.svg` | SVG Sprite | Custom icon system |
 
 ---
 
@@ -293,19 +301,28 @@ All tokens are exposed as CSS custom properties on `:root`. Example:
 
 ### For Engineers
 
-1. **Design Tokens** — Create `src/renderer/styles/tokens.css` with all CSS custom properties from this document
-2. **Base Styles** — Create `src/renderer/styles/base.css` with reset, typography, and global styles
-3. **Component Library** — Scaffold components in `src/renderer/components/` following the patterns defined above
-4. **Dark Mode** — Default theme is dark; light mode support is planned but not required for v1
+1. **Design Tokens** — All CSS custom properties are in `src/renderer/styles/tokens.css`
+2. **Base Styles** — Reset, typography, and globals in `src/renderer/styles/base.css`
+3. **Layout** — App shell in `src/renderer/styles/layout.css`
+4. **Components** — Component styles in `src/renderer/styles/components.css`
+5. **Pages** — Page-specific styles in `src/renderer/styles/pages.css`
 
 ### File Structure
 
 ```
 src/renderer/styles/
-├── tokens.css      # All CSS custom properties
+├── tokens.css      # All CSS custom properties (light + dark)
 ├── base.css        # Reset, typography, global styles
-├── components/     # Component-specific styles
-└── utilities/      # Helper classes (spacing, text, etc.)
+├── layout.css      # App shell, grid, responsive
+├── components.css  # Buttons, cards, inputs, etc.
+└── pages.css       # Page-specific styles
+
+designs/
+├── README.md       # Asset index
+├── logo.svg        # Full logo (light)
+├── logo-dark.svg   # Full logo (dark)
+├── logo-mark.svg   # Icon mark
+└── icons.svg       # SVG sprite sheet
 ```
 
 ---
