@@ -101,5 +101,5 @@ The certificate isn't properly imported into the keychain. Verify:
 ## References
 
 - [Apple Code Signing Guide](https://developer.apple.com/support/code-signing/)
-- [electron-builder Code Signing](https://www.electron.build/code-signing)
+- [electron-builder Code Signing](https://www.electron.build/docs/features/code-signing/)
 - [Apple Notarization](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
