@@ -1,0 +1,75 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            build_cmd: npm run build
+            artifact_name: AgentOps-mac
+          - os: ubuntu-latest
+            build_cmd: npm run build -- --linux
+            artifact_name: AgentOps-linux
+          - os: windows-latest
+            build_cmd: npm run build -- --win
+            artifact_name: AgentOps-win
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - name: Build and Publish
+        run: ${{ matrix.build_cmd }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Apple notarization (only for macOS)
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release/
+          retention-days: 7
+
+  smoke-test:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Wait for release to be available
+        run: sleep 30
+
+      - name: Run deployment smoke tests
+        run: node scripts/deploy-smoke-test.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

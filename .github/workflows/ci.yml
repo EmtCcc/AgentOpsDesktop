@@ -29,6 +29,8 @@ jobs:
       - run: npm install
       - name: Run unit tests
         run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results/junit.xml
+      - name: API smoke test
+        run: npm run test:smoke:api
       - name: Test summary
         if: always()
         run: |
