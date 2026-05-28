@@ -53,6 +53,10 @@ const icons = {
   refresh: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
   search: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   activity: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  restart: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  clock: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  wifiOff: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+  alertTriangle: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
 };
 
 // ── Additional Icons ──
@@ -74,6 +78,12 @@ let sidebarCollapsed = false;
 // ── Navigation ──
 
 function navigate(page) {
+  // Cleanup dashboard subscriptions when leaving
+  if (_currentPage === 'dashboard' && page !== 'dashboard') {
+    if (_dashLogUnsub) { _dashLogUnsub(); _dashLogUnsub = null; }
+    if (_dashOrchUnsub) { _dashOrchUnsub(); _dashOrchUnsub = null; }
+    if (_dashRefreshTimer) { clearInterval(_dashRefreshTimer); _dashRefreshTimer = null; }
+  }
   _currentPage = page;
 
   // Update sidebar active state
@@ -95,6 +105,7 @@ function renderPage(page) {
     logs: renderLogs,
     settings: renderSettings,
     workflows: renderWorkflows,
+    squads: renderSquads,
   };
 
   const renderer = renderers[page];
@@ -169,155 +180,349 @@ function renderLanding(container) {
   bindNavigationLinks(container);
 }
 
-// ── Dashboard Page ──
+// ── Dashboard Page (v2) ──
+
+let _dashLogUnsub = null;
+let _dashOrchUnsub = null;
+let _dashLogPaused = false;
+let _dashRefreshTimer = null;
 
 function renderDashboard(container) {
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-header__title">Dashboard</h1>
-        <p class="page-header__desc">Agent operations overview</p>
+        <p class="page-header__desc">Real-time agent operations monitor</p>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn--ghost btn--sm" id="dash-refresh">${icons.refresh} Refresh</button>
+        <button class="btn btn--secondary btn--sm" data-navigate="logs">View all logs</button>
       </div>
     </div>
 
-    <div class="dashboard-stats" role="region" aria-label="Dashboard statistics" aria-live="polite">
-      <div class="card">
-        <div class="stat__icon stat__icon--accent">${icons.bot}</div>
-        <div class="stat">
-          <div class="stat__value" id="stat-agents">0</div>
-          <div class="stat__label">Agents</div>
-        </div>
+    <!-- Summary bar -->
+    <div class="dashboard-summary-bar" id="dash-summary" role="region" aria-label="Summary" aria-live="polite">
+      <div class="dashboard-summary-bar__item">
+        <span class="dashboard-summary-bar__dot" style="background:var(--color-primary)"></span>
+        <span class="dashboard-summary-bar__value" id="dash-total-agents">0</span> Agents
       </div>
-      <div class="card">
-        <div class="stat__icon stat__icon--success">${icons.listChecks}</div>
-        <div class="stat">
-          <div class="stat__value" id="stat-tasks">0</div>
-          <div class="stat__label">Tasks</div>
-        </div>
+      <div class="dashboard-summary-bar__item">
+        <span class="dashboard-summary-bar__dot" style="background:var(--status-running)"></span>
+        <span class="dashboard-summary-bar__value" id="dash-running-agents">0</span> Running
       </div>
-      <div class="card">
-        <div class="stat__icon stat__icon--warning">${icons.rocket}</div>
-        <div class="stat">
-          <div class="stat__value" id="stat-running">0</div>
-          <div class="stat__label">Running</div>
-        </div>
+      <div class="dashboard-summary-bar__item">
+        <span class="dashboard-summary-bar__dot" style="background:var(--status-idle)"></span>
+        <span class="dashboard-summary-bar__value" id="dash-idle-agents">0</span> Idle
       </div>
-      <div class="card">
-        <div class="stat__icon stat__icon--danger">${icons.activity}</div>
-        <div class="stat">
-          <div class="stat__value" id="stat-errors">0</div>
-          <div class="stat__label">Errors</div>
-        </div>
+      <div class="dashboard-summary-bar__item">
+        <span class="dashboard-summary-bar__dot" style="background:var(--status-error)"></span>
+        <span class="dashboard-summary-bar__value" id="dash-error-agents">0</span> Errors
+      </div>
+      <div class="dashboard-summary-bar__item">
+        <span class="dashboard-summary-bar__dot" style="background:var(--color-info)"></span>
+        <span class="dashboard-summary-bar__value" id="dash-total-tasks">0</span> Tasks
       </div>
     </div>
 
-    <div class="dashboard-grid">
-      <div class="card">
-        <div class="card__header">
-          <h3 class="card__title">Recent activity</h3>
-          <button class="btn btn--ghost btn--sm" data-navigate="logs">View all</button>
+    <div class="dashboard-v2-grid">
+      <!-- Row 1: Agent status + Task kanban -->
+      <div class="dashboard-v2-row">
+        <!-- Agent status cards -->
+        <div class="card">
+          <div class="card__header">
+            <h3 class="card__title">${icons.bot} Agent Status</h3>
+            <button class="btn btn--ghost btn--sm" data-navigate="agents">Manage</button>
+          </div>
+          <div class="card__body">
+            <div class="dashboard-agents-grid" id="dash-agents" role="list" aria-label="Agent status cards">
+              <div class="empty-state" style="padding:var(--space-6) 0;">
+                <div style="color:var(--color-text-tertiary);margin-bottom:var(--space-2);">${icons.bot}</div>
+                <div style="font-size:var(--text-sm);color:var(--color-text-tertiary);">No agents configured</div>
+                <button class="btn btn--primary btn--sm" style="margin-top:var(--space-3);" data-navigate="agents">${icons.plus} Add agent</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card__body" id="activity-feed" role="log" aria-label="Recent activity" aria-live="polite">
-          <div class="empty-state" style="padding: var(--space-8) 0;">
-            <div style="color: var(--color-text-tertiary); margin-bottom: var(--space-2);">${icons.terminal}</div>
-            <div style="font-size: var(--text-sm); color: var(--color-text-tertiary);">No recent activity</div>
+
+        <!-- Task kanban -->
+        <div class="card">
+          <div class="card__header">
+            <h3 class="card__title">${icons.listChecks} Task Progress</h3>
+            <button class="btn btn--ghost btn--sm" data-navigate="tasks">View all</button>
+          </div>
+          <div class="card__body">
+            <div class="dashboard-kanban" id="dash-kanban" role="region" aria-label="Task board">
+              <div class="dashboard-kanban__col">
+                <div class="dashboard-kanban__col-header">Pending <span class="dashboard-kanban__col-count" id="dk-pending">0</span></div>
+                <div class="dashboard-kanban__items" id="dk-col-pending"></div>
+              </div>
+              <div class="dashboard-kanban__col">
+                <div class="dashboard-kanban__col-header">Running <span class="dashboard-kanban__col-count" id="dk-running">0</span></div>
+                <div class="dashboard-kanban__items" id="dk-col-running"></div>
+              </div>
+              <div class="dashboard-kanban__col">
+                <div class="dashboard-kanban__col-header">Done <span class="dashboard-kanban__col-count" id="dk-done">0</span></div>
+                <div class="dashboard-kanban__items" id="dk-col-done"></div>
+              </div>
+              <div class="dashboard-kanban__col">
+                <div class="dashboard-kanban__col-header">Failed <span class="dashboard-kanban__col-count" id="dk-failed">0</span></div>
+                <div class="dashboard-kanban__items" id="dk-col-failed"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- Row 2: Live log stream -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">Quick actions</h3>
+          <h3 class="card__title">${icons.terminal} Live Log Stream</h3>
+          <div class="dashboard-log-stream__controls">
+            <button class="btn btn--ghost btn--sm" id="dash-log-pause">${icons.pause} Pause</button>
+            <button class="btn btn--ghost btn--sm" id="dash-log-clear">${icons.trash} Clear</button>
+          </div>
         </div>
-        <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-2);">
-          <button class="btn btn--secondary" style="justify-content: flex-start;" data-navigate="agents">
-            ${icons.plus} Add agent
-          </button>
-          <button class="btn btn--secondary" style="justify-content: flex-start;" data-navigate="tasks">
-            ${icons.plus} Create task
-          </button>
-          <button class="btn btn--secondary" style="justify-content: flex-start;" data-navigate="settings">
-            ${icons.settings} View settings
-          </button>
-        </div>
-      </div>
-
-      <div class="card" id="onboarding-card" style="display: none;">
-        <div class="card__header">
-          <h3 class="card__title">Getting started</h3>
-        </div>
-        <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
-          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
-            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">1</div>
-            <div>
-              <div style="font-weight: 500; margin-bottom: var(--space-1);">Add your first agent</div>
-              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Connect a CLI agent like Claude Code, Codex, or Gemini CLI to get started.</div>
+        <div class="card__body" style="padding:0;">
+          <div class="dashboard-log-stream" id="dash-log-stream" role="log" aria-label="Live log stream" aria-live="polite">
+            <div class="empty-state" style="padding:var(--space-8) 0;">
+              <div style="color:var(--color-text-tertiary);margin-bottom:var(--space-2);">${icons.terminal}</div>
+              <div style="font-size:var(--text-sm);color:var(--color-text-tertiary);">Waiting for agent output...</div>
             </div>
           </div>
-          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
-            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">2</div>
-            <div>
-              <div style="font-weight: 500; margin-bottom: var(--space-1);">Create a task</div>
-              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Define what you want your agent to do and assign it.</div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
-            <div style="background: var(--color-primary-light); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: var(--text-sm); font-weight: 600;">3</div>
-            <div>
-              <div style="font-weight: 500; margin-bottom: var(--space-1);">Monitor progress</div>
-              <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">Watch real-time logs and track task completion status.</div>
-            </div>
-          </div>
-          <button class="btn btn--primary" style="margin-top: var(--space-2);" data-navigate="agents">
-            ${icons.plus} Add your first agent
-          </button>
         </div>
       </div>
     </div>
   `;
 
-  loadStats();
-  loadRecentActivity();
+  loadDashAgents();
+  loadDashTasks();
+  loadDashLogs();
+  bindDashActions(container);
+  subscribeDashEvents();
   bindNavigationLinks(container);
 }
 
-async function loadStats() {
-  try {
-    const stats = await window.agentOps.stats.summary();
-    const el = (id) => document.getElementById(id);
-    if (el('stat-agents')) el('stat-agents').textContent = stats.agents.total;
-    if (el('stat-tasks')) el('stat-tasks').textContent = stats.tasks.total;
-    if (el('stat-running')) el('stat-running').textContent = stats.tasks.running;
-    if (el('stat-errors')) el('stat-errors').textContent = stats.agents.error;
-    const footerCount = el('footer-agent-count');
-    if (footerCount) footerCount.textContent = `${stats.agents.total} agent${stats.agents.total !== 1 ? 's' : ''}`;
+// ── Dashboard: Agent status cards ──
 
-    // Show onboarding card when no agents are configured
-    const onboardingCard = document.getElementById('onboarding-card');
-    if (onboardingCard) {
-      onboardingCard.style.display = stats.agents.total === 0 ? 'block' : 'none';
+async function loadDashAgents() {
+  const grid = document.getElementById('dash-agents');
+  if (!grid) return;
+  try {
+    const agents = await window.agentOps.agents.list();
+    if (!agents || agents.length === 0) return;
+
+    // Update summary bar
+    const total = agents.length;
+    const running = agents.filter((a) => a.status === 'running').length;
+    const idle = agents.filter((a) => a.status === 'idle' || a.status === 'created').length;
+    const errors = agents.filter((a) => a.status === 'error').length;
+    const el = (id) => document.getElementById(id);
+    if (el('dash-total-agents')) el('dash-total-agents').textContent = total;
+    if (el('dash-running-agents')) el('dash-running-agents').textContent = running;
+    if (el('dash-idle-agents')) el('dash-idle-agents').textContent = idle;
+    if (el('dash-error-agents')) el('dash-error-agents').textContent = errors;
+
+    // Virtual list: only render first 50, use sentinel for rest
+    const MAX_RENDER = 50;
+    const visible = agents.slice(0, MAX_RENDER);
+
+    grid.innerHTML = visible.map((a) => {
+      const statusClass = a.status === 'error' ? 'dashboard-agent-card--error' : '';
+      const statusLabel = _statusLabel(a.status);
+      const statusIcon = _statusIcon(a.status);
+      const restartBtn = a.status === 'error'
+        ? `<button class="btn btn--danger btn--sm" data-action="restart-agent" data-id="${a.id}" title="Restart agent">${icons.restart} Restart</button>`
+        : '';
+      return `
+        <div class="dashboard-agent-card ${statusClass}" role="listitem" data-agent-id="${a.id}">
+          <div class="dashboard-agent-card__header">
+            <span class="dashboard-agent-card__name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span>
+            <span class="dashboard-agent-card__status dashboard-agent-card__status--${a.status}">${statusIcon} ${statusLabel}</span>
+          </div>
+          <div class="dashboard-agent-card__type">${escapeHtml(a.type || 'custom')}</div>
+          <div class="dashboard-agent-card__actions">${restartBtn}</div>
+        </div>`;
+    }).join('');
+
+    if (agents.length > MAX_RENDER) {
+      grid.insertAdjacentHTML('beforeend',
+        `<div style="grid-column:1/-1;text-align:center;padding:var(--space-3);font-size:var(--text-xs);color:var(--color-text-tertiary);">
+          +${agents.length - MAX_RENDER} more agents — <a href="#" data-navigate="agents" style="color:var(--color-primary);">view all</a>
+        </div>`);
     }
-  } catch {
-    // IPC not available yet — expected during initial load
-  }
+
+    // Update footer count
+    const footerCount = document.getElementById('footer-agent-count');
+    if (footerCount) footerCount.textContent = `${total} agent${total !== 1 ? 's' : ''}`;
+  } catch { /* IPC not available */ }
 }
 
-async function loadRecentActivity() {
-  const feed = document.getElementById('activity-feed');
-  if (!feed) return;
+function _statusLabel(status) {
+  const map = { idle: 'Idle', running: 'Running', error: 'Error', offline: 'Offline', created: 'Created', paused: 'Paused', terminated: 'Stopped' };
+  return map[status] || status || 'Unknown';
+}
+
+function _statusIcon(status) {
+  if (status === 'running') return `<span class="status-dot status-dot--running"></span>`;
+  if (status === 'error') return icons.alertTriangle;
+  if (status === 'offline') return icons.wifiOff;
+  if (status === 'paused') return icons.pause;
+  return icons.clock;
+}
+
+// ── Dashboard: Task kanban ──
+
+async function loadDashTasks() {
   try {
-    const logs = await window.agentOps.logs.list({ limit: 10 });
-    if (!logs || logs.length === 0) return;
-    feed.innerHTML = `<div class="activity-feed">${logs.reverse().map((l) => `
-      <div class="activity-item">
-        <div class="activity-item__icon">${l.level === 'error' ? icons.activity : icons.terminal}</div>
-        <div class="activity-item__content">
-          <div class="activity-item__text">${escapeHtml(l.message || l.text || '')}</div>
-          <div class="activity-item__time">${formatTime(l.timestamp)}</div>
-        </div>
-      </div>
-    `).join('')}</div>`;
+    const tasks = await window.agentOps.tasks.list();
+    if (!tasks) return;
+
+    // Update summary
+    const el = (id) => document.getElementById(id);
+    if (el('dash-total-tasks')) el('dash-total-tasks').textContent = tasks.length;
+
+    const columns = { pending: [], running: [], done: [], failed: [] };
+    tasks.forEach((t) => {
+      const col = columns[t.status] || columns.pending;
+      col.push(t);
+    });
+
+    for (const [status, items] of Object.entries(columns)) {
+      const countEl = el(`dk-${status}`);
+      if (countEl) countEl.textContent = items.length;
+      const colEl = el(`dk-col-${status}`);
+      if (!colEl) continue;
+      if (items.length === 0) {
+        colEl.innerHTML = `<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);padding:var(--space-2);text-align:center;">None</div>`;
+      } else {
+        colEl.innerHTML = items.slice(0, 20).map((t) => `
+          <div class="dashboard-kanban__item" data-task-id="${t.id}">
+            <div class="dashboard-kanban__item-title" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>
+            <div class="dashboard-kanban__item-meta">${t.agentId ? escapeHtml(t.agentId) : 'unassigned'}</div>
+          </div>
+        `).join('');
+        if (items.length > 20) {
+          colEl.insertAdjacentHTML('beforeend',
+            `<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);padding:var(--space-2);text-align:center;">+${items.length - 20} more</div>`);
+        }
+      }
+    }
   } catch { /* IPC not available */ }
+}
+
+// ── Dashboard: Log stream ──
+
+async function loadDashLogs() {
+  const viewer = document.getElementById('dash-log-stream');
+  if (!viewer) return;
+  try {
+    const logs = await window.agentOps.logs.list({ limit: 100 });
+    if (!logs || logs.length === 0) return;
+    viewer.innerHTML = logs.map((l) => _dashLogLine(l)).join('');
+    scheduleScroll(viewer);
+  } catch { /* IPC not available */ }
+}
+
+function _dashLogLine(entry) {
+  const levelClass = entry.level === 'error' ? 'log-line--error' : entry.level === 'warn' ? 'log-line--warn' : '';
+  const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+  const agent = entry.agentId ? `<span class="log-line__tag">${escapeHtml(entry.agentId)}</span>` : '';
+  return `<div class="log-line ${levelClass}"><span class="log-line__ts">${ts}</span>${agent}<span class="log-line__msg">${escapeHtml(entry.message || entry.text || '')}</span></div>`;
+}
+
+// ── Dashboard: Real-time subscriptions ──
+
+function subscribeDashEvents() {
+  // Unsubscribe previous
+  if (_dashLogUnsub) { _dashLogUnsub(); _dashLogUnsub = null; }
+  if (_dashOrchUnsub) { _dashOrchUnsub(); _dashOrchUnsub = null; }
+  if (_dashRefreshTimer) { clearInterval(_dashRefreshTimer); _dashRefreshTimer = null; }
+
+  // Log stream subscription
+  _dashLogUnsub = window.agentOps.logs.onNew((entry) => {
+    if (_dashLogPaused) return;
+    const viewer = document.getElementById('dash-log-stream');
+    if (!viewer) return;
+    const empty = viewer.querySelector('.empty-state');
+    if (empty) empty.remove();
+    viewer.insertAdjacentHTML('beforeend', _dashLogLine(entry));
+    // Keep max 500 lines in DOM
+    while (viewer.children.length > 500) viewer.removeChild(viewer.firstChild);
+    if (viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 120) {
+      scheduleScroll(viewer);
+    }
+  });
+
+  // Orchestrator events — refresh agent/task data on changes
+  _dashOrchUnsub = window.agentOps.orchestrator.onDagUpdate((evt) => {
+    if (evt && (evt.type?.startsWith('task:') || evt.type?.startsWith('dag:'))) {
+      loadDashAgents();
+      loadDashTasks();
+    }
+  });
+
+  // Periodic refresh (10s) for agent status changes not caught by events
+  _dashRefreshTimer = setInterval(() => {
+    if (_currentPage !== 'dashboard') {
+      clearInterval(_dashRefreshTimer);
+      _dashRefreshTimer = null;
+      return;
+    }
+    loadDashAgents();
+  }, 10000);
+}
+
+// ── Dashboard: Actions ──
+
+function bindDashActions(container) {
+  container.addEventListener('click', async (e) => {
+    // Restart agent
+    const restartBtn = e.target.closest('[data-action="restart-agent"]');
+    if (restartBtn) {
+      const id = restartBtn.dataset.id;
+      restartBtn.disabled = true;
+      restartBtn.textContent = 'Restarting...';
+      try {
+        // Kill then re-spawn via health check (best effort)
+        await window.agentOps.agents.kill(id);
+        await window.agentOps.agents.healthCheck(id);
+        showToast('Agent restart initiated', 'success');
+        setTimeout(() => loadDashAgents(), 1000);
+      } catch (err) {
+        showToast(`Restart failed: ${err.message || 'Unknown error'}`);
+        restartBtn.disabled = false;
+        restartBtn.innerHTML = `${icons.restart} Restart`;
+      }
+      return;
+    }
+
+    // Pause/resume log stream
+    const pauseBtn = e.target.closest('#dash-log-pause');
+    if (pauseBtn) {
+      _dashLogPaused = !_dashLogPaused;
+      pauseBtn.innerHTML = _dashLogPaused ? `${icons.play} Resume` : `${icons.pause} Pause`;
+      const viewer = document.getElementById('dash-log-stream');
+      if (viewer) viewer.classList.toggle('dashboard-log-stream--paused', _dashLogPaused);
+      return;
+    }
+
+    // Clear log stream
+    const clearBtn = e.target.closest('#dash-log-clear');
+    if (clearBtn) {
+      const viewer = document.getElementById('dash-log-stream');
+      if (viewer) viewer.innerHTML = `<div class="empty-state" style="padding:var(--space-8) 0;"><div style="font-size:var(--text-sm);color:var(--color-text-tertiary);">Logs cleared</div></div>`;
+      return;
+    }
+
+    // Manual refresh
+    const refreshBtn = e.target.closest('#dash-refresh');
+    if (refreshBtn) {
+      loadDashAgents();
+      loadDashTasks();
+      loadDashLogs();
+      return;
+    }
+  });
 }
 
 // ── Agents Page ──
@@ -949,6 +1154,242 @@ function formatTime(ts) {
 function bindNavigationLinks(ctx) {
   ctx.querySelectorAll('[data-navigate]').forEach((el) => {
     el.addEventListener('click', () => navigate(el.dataset.navigate));
+  });
+}
+
+// ── Squads Page ──
+
+function renderSquads(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-header__title">Squads</h1>
+        <p class="page-header__desc">Group agents into squads for batch orchestration</p>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn--primary" id="btn-add-squad">
+          ${icons.plus} New squad
+        </button>
+      </div>
+    </div>
+
+    <div id="squad-list" class="squad-list" role="list" aria-label="Squad list" aria-live="polite">
+      <div class="empty-state">
+        <div class="empty-state__icon">${icons.bot}</div>
+        <div class="empty-state__title">No squads configured</div>
+        <div class="empty-state__desc">Create a squad to group agents for batch operations.</div>
+        <button class="btn btn--primary" id="btn-add-squad-empty">
+          ${icons.plus} New squad
+        </button>
+      </div>
+    </div>
+
+    <!-- Create/Edit Squad Modal -->
+    <div id="squad-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;" role="dialog" aria-modal="true" aria-labelledby="squad-modal-title">
+      <div class="card" style="width: 520px; max-width: 90vw; max-height: 85vh; overflow-y: auto;">
+        <div class="card__header">
+          <h3 class="card__title" id="squad-modal-title">New squad</h3>
+        </div>
+        <div class="card__body" style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <div>
+            <label for="squad-name" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Squad name</label>
+            <input type="text" id="squad-name" placeholder="e.g. Frontend Team" style="width:100%;">
+          </div>
+          <div>
+            <label for="squad-desc" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Description</label>
+            <textarea id="squad-desc" placeholder="What does this squad do?" style="width:100%; height:56px; resize:vertical;"></textarea>
+          </div>
+          <div>
+            <label for="squad-leader" style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Squad leader</label>
+            <select id="squad-leader" style="width:100%;">
+              <option value="">No leader</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--text-sm); color:var(--color-text-secondary); margin-bottom:var(--space-1);">Members</label>
+            <div id="squad-member-checkboxes" style="display:flex; flex-direction:column; gap:var(--space-2); max-height:160px; overflow-y:auto; border:1px solid var(--color-border); border-radius:var(--radius-md); padding:var(--space-2);">
+              <div style="font-size:var(--text-xs); color:var(--color-text-tertiary);">Loading agents...</div>
+            </div>
+          </div>
+        </div>
+        <div class="card__footer">
+          <button class="btn btn--secondary" id="squad-modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="squad-modal-save">Create squad</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  loadSquads();
+  bindSquadActions(container);
+}
+
+async function loadSquads() {
+  try {
+    const result = await window.agentOps.squads.list();
+    const squads = result?.items || result || [];
+    const list = document.getElementById('squad-list');
+    if (!list) return;
+
+    if (squads.length === 0) return;
+
+    list.innerHTML = squads.map((s) => {
+      const members = s.members || [];
+      const memberCount = members.length;
+      const statusClass = s.status === 'running' ? 'squad-card--running' : s.status === 'error' ? 'squad-card--error' : '';
+      const statusLabel = s.status === 'running' ? 'Running' : s.status === 'error' ? 'Error' : 'Idle';
+      const statusDotClass = s.status === 'running' ? 'status-dot--running' : s.status === 'error' ? 'status-dot--error' : 'status-dot--idle';
+      const leaderMember = members.find((m) => m.role === 'leader');
+      const leaderName = leaderMember ? leaderMember.agentId : 'None';
+
+      return `
+        <div class="squad-card ${statusClass}" role="listitem" data-squad-id="${s.id}">
+          <div class="squad-card__header">
+            <div class="squad-card__info">
+              <div class="squad-card__name">${escapeHtml(s.name)}</div>
+              ${s.description ? `<div class="squad-card__desc">${escapeHtml(s.description)}</div>` : ''}
+            </div>
+            <span class="status-badge status-badge--${s.status}"><span class="status-dot ${statusDotClass}"></span> ${statusLabel}</span>
+          </div>
+          <div class="squad-card__meta">
+            <span>${icons.bot} ${memberCount} member${memberCount !== 1 ? 's' : ''}</span>
+            <span>Leader: ${escapeHtml(leaderName)}</span>
+          </div>
+          <div class="squad-card__members">
+            ${members.map((m) => `
+              <span class="squad-card__member ${m.role === 'leader' ? 'squad-card__member--leader' : ''}">${escapeHtml(m.agentId)}${m.role === 'leader' ? ' *' : ''}</span>
+            `).join('')}
+          </div>
+          <div class="squad-card__actions">
+            <button class="btn btn--ghost btn--sm" data-action="squad-start" data-id="${s.id}" title="Batch start" ${s.status === 'running' ? 'disabled' : ''}>${icons.play} Start</button>
+            <button class="btn btn--ghost btn--sm" data-action="squad-stop" data-id="${s.id}" title="Batch stop" ${s.status !== 'running' ? 'disabled' : ''}>${icons.pause} Stop</button>
+            <button class="btn btn--ghost btn--sm" data-action="squad-status" data-id="${s.id}" title="Status">${icons.activity} Status</button>
+            <button class="btn btn--danger btn--sm" data-action="squad-delete" data-id="${s.id}" title="Delete squad">${icons.trash}</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch {
+    // IPC not available
+  }
+}
+
+async function _populateSquadAgentDropdowns() {
+  try {
+    const agents = await window.agentOps.agents.list();
+    const leaderSel = document.getElementById('squad-leader');
+    const memberDiv = document.getElementById('squad-member-checkboxes');
+    if (!agents || agents.length === 0) {
+      if (memberDiv) memberDiv.innerHTML = '<div style="font-size:var(--text-xs); color:var(--color-text-tertiary);">No agents available. Add agents first.</div>';
+      return;
+    }
+    if (leaderSel) {
+      agents.forEach((a) => {
+        const o = document.createElement('option');
+        o.value = a.id;
+        o.textContent = a.name;
+        leaderSel.appendChild(o);
+      });
+    }
+    if (memberDiv) {
+      memberDiv.innerHTML = agents.map((a) => `
+        <label style="display:flex; align-items:center; gap:var(--space-2); font-size:var(--text-sm); cursor:pointer;">
+          <input type="checkbox" value="${a.id}" class="squad-member-cb">
+          <span>${escapeHtml(a.name)}</span>
+          <span style="font-size:var(--text-xs); color:var(--color-text-tertiary);">${escapeHtml(a.type || 'custom')}</span>
+        </label>
+      `).join('');
+    }
+  } catch { /* IPC not available */ }
+}
+
+function bindSquadActions(container) {
+  const showModal = () => {
+    const overlay = container.querySelector('#squad-modal-overlay');
+    if (overlay) {
+      overlay.style.display = 'flex';
+      _populateSquadAgentDropdowns();
+    }
+  };
+
+  const hideModal = () => {
+    const overlay = container.querySelector('#squad-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+  };
+
+  container.addEventListener('click', async (e) => {
+    const addBtn = e.target.closest('#btn-add-squad, #btn-add-squad-empty');
+    if (addBtn) { showModal(); return; }
+
+    const cancel = e.target.closest('#squad-modal-cancel');
+    if (cancel) { hideModal(); return; }
+
+    const save = e.target.closest('#squad-modal-save');
+    if (save) {
+      const name = container.querySelector('#squad-name')?.value?.trim();
+      if (!name) return;
+      const description = container.querySelector('#squad-desc')?.value?.trim() || '';
+      const leaderId = container.querySelector('#squad-leader')?.value || null;
+      const memberCbs = container.querySelectorAll('.squad-member-cb:checked');
+      const members = Array.from(memberCbs).map((cb) => cb.value);
+      try {
+        await window.agentOps.squads.create({ name, description, leaderId, members });
+        hideModal();
+        // Reset form
+        container.querySelector('#squad-name').value = '';
+        container.querySelector('#squad-desc').value = '';
+        loadSquads();
+        showToast('Squad created', 'success');
+      } catch (err) { showToast(`Failed to create squad: ${err.message || 'Unknown error'}`); }
+      return;
+    }
+
+    const startBtn = e.target.closest('[data-action="squad-start"]');
+    if (startBtn) {
+      const id = startBtn.dataset.id;
+      try {
+        await window.agentOps.squads.batchStart(id);
+        loadSquads();
+        showToast('Squad started', 'success');
+      } catch (err) { showToast(`Start failed: ${err.message || 'Unknown error'}`); }
+      return;
+    }
+
+    const stopBtn = e.target.closest('[data-action="squad-stop"]');
+    if (stopBtn) {
+      const id = stopBtn.dataset.id;
+      try {
+        await window.agentOps.squads.batchStop(id);
+        loadSquads();
+        showToast('Squad stopped', 'success');
+      } catch (err) { showToast(`Stop failed: ${err.message || 'Unknown error'}`); }
+      return;
+    }
+
+    const statusBtn = e.target.closest('[data-action="squad-status"]');
+    if (statusBtn) {
+      const id = statusBtn.dataset.id;
+      try {
+        const status = await window.agentOps.squads.aggregatedStatus(id);
+        const agentLines = (status.agents || []).map((a) => `${a.name}: ${a.status}`).join(', ');
+        showToast(`Squad "${status.squadName}" — ${status.status} | ${agentLines}`);
+      } catch (err) { showToast(`Status failed: ${err.message || 'Unknown error'}`); }
+      return;
+    }
+
+    const deleteBtn = e.target.closest('[data-action="squad-delete"]');
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      const card = deleteBtn.closest('.squad-card');
+      const squadName = card?.querySelector('.squad-card__name')?.textContent || 'this squad';
+      if (confirm(`Delete "${squadName}"? This will remove the squad and all member associations.`)) {
+        try {
+          await window.agentOps.squads.delete(id);
+          loadSquads();
+          showToast('Squad deleted', 'success');
+        } catch (err) { showToast(`Delete failed: ${err.message || 'Unknown error'}`); }
+      }
+      return;
+    }
   });
 }
 

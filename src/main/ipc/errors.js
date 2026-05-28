@@ -34,6 +34,10 @@ class IpcError extends Error {
   static forbidden(message = 'Forbidden') {
     return new IpcError('FORBIDDEN', message, 403);
   }
+
+  static internal(message = 'Internal error') {
+    return new IpcError('INTERNAL_ERROR', message, 500);
+  }
 }
 
 module.exports = { IpcError };

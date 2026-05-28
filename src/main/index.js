@@ -9,7 +9,13 @@ const { bootstrapRoutes, tokenManager } = require('./ipc');
 const { startApiServer } = require('./api/server');
 const { AgentRuntime } = require('./agent-runtime');
 const { TaskOrchestrator } = require('./task-orchestrator');
+const { Scheduler } = require('./scheduler');
+const { CostGuard } = require('./cost-guard');
+const { AdapterRegistry } = require('./adapter-registry');
+const GenericCliAdapter = require('./adapters/generic-cli.adapter');
 const orchestratorController = require('./ipc/controllers/orchestrator.controller');
+const scheduleController = require('./ipc/controllers/schedule.controller');
+const adapterController = require('./ipc/controllers/adapter.controller');
 const updater = require('./updater');
 
 // Initialize database and repositories
@@ -19,8 +25,36 @@ const repos = createRepositories(db);
 
 // Create orchestrator runtime and orchestrator
 const orchestratorRuntime = new AgentRuntime();
-const orchestrator = new TaskOrchestrator({ repo: repos.orchestrator, runtime: orchestratorRuntime });
+const costGuard = new CostGuard(repos.costs);
+const orchestrator = new TaskOrchestrator({ repo: repos.orchestrator, runtime: orchestratorRuntime, costGuard });
 orchestratorController.setOrchestrator(orchestrator);
+
+// Create scheduler
+const scheduler = new Scheduler({ scheduleRepo: repos.schedules, taskRepo: repos.tasks });
+scheduleController.setScheduler(scheduler);
+
+// Create adapter registry and register built-in adapters
+const adapterRegistry = new AdapterRegistry();
+adapterRegistry.registerClass('generic-cli', GenericCliAdapter);
+adapterController.setRegistry(adapterRegistry);
+
+// Auto-load enabled adapters from DB on startup
+try {
+  const enabledAdapters = repos.adapters.list({ enabled: true, limit: 100 });
+  for (const cfg of enabledAdapters.items) {
+    try {
+      if (cfg.classPath) {
+        const AdapterClass = require(cfg.classPath);
+        const Cls = AdapterClass.default || AdapterClass;
+        adapterRegistry.registerClass(cfg.type, Cls);
+      }
+      adapterRegistry.load(cfg.type, cfg.config || {});
+      logger.info('adapter.auto-loaded', { type: cfg.type });
+    } catch (err) {
+      logger.error('adapter.auto-load-failed', { type: cfg.type, error: err.message });
+    }
+  }
+} catch { /* first run, table may not exist yet */ }
 
 // Install global error handlers before anything else
 monitor.installGlobalHandlers();
@@ -81,8 +115,10 @@ app.whenReady().then(async () => {
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
   bootstrapRoutes(mainWindow, repos);
-  await startApiServer({ repos, tokenManager });
+  await startApiServer({ repos, tokenManager, adapterRegistry });
   orchestrator.recoverOnStartup();
+  scheduler.recoverOnStartup();
+  scheduler.start();
   updater.init(mainWindow);
   updater.checkForUpdates();
   logger.info('ipc.bootstrapped');
@@ -98,6 +134,7 @@ app.on('activate', () => {
 
 app.on('before-quit', async () => {
   monitor.stopHealthLoop();
+  scheduler.stop();
   await orchestrator.shutdown();
   closeDb();
   logger.info('app.quit');

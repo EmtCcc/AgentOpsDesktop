@@ -252,6 +252,121 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_dag_edges_to ON dag_edges(to_task_id);
     `,
   },
+  {
+    version: 11,
+    name: 'create_budget_tables',
+    up: `
+      CREATE TABLE IF NOT EXISTS agent_budgets (
+        id              TEXT PRIMARY KEY,
+        agent_id        TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        monthly_limit   REAL NOT NULL DEFAULT 0,
+        current_spend   REAL NOT NULL DEFAULT 0,
+        currency        TEXT NOT NULL DEFAULT 'USD',
+        warn_pct        INTEGER NOT NULL DEFAULT 80,
+        pause_pct       INTEGER NOT NULL DEFAULT 90,
+        stop_pct        INTEGER NOT NULL DEFAULT 100,
+        period_start    TEXT NOT NULL,
+        period_end      TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active', 'paused', 'stopped')),
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        UNIQUE(agent_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_usage_logs (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id        TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        task_id         TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+        input_tokens    INTEGER NOT NULL DEFAULT 0,
+        output_tokens   INTEGER NOT NULL DEFAULT 0,
+        total_tokens    INTEGER NOT NULL DEFAULT 0,
+        cost_usd        REAL NOT NULL DEFAULT 0,
+        model           TEXT,
+        provider        TEXT,
+        created_at      TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_budgets_agent ON agent_budgets(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_budgets_status ON agent_budgets(status);
+      CREATE INDEX IF NOT EXISTS idx_usage_agent ON agent_usage_logs(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_usage_task ON agent_usage_logs(task_id);
+      CREATE INDEX IF NOT EXISTS idx_usage_created ON agent_usage_logs(created_at);
+    `,
+  },
+  {
+    version: 12,
+    name: 'create_squads',
+    up: `
+      CREATE TABLE IF NOT EXISTS squads (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        description TEXT,
+        leader_id   TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        status      TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'running', 'error')),
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS squad_members (
+        squad_id    TEXT NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
+        agent_id    TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        role        TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'leader')),
+        added_at    TEXT NOT NULL,
+        PRIMARY KEY (squad_id, agent_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_squads_status ON squads(status);
+      CREATE INDEX IF NOT EXISTS idx_squad_members_squad ON squad_members(squad_id);
+      CREATE INDEX IF NOT EXISTS idx_squad_members_agent ON squad_members(agent_id);
+    `,
+  },
+  {
+    version: 13,
+    name: 'create_adapter_configs',
+    up: `
+      CREATE TABLE IF NOT EXISTS adapter_configs (
+        id          TEXT PRIMARY KEY,
+        type        TEXT NOT NULL UNIQUE,
+        name        TEXT NOT NULL,
+        class_path  TEXT,
+        config_json TEXT DEFAULT '{}',
+        enabled     INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_adapter_configs_type ON adapter_configs(type);
+      CREATE INDEX IF NOT EXISTS idx_adapter_configs_enabled ON adapter_configs(enabled);
+    `,
+  },
+  {
+    version: 14,
+    name: 'create_task_handoffs',
+    up: `
+      -- Structured output storage for tasks (non-DAG)
+      ALTER TABLE tasks ADD COLUMN output TEXT;
+      ALTER TABLE tasks ADD COLUMN depends_on TEXT;
+
+      -- Handoff tracking: records when one task's output flows into another
+      CREATE TABLE IF NOT EXISTS task_handoffs (
+        id              TEXT PRIMARY KEY,
+        source_task_id  TEXT NOT NULL,
+        target_task_id  TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'delivered', 'failed')),
+        output_json     TEXT,
+        error_message   TEXT,
+        created_at      TEXT NOT NULL,
+        delivered_at    TEXT,
+        UNIQUE(source_task_id, target_task_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_handoffs_source ON task_handoffs(source_task_id);
+      CREATE INDEX IF NOT EXISTS idx_task_handoffs_target ON task_handoffs(target_task_id);
+      CREATE INDEX IF NOT EXISTS idx_task_handoffs_status ON task_handoffs(status);
+    `,
+  },
 ];
 
 module.exports = { migrations };

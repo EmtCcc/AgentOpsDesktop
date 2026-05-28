@@ -5,6 +5,10 @@ const { GoalRepository } = require('./goal.repository');
 const { TaskRepository } = require('./task.repository');
 const { TaskLogRepository } = require('./task-log.repository');
 const { OrchestratorRepository } = require('./orchestrator.repository');
+const { ScheduleRepository } = require('./schedule.repository');
+const { SquadRepository } = require('./squad.repository');
+const { CostRepository } = require('./cost.repository');
+const { AdapterRepository } = require('./adapter.repository');
 
 /**
  * Initialize all repositories with a database connection.
@@ -17,7 +21,11 @@ function createRepositories(db) {
     tasks: new TaskRepository(db),
     taskLogs: new TaskLogRepository(db),
     orchestrator: new OrchestratorRepository(db),
+    schedules: new ScheduleRepository(db),
+    squads: new SquadRepository(db),
+    costs: new CostRepository(db),
+    adapters: new AdapterRepository(db),
   };
 }
 
-module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository, OrchestratorRepository };
+module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository, OrchestratorRepository, ScheduleRepository, SquadRepository, CostRepository, AdapterRepository };

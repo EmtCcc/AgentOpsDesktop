@@ -19,6 +19,7 @@ const createBodySchema = {
   description: { type: 'string', maxLength: 5000 },
   goalId: { type: 'string' },
   assigneeAgentId: { type: 'string' },
+  dependsOn: { type: 'object' },
 };
 
 const updateBodySchema = {
@@ -27,6 +28,8 @@ const updateBodySchema = {
   status: { type: 'string', enum: ['pending', 'assigned', 'running', 'done', 'failed', 'blocked'] },
   goalId: { type: 'string' },
   assigneeAgentId: { type: 'string' },
+  output: { type: 'object' },
+  dependsOn: { type: 'object' },
 };
 
 /**
@@ -86,6 +89,29 @@ tasks.delete('/:id', async (c) => {
   const deleted = repo.delete(c.req.param('id'));
   if (!deleted) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Task not found' } }, 404);
   return c.json({ ok: true, data: { deleted: true, id: c.req.param('id') } });
+});
+
+/**
+ * GET /tasks/:id/upstream — Get upstream task outputs for handoff context.
+ */
+tasks.get('/:id/upstream', async (c) => {
+  const repo = c.get('repos').tasks;
+  const task = repo.getById(c.req.param('id'));
+  if (!task) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Task not found' } }, 404);
+  const upstream = repo.getUpstreamOutputs(c.req.param('id'));
+  return c.json({ ok: true, data: upstream });
+});
+
+/**
+ * GET /tasks/:id/handoffs — List handoffs involving this task.
+ */
+tasks.get('/:id/handoffs', async (c) => {
+  const repo = c.get('repos').tasks;
+  const task = repo.getById(c.req.param('id'));
+  if (!task) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Task not found' } }, 404);
+  const outgoing = repo.listHandoffsBySource(c.req.param('id'));
+  const incoming = repo.listHandoffsByTarget(c.req.param('id'));
+  return c.json({ ok: true, data: { outgoing, incoming } });
 });
 
 module.exports = tasks;

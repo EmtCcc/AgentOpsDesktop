@@ -8,12 +8,18 @@
 const agentController = require('./agent.controller');
 const taskController = require('./task.controller');
 
+let costRepo = null;
+
 const statsController = {
+  setCostRepository(repo) {
+    costRepo = repo;
+  },
+
   async summary() {
     const { items: agentList } = await agentController.list(null, { limit: 10000 });
     const { items: taskList } = await taskController.list(null, { limit: 10000 });
 
-    return {
+    const result = {
       agents: {
         total: agentList.length,
         running: agentList.filter((a) => a.status === 'running').length,
@@ -31,6 +37,21 @@ const statsController = {
         blocked: taskList.filter((t) => t.status === 'blocked').length,
       },
     };
+
+    if (costRepo) {
+      try {
+        const totalSpend = costRepo.getTotalSpend();
+        const budgets = costRepo.listBudgets();
+        const overBudget = budgets.filter((b) => b.status === 'paused' || b.status === 'stopped');
+        result.costs = {
+          totalSpendThisMonth: totalSpend,
+          budgetCount: budgets.length,
+          overBudgetCount: overBudget.length,
+        };
+      } catch { /* costs table may not exist yet */ }
+    }
+
+    return result;
   },
 };
 

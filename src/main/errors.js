@@ -23,6 +23,10 @@ class IpcError extends Error {
   static conflict(message) {
     return new IpcError(message, 'CONFLICT');
   }
+
+  static internal(message) {
+    return new IpcError(message, 'INTERNAL_ERROR');
+  }
 }
 
 module.exports = { IpcError };

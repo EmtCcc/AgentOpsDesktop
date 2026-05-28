@@ -15,6 +15,10 @@ const tasks = require('./routes/tasks');
 const logs = require('./routes/logs');
 const stats = require('./routes/stats');
 const settingsRoutes = require('./routes/settings');
+const schedules = require('./routes/schedules');
+const squads = require('./routes/squads');
+const costRoutes = require('./routes/cost');
+const adapterRoutes = require('./routes/adapters');
 const { createAuthRoutes } = require('./routes/auth');
 const { createAuthMiddleware } = require('./middleware/auth');
 const { ValidationError } = require('./middleware/validate');
@@ -27,7 +31,7 @@ const { ValidationError } = require('./middleware/validate');
  * @param {import('../ipc/middleware/token-manager').TokenManager} opts.tokenManager
  * @returns {Hono}
  */
-function createApp({ repos, tokenManager }) {
+function createApp({ repos, tokenManager, adapterRegistry }) {
   const app = new Hono();
 
   // ── Global middleware ──
@@ -37,6 +41,7 @@ function createApp({ repos, tokenManager }) {
   // ── Inject repos into context ──
   app.use('*', async (c, next) => {
     c.set('repos', repos);
+    c.set('adapterRegistry', adapterRegistry);
     await next();
   });
 
@@ -86,6 +91,10 @@ function createApp({ repos, tokenManager }) {
   app.route('/api/logs', logs);
   app.route('/api/stats', stats);
   app.route('/api/settings', settingsRoutes);
+  app.route('/api/schedules', schedules);
+  app.route('/api/squads', squads);
+  app.route('/api/cost', costRoutes);
+  app.route('/api/adapters', adapterRoutes);
 
   // ── Error handler ──
   app.onError((err, c) => {

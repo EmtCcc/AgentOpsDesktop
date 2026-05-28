@@ -179,6 +179,7 @@ taskController.schemas = {
     description: { type: 'string', maxLength: 5000 },
     goalId: { type: 'string' },
     assigneeAgentId: { type: 'string' },
+    dependsOn: { type: 'object' },
   },
   update: {
     id: { type: 'string', required: true },
@@ -187,7 +188,7 @@ taskController.schemas = {
       required: true,
       validate: (v) => {
         if (!v || typeof v !== 'object') return 'updates must be an object';
-        const allowed = ['title', 'description', 'status', 'goalId', 'assigneeAgentId'];
+        const allowed = ['title', 'description', 'status', 'goalId', 'assigneeAgentId', 'output', 'dependsOn'];
         const keys = Object.keys(v);
         if (keys.length === 0) return 'updates must not be empty';
         const invalid = keys.filter((k) => !allowed.includes(k));

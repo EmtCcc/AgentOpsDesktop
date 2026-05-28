@@ -141,6 +141,32 @@ contextBridge.exposeInMainWorld('agentOps', {
     },
   },
 
+  adapters: {
+    list: (params) => _invoke('adapters:list', params),
+    get: (id) => _invoke('adapters:get', { id }),
+    create: (adapter) => _invoke('adapters:create', adapter),
+    update: (id, updates) => _invoke('adapters:update', { id, updates }),
+    delete: (id) => _invoke('adapters:delete', { id }),
+    load: (id) => _invoke('adapters:load', { id }),
+    unload: (id) => _invoke('adapters:unload', { id }),
+    listLoaded: () => _invoke('adapters:listLoaded'),
+    healthCheck: (id) => _invoke('adapters:healthCheck', { id }),
+  },
+
+  squads: {
+    list: (params) => _invoke('squads:list', params),
+    get: (id) => _invoke('squads:get', { id }),
+    create: (squad) => _invoke('squads:create', squad),
+    update: (id, updates) => _invoke('squads:update', { id, updates }),
+    delete: (id) => _invoke('squads:delete', { id }),
+    addMember: (squadId, agentId, role) => _invoke('squads:addMember', { squadId, agentId, role }),
+    removeMember: (squadId, agentId) => _invoke('squads:removeMember', { squadId, agentId }),
+    listMembers: (squadId) => _invoke('squads:listMembers', { squadId }),
+    batchStart: (squadId) => _invoke('squads:batchStart', { squadId }),
+    batchStop: (squadId) => _invoke('squads:batchStop', { squadId }),
+    aggregatedStatus: (squadId) => _invoke('squads:aggregatedStatus', { squadId }),
+  },
+
   docs: {
     openApi: () => ipcRenderer.invoke('docs:api'),
   },

@@ -13,8 +13,8 @@ const logger = require('../logger');
  * @param {number} [opts.port=3967] — Port to listen on
  * @returns {Promise<{ server: import('http').Server, port: number }>}
  */
-async function startApiServer({ repos, tokenManager, port = 3967 }) {
-  const app = createApp({ repos, tokenManager });
+async function startApiServer({ repos, tokenManager, adapterRegistry, port = 3967 }) {
+  const app = createApp({ repos, tokenManager, adapterRegistry });
 
   const server = serve({
     fetch: app.fetch,

@@ -776,3 +776,335 @@
   padding: var(--space-6);
   border-top: 1px solid var(--color-border);
 }
+
+/* ── Dashboard v2: Agent Status Cards ── */
+
+.dashboard-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  max-height: 420px;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.dashboard-agent-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: all var(--motion-fast);
+  position: relative;
+}
+
+.dashboard-agent-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-agent-card--error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
+}
+
+.dashboard-agent-card--error:hover {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 2px var(--color-danger-light);
+}
+
+.dashboard-agent-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-agent-card__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.dashboard-agent-card__type {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.dashboard-agent-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-agent-card__status--idle { color: var(--status-idle); }
+.dashboard-agent-card__status--running { color: var(--status-running); }
+.dashboard-agent-card__status--error { color: var(--status-error); }
+.dashboard-agent-card__status--offline { color: var(--color-text-tertiary); }
+
+.dashboard-agent-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+/* ── Dashboard v2: Task Kanban Mini-Board ── */
+
+.dashboard-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.dashboard-kanban__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dashboard-kanban__col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-kanban__col-count {
+  background: var(--color-bg-tertiary);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.dashboard-kanban__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.dashboard-kanban__item {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  line-height: var(--leading-normal);
+  transition: all var(--motion-fast);
+  cursor: pointer;
+}
+
+.dashboard-kanban__item:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-kanban__item-title {
+  font-weight: var(--font-medium);
+  margin-bottom: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-kanban__item-meta {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── Dashboard v2: Log Stream ── */
+
+.dashboard-log-stream {
+  height: 320px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  padding: var(--space-2) 0;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.dashboard-log-stream__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dashboard-log-stream--paused {
+  opacity: 0.6;
+}
+
+/* ── Dashboard v2: Summary Bar ── */
+
+.dashboard-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-summary-bar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.dashboard-summary-bar__value {
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.dashboard-summary-bar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+/* ── Dashboard v2: Layout ── */
+
+.dashboard-v2-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.dashboard-v2-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-v2-row {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-kanban {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Squads Page ── */
+
+.squad-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.squad-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: border-color var(--motion-normal);
+}
+
+.squad-card:hover {
+  border-color: var(--color-primary);
+}
+
+.squad-card--running {
+  border-left: 3px solid var(--status-running);
+}
+
+.squad-card--error {
+  border-left: 3px solid var(--status-error);
+}
+
+.squad-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.squad-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.squad-card__name {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.squad-card__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.squad-card__meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.squad-card__meta span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.squad-card__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.squad-card__member {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}
+
+.squad-card__member--leader {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.squad-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

@@ -14,14 +14,14 @@ class TaskRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO tasks (id, goal_id, agent_id, title, description, status, output_summary, owner_role, started_at, completed_at, created_at, updated_at)
-        VALUES (@id, @goalId, @agentId, @title, @description, @status, @outputSummary, @ownerRole, @startedAt, @completedAt, @createdAt, @updatedAt)
+        INSERT INTO tasks (id, goal_id, agent_id, title, description, status, output_summary, output, depends_on, owner_role, started_at, completed_at, created_at, updated_at)
+        VALUES (@id, @goalId, @agentId, @title, @description, @status, @outputSummary, @output, @dependsOn, @ownerRole, @startedAt, @completedAt, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE tasks
         SET goal_id = @goalId, agent_id = @agentId, title = @title, description = @description,
-            status = @status, output_summary = @outputSummary, started_at = @startedAt,
-            completed_at = @completedAt, updated_at = @updatedAt
+            status = @status, output_summary = @outputSummary, output = @output, depends_on = @dependsOn,
+            started_at = @startedAt, completed_at = @completedAt, updated_at = @updatedAt
         WHERE id = @id
       `),
       delete: this.db.prepare('DELETE FROM tasks WHERE id = @id'),
@@ -47,6 +47,8 @@ class TaskRepository {
       description: row.description,
       status: row.status,
       outputSummary: row.output_summary,
+      output: row.output ? JSON.parse(row.output) : null,
+      dependsOn: row.depends_on ? JSON.parse(row.depends_on) : null,
       ownerRole: row.owner_role || null,
       startedAt: row.started_at ? new Date(row.started_at).getTime() : null,
       completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
@@ -65,6 +67,8 @@ class TaskRepository {
       description: task.description || null,
       status: task.status || 'pending',
       outputSummary: task.outputSummary || null,
+      output: task.output ? JSON.stringify(task.output) : null,
+      dependsOn: task.dependsOn ? JSON.stringify(task.dependsOn) : null,
       ownerRole: task.ownerRole || null,
       startedAt: task.startedAt ? new Date(task.startedAt).toISOString() : null,
       completedAt: task.completedAt ? new Date(task.completedAt).toISOString() : null,
@@ -134,6 +138,135 @@ class TaskRepository {
     const items = rows.slice(offset, offset + limit).map((r) => this._toRecord(r));
 
     return { items, total, offset, limit, hasMore: offset + limit < total };
+  }
+
+  // ── Output / Handoff methods ──
+
+  /**
+   * Set structured output on a task.
+   * @param {string} taskId
+   * @param {Object} output - JSON-serializable output
+   * @returns {Object} updated task
+   */
+  setOutput(taskId, output) {
+    return this.update(taskId, { output });
+  }
+
+  /**
+   * Get upstream outputs for a task based on depends_on.
+   * @param {string} taskId
+   * @returns {Array<{ taskId: string, output: Object }>}
+   */
+  getUpstreamOutputs(taskId) {
+    const task = this.getById(taskId);
+    if (!task || !task.dependsOn || task.dependsOn.length === 0) return [];
+
+    const results = [];
+    for (const depId of task.dependsOn) {
+      const dep = this.getById(depId);
+      if (dep && dep.output) {
+        results.push({ taskId: depId, output: dep.output });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Create a handoff record between two tasks.
+   */
+  createHandoff(handoff) {
+    const { randomUUID } = require('crypto');
+    const id = handoff.id || randomUUID();
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT INTO task_handoffs (id, source_task_id, target_task_id, status, output_json, created_at)
+      VALUES (@id, @sourceTaskId, @targetTaskId, @status, @outputJson, @createdAt)
+    `).run({
+      id,
+      sourceTaskId: handoff.sourceTaskId,
+      targetTaskId: handoff.targetTaskId,
+      status: handoff.status || 'pending',
+      outputJson: handoff.output ? JSON.stringify(handoff.output) : null,
+      createdAt: now,
+    });
+    return this.getHandoffById(id);
+  }
+
+  /**
+   * Mark a handoff as delivered.
+   */
+  completeHandoff(handoffId, output) {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      UPDATE task_handoffs SET status = 'delivered', output_json = @outputJson, delivered_at = @deliveredAt
+      WHERE id = @id
+    `).run({
+      id: handoffId,
+      outputJson: output ? JSON.stringify(output) : null,
+      deliveredAt: now,
+    });
+    return this.getHandoffById(handoffId);
+  }
+
+  /**
+   * Mark a handoff as failed.
+   */
+  failHandoff(handoffId, error) {
+    this.db.prepare(`
+      UPDATE task_handoffs SET status = 'failed', error_message = @error WHERE id = @id
+    `).run({ id: handoffId, error });
+    return this.getHandoffById(handoffId);
+  }
+
+  getHandoffById(id) {
+    const row = this.db.prepare('SELECT * FROM task_handoffs WHERE id = @id').get({ id });
+    if (!row) return null;
+    return {
+      id: row.id,
+      sourceTaskId: row.source_task_id,
+      targetTaskId: row.target_task_id,
+      status: row.status,
+      output: row.output_json ? JSON.parse(row.output_json) : null,
+      errorMessage: row.error_message,
+      createdAt: new Date(row.created_at).getTime(),
+      deliveredAt: row.delivered_at ? new Date(row.delivered_at).getTime() : null,
+    };
+  }
+
+  /**
+   * List handoffs for a source task.
+   */
+  listHandoffsBySource(sourceTaskId) {
+    return this.db.prepare('SELECT * FROM task_handoffs WHERE source_task_id = @sourceTaskId ORDER BY created_at')
+      .all({ sourceTaskId })
+      .map((row) => ({
+        id: row.id,
+        sourceTaskId: row.source_task_id,
+        targetTaskId: row.target_task_id,
+        status: row.status,
+        output: row.output_json ? JSON.parse(row.output_json) : null,
+        errorMessage: row.error_message,
+        createdAt: new Date(row.created_at).getTime(),
+        deliveredAt: row.delivered_at ? new Date(row.delivered_at).getTime() : null,
+      }));
+  }
+
+  /**
+   * List handoffs for a target task.
+   */
+  listHandoffsByTarget(targetTaskId) {
+    return this.db.prepare('SELECT * FROM task_handoffs WHERE target_task_id = @targetTaskId ORDER BY created_at')
+      .all({ targetTaskId })
+      .map((row) => ({
+        id: row.id,
+        sourceTaskId: row.source_task_id,
+        targetTaskId: row.target_task_id,
+        status: row.status,
+        output: row.output_json ? JSON.parse(row.output_json) : null,
+        errorMessage: row.error_message,
+        createdAt: new Date(row.created_at).getTime(),
+        deliveredAt: row.delivered_at ? new Date(row.delivered_at).getTime() : null,
+      }));
   }
 }
 
