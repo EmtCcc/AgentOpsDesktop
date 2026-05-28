@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { IpcRouter } = require('./router');
+const { IpcError } = require('./errors');
 const { TokenManager } = require('./middleware/token-manager');
 const { createAuthMiddleware } = require('./middleware/auth');
 const { createAuthorizeMiddleware } = require('./middleware/authorize');
@@ -64,11 +65,15 @@ const tokenManager = new TokenManager();
 function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   logController.setMainWindow(mainWindow);
 
+  // Local repo references for inline handlers
+  let taskRepo = null;
+
   // Inject repositories into controllers
   if (repos) {
     agentController.setRepository(repos.agents);
     goalController.setRepository(repos.goals);
     taskController.setRepository(repos.tasks);
+    taskRepo = repos.tasks;
     logController.setRepository(repos.taskLogs);
     settingsController.setRepository(repos.settings);
     orchestratorController.setRepository(repos.orchestrator);

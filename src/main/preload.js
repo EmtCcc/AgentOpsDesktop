@@ -71,6 +71,9 @@ contextBridge.exposeInMainWorld('agentOps', {
     create: (task) => _invoke('tasks:create', task),
     update: (id, updates) => _invoke('tasks:update', { id, updates }),
     delete: (id) => _invoke('tasks:delete', { id }),
+    setOutput: (id, output) => _invoke('tasks:set-output', { id, output }),
+    getUpstream: (id) => _invoke('tasks:get-upstream', { id }),
+    listHandoffs: (id) => _invoke('tasks:list-handoffs', { id }),
   },
 
   logs: {
