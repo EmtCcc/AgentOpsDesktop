@@ -124,7 +124,7 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "agentops",
+      "owner": "EmtCcc",
       "repo": "AgentOpsDesktop"
     }
   }
