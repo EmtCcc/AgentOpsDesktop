@@ -10,8 +10,21 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact: release/*.dmg
+          - os: windows-latest
+            platform: win
+            artifact: release/*.exe
+          - os: ubuntu-latest
+            platform: linux
+            artifact: release/*.AppImage
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +36,7 @@ jobs:
       - run: npm install
 
       - name: Import Apple certificate
+        if: matrix.platform == 'mac'
         env:
           CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -39,27 +53,51 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-      - name: Build DMG
+      - name: Build
         env:
           CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          npx electron-builder --mac --publish never
+        run: npm run package:${{ matrix.platform }}
 
       - name: Smoke test
+        if: matrix.platform == 'mac'
         run: npm run test:smoke
 
-      - name: Publish release
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentOps-${{ matrix.platform }}
+          path: ${{ matrix.artifact }}
+          retention-days: 30
+
+      - name: Clean up keychain
+        if: always() && matrix.platform == 'mac'
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          gh release create "$TAG" release/*.dmg --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
-
-      - name: Clean up keychain
-        if: always()
-        run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          gh release create "$TAG" \
+            artifacts/AgentOps-mac/*.dmg \
+            artifacts/AgentOps-win/*.exe \
+            artifacts/AgentOps-linux/*.AppImage \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --generate-notes

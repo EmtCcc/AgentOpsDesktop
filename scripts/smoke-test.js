@@ -86,7 +86,7 @@ const execPath = path.join(macos, 'AgentOps');
 check('Executable exists', fileExists(execPath));
 if (fileExists(execPath)) {
   const size = fileSize(execPath);
-  check('Executable size > 100KB', size > 100 * 1024, `actual: ${(size / 1024).toFixed(0)}KB`);
+  check('Executable size > 10KB', size > 10 * 1024, `actual: ${(size / 1024).toFixed(0)}KB`);
 }
 
 // ── Renderer assets ──

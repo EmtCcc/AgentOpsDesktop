@@ -27,7 +27,33 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
-      - run: npm test
+      - name: Run unit tests
+        run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results/junit.xml
+      - name: Test summary
+        if: always()
+        run: |
+          if [ -f test-results/junit.xml ]; then
+            TOTAL=$(grep -c '<testcase ' test-results/junit.xml || echo 0)
+            FAILURES=$(grep -c '<failure' test-results/junit.xml || echo 0)
+            ERRORS=$(grep -c '<error' test-results/junit.xml || echo 0)
+            PASS=$((TOTAL - FAILURES - ERRORS))
+            echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILURES |" >> $GITHUB_STEP_SUMMARY
+            echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Total  | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "No test results generated." >> $GITHUB_STEP_SUMMARY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7
 
   e2e:
     runs-on: ubuntu-latest
@@ -47,8 +73,24 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  build-mac:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact: release/*.dmg
+            artifact_name: AgentOps-mac
+          - os: windows-latest
+            platform: win
+            artifact: release/*.exe
+            artifact_name: AgentOps-win
+          - os: ubuntu-latest
+            platform: linux
+            artifact: release/*.AppImage
+            artifact_name: AgentOps-linux
+    runs-on: ${{ matrix.os }}
     needs: [lint, test, e2e]
     steps:
       - uses: actions/checkout@v4
@@ -57,10 +99,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
-      - run: npm run build:dir
+      - run: npm run package:${{ matrix.platform }}
       - run: npm run test:smoke
+        if: matrix.platform == 'mac'
       - uses: actions/upload-artifact@v4
         with:
-          name: AgentOps-mac
-          path: release/*.app
-          retention-days: 7
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact }}
+          retention-days: 30
