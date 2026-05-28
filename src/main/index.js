@@ -5,7 +5,8 @@ const monitor = require('./monitor');
 const { getDb, closeDb } = require('./db/connection');
 const { runMigrations } = require('./db/migrations');
 const { createRepositories } = require('./repositories');
-const { bootstrapRoutes } = require('./ipc');
+const { bootstrapRoutes, tokenManager } = require('./ipc');
+const { startApiServer } = require('./api/server');
 const { AgentRuntime } = require('./agent-runtime');
 const { TaskOrchestrator } = require('./task-orchestrator');
 const orchestratorController = require('./ipc/controllers/orchestrator.controller');
@@ -75,11 +76,12 @@ function createWindow() {
   logger.info('window.created', { width: 1280, height: 800 });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   monitor.startHealthLoop();
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
   bootstrapRoutes(mainWindow, repos);
+  await startApiServer({ repos, tokenManager });
   orchestrator.recoverOnStartup();
   updater.init(mainWindow);
   updater.checkForUpdates();
