@@ -1,7 +1,8 @@
 'use strict';
 
-const assert = require('assert');
-const fs = require('fs');
+import { describe, it } from 'vitest';
+import assert from 'assert';
+import fs from 'fs';
 
 // ── Structural validation (no native modules needed) ──
 
@@ -62,8 +63,15 @@ describe('Squad Implementation', () => {
     const code = fs.readFileSync('./src/renderer/app.js', 'utf8');
     assert.ok(code.includes('renderSquads'), 'renderSquads function exists');
     assert.ok(code.includes('squads: renderSquads'), 'squads registered in renderers map');
-    assert.ok(code.includes('loadSquads'), 'loadSquads function exists');
-    assert.ok(code.includes('bindSquadActions'), 'bindSquadActions function exists');
+    assert.ok(code.includes('mountSquadsPage'), 'React mount function imported');
+  });
+
+  it('SquadsPage.jsx exports mount function', () => {
+    const code = fs.readFileSync('./src/renderer/pages/SquadsPage.jsx', 'utf8');
+    assert.ok(code.includes('export default function SquadsPage'), 'default export');
+    assert.ok(code.includes('export function mountSquadsPage'), 'mountSquadsPage export');
+    assert.ok(code.includes('SquadCard'), 'SquadCard component');
+    assert.ok(code.includes('CreateSquadModal'), 'CreateSquadModal component');
   });
 
   it('sidebar has squads nav item', () => {

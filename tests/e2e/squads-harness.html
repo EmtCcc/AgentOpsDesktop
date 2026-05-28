@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Squads</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div>
+            <div class="header__title">AgentOps</div>
+            <div class="header__subtitle">Desktop</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Overview</div>
+        <a class="sidebar__item" data-page="dashboard">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </div>
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Workspace</div>
+        <a class="sidebar__item sidebar__item--active" data-page="squads">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span class="sidebar__label">Squads</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Squads</h1>
+          <p class="page-header__desc">Organize agents into teams</p>
+        </div>
+        <button class="btn btn--primary" id="btn-add-squad">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Squad
+        </button>
+      </div>
+
+      <div class="squad-list" id="squad-list">
+        <div class="squad-card card" data-squad-id="squad-1">
+          <div class="squad-card__header">
+            <h3 class="squad-card__name">Backend Team</h3>
+            <span class="badge badge--success">Active</span>
+          </div>
+          <p class="squad-card__desc">Handles API development and database operations</p>
+          <div class="squad-card__meta">
+            <span class="squad-card__members">2 members</span>
+            <span class="squad-card__leader">Leader: Claude Code</span>
+          </div>
+          <div class="squad-card__actions">
+            <button class="btn btn--ghost btn--sm" data-action="start">Start</button>
+            <button class="btn btn--ghost btn--sm" data-action="stop">Stop</button>
+            <button class="btn btn--ghost btn--sm" data-action="status">Status</button>
+            <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
+          </div>
+        </div>
+
+        <div class="squad-card card" data-squad-id="squad-2">
+          <div class="squad-card__header">
+            <h3 class="squad-card__name">Frontend Team</h3>
+            <span class="badge badge--neutral">Idle</span>
+          </div>
+          <p class="squad-card__desc">UI/UX development and component library</p>
+          <div class="squad-card__meta">
+            <span class="squad-card__members">1 member</span>
+            <span class="squad-card__leader">Leader: Codex Agent</span>
+          </div>
+          <div class="squad-card__actions">
+            <button class="btn btn--ghost btn--sm" data-action="start">Start</button>
+            <button class="btn btn--ghost btn--sm" data-action="stop">Stop</button>
+            <button class="btn btn--ghost btn--sm" data-action="status">Status</button>
+            <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Squad Modal -->
+      <div class="modal-overlay" id="squad-modal-overlay" style="display:none;">
+        <div class="modal" role="dialog" aria-label="New Squad">
+          <div class="modal__header">
+            <h2 class="modal__title">New Squad</h2>
+            <button class="modal__close" id="squad-modal-cancel" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal__body">
+            <div class="form-group">
+              <label for="squad-name">Name</label>
+              <input type="text" id="squad-name" placeholder="Squad name" />
+            </div>
+            <div class="form-group">
+              <label for="squad-desc">Description</label>
+              <textarea id="squad-desc" placeholder="Squad description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="squad-leader">Leader</label>
+              <select id="squad-leader">
+                <option value="agent-1">Claude Code</option>
+                <option value="agent-2">Codex Agent</option>
+                <option value="agent-3">Gemini CLI</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Members</label>
+              <div id="squad-member-checkboxes">
+                <label><input type="checkbox" value="agent-1" checked /> Claude Code</label>
+                <label><input type="checkbox" value="agent-2" /> Codex Agent</label>
+                <label><input type="checkbox" value="agent-3" /> Gemini CLI</label>
+              </div>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" id="squad-modal-cancel-btn">Cancel</button>
+            <button class="btn btn--primary" id="squad-modal-save">Create</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running"></span>
+          <span>System ready</span>
+        </div>
+      </div>
+      <div class="footer__right">
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('squad-modal-overlay');
+    document.getElementById('btn-add-squad').addEventListener('click', () => {
+      overlay.style.display = 'flex';
+    });
+    document.getElementById('squad-modal-cancel').addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+    document.getElementById('squad-modal-cancel-btn').addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
