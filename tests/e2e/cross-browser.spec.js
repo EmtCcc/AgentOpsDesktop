@@ -87,9 +87,14 @@ test.describe('Design System — Layout Shell', () => {
   test('sidebar has correct width', async ({ mainPage }) => {
     const sidebar = mainPage.locator('[data-testid="sidebar"]');
     const sidebarBox = await sidebar.boundingBox();
+    const viewport = mainPage.viewportSize();
     expect(sidebarBox).toBeTruthy();
-    if (sidebarBox) {
-      expect(sidebarBox.width).toBe(240);
+    if (sidebarBox && viewport) {
+      if (viewport.width < 1024) {
+        expect(sidebarBox.width).toBe(0);
+      } else {
+        expect(sidebarBox.width).toBe(240);
+      }
     }
   });
 

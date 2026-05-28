@@ -35,9 +35,12 @@ jobs:
         if: always()
         run: |
           if [ -f test-results/junit.xml ]; then
-            TOTAL=$(grep -c '<testcase ' test-results/junit.xml || echo 0)
-            FAILURES=$(grep -c '<failure' test-results/junit.xml || echo 0)
-            ERRORS=$(grep -c '<error' test-results/junit.xml || echo 0)
+            TOTAL=$(grep -c '<testcase ' test-results/junit.xml || true)
+            FAILURES=$(grep -c '<failure' test-results/junit.xml || true)
+            ERRORS=$(grep -c '<error' test-results/junit.xml || true)
+            TOTAL=${TOTAL:-0}
+            FAILURES=${FAILURES:-0}
+            ERRORS=${ERRORS:-0}
             PASS=$((TOTAL - FAILURES - ERRORS))
             echo "## Test Results" >> $GITHUB_STEP_SUMMARY
             echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
