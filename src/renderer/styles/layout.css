@@ -706,8 +706,14 @@
 /* ── Responsive ── */
 
 @media (max-width: 1024px) {
+  .app {
+    grid-template-columns: var(--sidebar-collapsed) 1fr;
+  }
+
   .sidebar {
     width: var(--sidebar-collapsed);
+    min-width: 0;
+    overflow: hidden;
   }
 
   .sidebar .sidebar__label,
@@ -724,6 +730,10 @@
 
   .sidebar .sidebar__item-icon {
     margin-right: 0;
+  }
+
+  .sidebar .sidebar__section {
+    padding: var(--space-2);
   }
 }
 

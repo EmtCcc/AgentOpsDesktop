@@ -68,13 +68,13 @@ const landingIcons = {
 
 // ── State ──
 
-let currentPage = 'landing';
+let _currentPage = 'landing';
 let sidebarCollapsed = false;
 
 // ── Navigation ──
 
 function navigate(page) {
-  currentPage = page;
+  _currentPage = page;
 
   // Update sidebar active state
   $$('.sidebar__item').forEach((item) => {

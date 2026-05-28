@@ -16,7 +16,7 @@
  * @property {string} id          - UUID primary key
  * @property {string} name        - Display name
  * @property {'claude'|'codex'|'gemini'|'opencode'|'cursor'|'custom'} type
- * @property {'idle'|'running'|'error'|'stopped'|'spawning'} status
+ * @property {'created'|'running'|'paused'|'terminated'|'errored'} status
  * @property {string|null} command - CLI command string
  * @property {string|null} execPath - Path to CLI binary (DB: exec_path)
  * @property {string|null} cwd    - Default working directory (DB: cwd)
