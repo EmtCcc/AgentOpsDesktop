@@ -367,6 +367,31 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_task_handoffs_status ON task_handoffs(status);
     `,
   },
+  {
+    version: 15,
+    name: 'create_skills',
+    up: `
+      CREATE TABLE IF NOT EXISTS skills (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        description TEXT,
+        content     TEXT NOT NULL,
+        tags        TEXT DEFAULT '[]',
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
+
+      CREATE TABLE IF NOT EXISTS skill_tags (
+        skill_id    TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+        tag         TEXT NOT NULL,
+        PRIMARY KEY (skill_id, tag)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_skill_tags_tag ON skill_tags(tag);
+    `,
+  },
 ];
 
 module.exports = { migrations };

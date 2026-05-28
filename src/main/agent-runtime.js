@@ -13,9 +13,27 @@ const AGENT_STATUS = {
 };
 
 class AgentRuntime extends EventEmitter {
-  constructor() {
+  constructor({ skillRepo } = {}) {
     super();
     this.agents = new Map(); // agentId -> { process, config, status, logs }
+    this._skillRepo = skillRepo || null;
+  }
+
+  /**
+   * Load skills matching the given tags.
+   * @param {string[]} [tags]
+   * @returns {object[]}
+   */
+  _loadSkills(tags) {
+    if (!this._skillRepo) return [];
+    try {
+      if (tags && tags.length > 0) {
+        return this._skillRepo.list({ tags, limit: 100 }).items;
+      }
+      return this._skillRepo.list({ limit: 100 }).items;
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -76,6 +94,13 @@ class AgentRuntime extends EventEmitter {
     const args = config.args || [];
     const cwd = config.cwd || process.cwd();
     const env = { ...process.env, ...(config.env || {}) };
+
+    // Inject skills into agent environment
+    const skillTags = config.skillTags || [];
+    const skills = this._loadSkills(skillTags.length > 0 ? skillTags : undefined);
+    if (skills.length > 0) {
+      env.AGENT_SKILLS = JSON.stringify(skills);
+    }
 
     let proc;
     try {

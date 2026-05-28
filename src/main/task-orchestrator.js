@@ -55,11 +55,12 @@ class TaskOrchestrator extends EventEmitter {
    * @param {import('./repositories/orchestrator.repository').OrchestratorRepository} opts.repo
    * @param {import('./agent-runtime').AgentRuntime} opts.runtime
    */
-  constructor({ repo, runtime, costGuard }) {
+  constructor({ repo, runtime, costGuard, skillRepo }) {
     super();
     this.repo = repo;
     this.runtime = runtime;
     this.costGuard = costGuard || null;
+    this.skillRepo = skillRepo || null;
 
     // In-memory execution state per active DAG
     this._dags = new Map(); // dagId -> DagContext

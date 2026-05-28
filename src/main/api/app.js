@@ -19,6 +19,7 @@ const schedules = require('./routes/schedules');
 const squads = require('./routes/squads');
 const costRoutes = require('./routes/cost');
 const adapterRoutes = require('./routes/adapters');
+const skillRoutes = require('./routes/skills');
 const { createAuthRoutes } = require('./routes/auth');
 const { createAuthMiddleware } = require('./middleware/auth');
 const { ValidationError } = require('./middleware/validate');
@@ -95,6 +96,7 @@ function createApp({ repos, tokenManager, adapterRegistry }) {
   app.route('/api/squads', squads);
   app.route('/api/cost', costRoutes);
   app.route('/api/adapters', adapterRoutes);
+  app.route('/api/skills', skillRoutes);
 
   // ── Error handler ──
   app.onError((err, c) => {

@@ -24,9 +24,9 @@ runMigrations(db);
 const repos = createRepositories(db);
 
 // Create orchestrator runtime and orchestrator
-const orchestratorRuntime = new AgentRuntime();
+const orchestratorRuntime = new AgentRuntime({ skillRepo: repos.skills });
 const costGuard = new CostGuard(repos.costs);
-const orchestrator = new TaskOrchestrator({ repo: repos.orchestrator, runtime: orchestratorRuntime, costGuard });
+const orchestrator = new TaskOrchestrator({ repo: repos.orchestrator, runtime: orchestratorRuntime, costGuard, skillRepo: repos.skills });
 orchestratorController.setOrchestrator(orchestrator);
 
 // Create scheduler

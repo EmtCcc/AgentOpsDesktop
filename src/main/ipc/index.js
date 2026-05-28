@@ -17,6 +17,7 @@ const scheduleController = require('./controllers/schedule.controller');
 const squadController = require('./controllers/squad.controller');
 const costController = require('./controllers/cost.controller');
 const adapterController = require('./controllers/adapter.controller');
+const skillController = require('./controllers/skill.controller');
 const monitor = require('../monitor');
 const logger = require('../logger');
 
@@ -83,6 +84,7 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
     costController.setRepository(repos.costs);
     statsController.setCostRepository(repos.costs);
     adapterController.setRepository(repos.adapters);
+    skillController.setRepository(repos.skills);
   }
 
   // Initialize token manager
@@ -252,6 +254,15 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('adapters:unload', adapterController.unload, { schema: adapterController.schemas.unload, auth: true, permission: 'adapters:unload' });
   router.register('adapters:listLoaded', adapterController.listLoaded, { auth: true, permission: 'adapters:list' });
   router.register('adapters:healthCheck', adapterController.healthCheck, { schema: adapterController.schemas.healthCheck, auth: true, permission: 'adapters:healthCheck' });
+
+  // ── Skills (protected) ──
+  router.register('skills:list', skillController.list, { schema: skillController.schemas.list, auth: true, permission: 'skills:list' });
+  router.register('skills:get', skillController.get, { schema: skillController.schemas.get, auth: true, permission: 'skills:get' });
+  router.register('skills:create', skillController.create, { schema: skillController.schemas.create, auth: true, permission: 'skills:create' });
+  router.register('skills:update', skillController.update, { schema: skillController.schemas.update, auth: true, permission: 'skills:update' });
+  router.register('skills:delete', skillController.delete, { schema: skillController.schemas.delete, auth: true, permission: 'skills:delete' });
+  router.register('skills:listTags', skillController.listTags, { auth: true, permission: 'skills:list' });
+  router.register('skills:searchByTags', skillController.searchByTags, { schema: skillController.schemas.searchByTags, auth: true, permission: 'skills:list' });
 
   // Wire orchestrator events → renderer push
   if (orchestratorController._orchestrator && mainWindow) {

@@ -41,10 +41,28 @@ const DEFAULT_RECOVERY = {
 };
 
 class AgentEngine extends EventEmitter {
-  constructor({ spawnFn } = {}) {
+  constructor({ spawnFn, skillRepo } = {}) {
     super();
     this.agents = new Map();
     this._spawn = spawnFn || realSpawn;
+    this._skillRepo = skillRepo || null;
+  }
+
+  /**
+   * Load skills matching the given tags.
+   * @param {string[]} [tags]
+   * @returns {object[]}
+   */
+  _loadSkills(tags) {
+    if (!this._skillRepo) return [];
+    try {
+      if (tags && tags.length > 0) {
+        return this._skillRepo.list({ tags, limit: 100 }).items;
+      }
+      return this._skillRepo.list({ limit: 100 }).items;
+    } catch {
+      return [];
+    }
   }
 
   // ── Lifecycle state machine ──
@@ -193,6 +211,13 @@ class AgentEngine extends EventEmitter {
     const args = config.args || [];
     const cwd = config.cwd || process.cwd();
     const env = { ...process.env, ...(config.env || {}) };
+
+    // Inject skills into agent environment
+    const skillTags = config.skillTags || [];
+    const skills = this._loadSkills(skillTags.length > 0 ? skillTags : undefined);
+    if (skills.length > 0) {
+      env.AGENT_SKILLS = JSON.stringify(skills);
+    }
 
     let proc;
     try {
