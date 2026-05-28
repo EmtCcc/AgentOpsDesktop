@@ -20,13 +20,13 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
         include:
           - os: macos-latest
-            build_cmd: npm run build
+            platform: mac
             artifact_name: AgentOps-mac
           - os: ubuntu-latest
-            build_cmd: npm run build -- --linux
+            platform: linux
             artifact_name: AgentOps-linux
           - os: windows-latest
-            build_cmd: npm run build -- --win
+            platform: win
             artifact_name: AgentOps-win
 
     steps:
@@ -44,7 +44,7 @@ jobs:
       - run: npm install
 
       - name: Build and Publish
-        run: ${{ matrix.build_cmd }} --publish always
+        run: node scripts/build.js && npx electron-builder --${{ matrix.platform }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Apple notarization (only for macOS)
