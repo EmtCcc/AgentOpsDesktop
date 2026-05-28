@@ -29,6 +29,46 @@ AgentOpsDesktop uses a local-first monitoring stack built on zero external depen
 
 ## Components
 
+### 0. HTTP Health Endpoint (`/health`)
+
+Public HTTP endpoint (no authentication required) for external monitoring tools, load balancers, and uptime checks.
+
+**URL**: `GET http://localhost:3967/health`
+
+**Response codes**:
+- `200` — System is `ok` or `degraded` (warnings only)
+- `503` — System is `unhealthy` (error-level alerts, e.g., DB unreachable)
+
+**Response schema**:
+```json
+{
+  "status": "ok | degraded | unhealthy",
+  "version": "0.1.0",
+  "ts": "2026-05-28T10:30:00.000Z",
+  "uptimeMs": 120000,
+  "memory": { "rss": 85000000, "heapUsed": 45000000, "heapTotal": 60000000, "external": 5000000 },
+  "system": { "totalMem": 17179869184, "freeMem": 8589934592, "loadAvg": [1.5, 1.2, "cpus": 8 },
+  "ipc": { "calls": 150, "errors": 2, "avgLatencyMs": 12 },
+  "renderer": { "crashes": 0, "unresponsive": 0 },
+  "app": { "startedAt": 1716892200000, "uncaughtExceptions": 0, "unhandledRejections": 0 },
+  "db": { "ok": true },
+  "alerts": [{ "id": "high_heap", "severity": "warn", "detail": "Heap usage 85.1%" }],
+  "uptime": {
+    "uptimePercent": 99.5,
+    "totalUptimeMs": 119400,
+    "totalDowntimeMs": 600,
+    "breakdown": { "okMs": 119000, "degradedMs": 400, "unhealthyMs": 600 },
+    "lastStatusChange": "ok",
+    "lastStatusChangeAt": "2026-05-28T10:29:00.000Z",
+    "transitions": [{ "from": "unhealthy", "to": "ok", "at": "2026-05-28T10:29:00.000Z" }]
+  }
+}
+```
+
+**DB connectivity check**: The endpoint verifies SQLite is reachable by running `SELECT 1`. If it fails, `db.ok` is `false` and an `db_unreachable` error alert is added.
+
+**Uptime tracking**: The `uptime` field tracks cumulative time in each status (`ok`, `degraded`, `unhealthy`). Degraded counts as uptime (not downtime). Only `unhealthy` counts as downtime. The last 10 status transitions are included.
+
 ### 1. Structured Logger (`src/main/logger.js`)
 
 All log output is machine-parseable JSON, one entry per line (JSONL format).

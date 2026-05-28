@@ -51,8 +51,8 @@
 <body>
   <div class="header">
     <h1>AgentOps Desktop</h1>
-    <span class="badge">IPC API</span>
-    <span class="transport">Transport: <code>window.api.invoke(channel, payload)</code></span>
+    <span class="badge">IPC + HTTP</span>
+    <span class="transport">HTTP: <code>http://localhost:3967</code> &nbsp;|&nbsp; IPC: <code>window.agentOps.*</code></span>
   </div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
@@ -61,7 +61,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "AgentOps Desktop API",
-    "description": "IPC API for AgentOps Desktop — an Electron application for managing AI agent sessions, goals, tasks, and logs.\n\n**Transport**: Electron IPC (ipcMain.handle / ipcRenderer.invoke)\n**Auth**: Bearer token via session management\n\nThis spec documents the IPC channel interface. Each operation maps to an IPC channel (listed in `x-ipc-channel`). Call via `window.api.invoke(channel, payload)` from the renderer.",
+    "description": "API for AgentOps Desktop — an Electron application for managing AI agent sessions, goals, tasks, and DAG workflows.\n\n**Transport layers:**\n- **Electron IPC** — primary interface for the renderer process via `window.agentOps.*`\n- **HTTP REST** — secondary interface on port 3967 for external tools and scripts\n\n**Authentication:** Bearer token obtained from `POST /auth/login`. Include as `Authorization: Bearer <token>` for HTTP, or pass `_auth: { token }` in the IPC payload.\n\nEach IPC operation maps to a channel (listed in `x-ipc-channel`). The HTTP API mirrors the same operations at REST paths.",
     "version": "0.1.0",
     "contact": {
       "name": "AgentOps Team"
@@ -72,6 +72,10 @@
   },
   "servers": [
     {
+      "url": "http://localhost:3967",
+      "description": "HTTP REST API (Hono)"
+    },
+    {
       "url": "ipc://localhost",
       "description": "Electron IPC transport"
     }
@@ -79,7 +83,7 @@
   "tags": [
     {
       "name": "Auth",
-      "description": "Session management (login, logout, token rotation)"
+      "description": "Session management — login, logout, token rotation, status check"
     },
     {
       "name": "Monitoring",
@@ -87,27 +91,39 @@
     },
     {
       "name": "Agents",
-      "description": "Agent configuration CRUD"
+      "description": "Agent configuration CRUD — register, update, delete agent configs"
     },
     {
       "name": "Agent Processes",
-      "description": "Live agent process management (spawn, kill, status)"
+      "description": "Live agent process management — spawn, kill, poll status"
     },
     {
       "name": "Goals",
-      "description": "Goal management"
+      "description": "Goal management — group tasks under strategic objectives"
     },
     {
       "name": "Tasks",
-      "description": "Task management with goal linking"
+      "description": "Task management — create, assign, track work items linked to goals"
+    },
+    {
+      "name": "Orchestrator",
+      "description": "DAG workflow engine — define, execute, and monitor multi-step workflows"
     },
     {
       "name": "Logs",
-      "description": "Log entry management"
+      "description": "Log entry management — append and query agent/task logs"
     },
     {
       "name": "Stats",
       "description": "Aggregated dashboard statistics"
+    },
+    {
+      "name": "Settings",
+      "description": "Application settings management"
+    },
+    {
+      "name": "Updates",
+      "description": "Application auto-update lifecycle"
     }
   ],
   "components": {
@@ -129,7 +145,7 @@
           },
           "name": {
             "type": "string",
-            "example": "my-claude-agent"
+            "example": "claude-dev"
           },
           "type": {
             "type": "string",
@@ -140,35 +156,42 @@
               "opencode",
               "cursor",
               "custom"
-            ]
+            ],
+            "example": "claude"
           },
           "status": {
             "type": "string",
             "enum": [
               "idle",
               "running",
-              "error",
               "spawning",
+              "error",
               "stopped"
-            ]
+            ],
+            "example": "idle"
           },
           "command": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "example": "claude --print"
           },
           "execPath": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "example": "/usr/local/bin/claude"
           },
           "cwd": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "example": "/project"
           },
           "createdAt": {
-            "type": "number"
+            "type": "number",
+            "example": 1716900000000
           },
           "updatedAt": {
-            "type": "number"
+            "type": "number",
+            "example": 1716900000000
           }
         }
       },
@@ -185,7 +208,8 @@
           },
           "description": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "example": "Launch the minimum viable product"
           },
           "status": {
             "type": "string",
@@ -193,19 +217,26 @@
               "active",
               "completed",
               "archived"
-            ]
+            ],
+            "example": "active"
           },
           "taskIds": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "example": [
+              "task-1",
+              "task-2"
+            ]
           },
           "createdAt": {
-            "type": "number"
+            "type": "number",
+            "example": 1716900000000
           },
           "updatedAt": {
-            "type": "number"
+            "type": "number",
+            "example": 1716900000000
           }
         }
       },
@@ -222,6 +253,98 @@
           },
           "description": {
             "type": "string",
+            "nullable": true,
+            "example": "Add JWT-based auth flow"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "assigned",
+              "running",
+              "done",
+              "failed",
+              "blocked"
+            ],
+            "example": "pending"
+          },
+          "goalId": {
+            "type": "string",
+            "nullable": true,
+            "example": "goal-1"
+          },
+          "assigneeAgentId": {
+            "type": "string",
+            "nullable": true,
+            "example": "agent-1"
+          },
+          "createdAt": {
+            "type": "number",
+            "example": 1716900000000
+          },
+          "updatedAt": {
+            "type": "number",
+            "example": 1716900000000
+          }
+        }
+      },
+      "Dag": {
+        "type": "object",
+        "description": "DAG workflow summary (without task details)",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "dag-1"
+          },
+          "name": {
+            "type": "string",
+            "example": "deploy-pipeline"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "CI/CD deployment workflow"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "paused"
+            ],
+            "example": "pending"
+          },
+          "taskCount": {
+            "type": "number",
+            "example": 4
+          },
+          "createdAt": {
+            "type": "number",
+            "example": 1716900000000
+          },
+          "updatedAt": {
+            "type": "number",
+            "example": 1716900000000
+          }
+        }
+      },
+      "DagFull": {
+        "type": "object",
+        "description": "Full DAG definition with task nodes, edges, and configuration",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "dag-1"
+          },
+          "name": {
+            "type": "string",
+            "example": "deploy-pipeline"
+          },
+          "description": {
+            "type": "string",
             "nullable": true
           },
           "status": {
@@ -229,17 +352,58 @@
             "enum": [
               "pending",
               "running",
-              "done",
-              "failed"
+              "succeeded",
+              "failed",
+              "cancelled",
+              "paused"
             ]
           },
-          "goalId": {
-            "type": "string",
-            "nullable": true
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DagTask"
+            }
           },
-          "assigneeAgentId": {
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "maxParallel": {
+            "type": "number",
+            "example": 2
+          },
+          "retryMax": {
+            "type": "number",
+            "example": 3
+          },
+          "retryBackoffMs": {
+            "type": "number",
+            "example": 1000
+          },
+          "retryBackoffMult": {
+            "type": "number",
+            "example": 2
+          },
+          "retryMaxBackoffMs": {
+            "type": "number",
+            "example": 30000
+          },
+          "onFailure": {
             "type": "string",
-            "nullable": true
+            "enum": [
+              "fail-fast",
+              "best-effort"
+            ]
           },
           "createdAt": {
             "type": "number"
@@ -249,18 +413,75 @@
           }
         }
       },
-      "LogEntry": {
+      "DagTask": {
         "type": "object",
+        "description": "A single task node within a DAG",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "dag-task-1"
+          },
+          "title": {
+            "type": "string",
+            "example": "Build"
+          },
+          "taskType": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "noop",
+              "manual"
+            ],
+            "example": "agent"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "example": "pending"
           },
           "agentId": {
             "type": "string",
             "nullable": true
           },
+          "output": {
+            "type": "object",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "number",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "LogEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "log-1"
+          },
+          "agentId": {
+            "type": "string",
+            "nullable": true,
+            "example": "agent-1"
+          },
+          "taskId": {
+            "type": "string",
+            "nullable": true
+          },
           "message": {
-            "type": "string"
+            "type": "string",
+            "example": "Agent started successfully"
           },
           "level": {
             "type": "string",
@@ -269,17 +490,20 @@
               "info",
               "warn",
               "error"
-            ]
+            ],
+            "example": "info"
           },
           "stream": {
             "type": "string",
             "enum": [
               "stdout",
               "stderr"
-            ]
+            ],
+            "example": "stdout"
           },
           "timestamp": {
-            "type": "number"
+            "type": "number",
+            "example": 1717000000000
           }
         }
       },
@@ -294,16 +518,20 @@
             "type": "object",
             "properties": {
               "code": {
-                "type": "string"
+                "type": "string",
+                "example": "VALIDATION_ERROR"
               },
               "message": {
-                "type": "string"
+                "type": "string",
+                "example": "name is required"
               },
               "status": {
-                "type": "number"
+                "type": "number",
+                "example": 422
               },
               "field": {
-                "type": "string"
+                "type": "string",
+                "example": "name"
               }
             }
           }
@@ -315,12 +543,34 @@
     "/auth/login": {
       "post": {
         "summary": "Create a session",
-        "description": "Creates a new authenticated session and returns a token.",
+        "description": "Creates a new authenticated session with the requested role and returns a bearer token. Roles: `admin` (full access), `operator` (agent/task ops), `viewer` (read-only). If no role is specified, defaults to `operator`.",
         "operationId": "auth_login",
         "tags": [
           "Auth"
         ],
         "x-ipc-channel": "auth:login",
+        "x-transport": "ipc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "operator",
+                      "viewer"
+                    ],
+                    "description": "Session role (default: operator)"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -331,16 +581,40 @@
                   "properties": {
                     "token": {
                       "type": "string",
-                      "description": "Session token"
+                      "description": "Bearer token for subsequent requests",
+                      "example": "tok_a1b2c3d4e5"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "admin",
+                        "operator",
+                        "viewer"
+                      ],
+                      "example": "operator"
                     },
                     "expiresAt": {
                       "type": "number",
-                      "description": "Token expiration timestamp (ms)"
+                      "description": "Token expiration timestamp (ms since epoch)",
+                      "example": 1717000000000
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "token": "tok_a1b2c3d4e5",
+                      "role": "operator",
+                      "expiresAt": 1717000000000
                     }
                   }
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation error"
           }
         }
       }
@@ -348,12 +622,13 @@
     "/auth/status": {
       "get": {
         "summary": "Check session validity",
-        "description": "Returns the current session info or invalid status.",
+        "description": "Returns the current session info if the token is still valid, otherwise `{ isValid: false }`.",
         "operationId": "auth_status",
         "tags": [
           "Auth"
         ],
         "x-ipc-channel": "auth:status",
+        "x-transport": "ipc",
         "responses": {
           "200": {
             "description": "Success",
@@ -363,16 +638,36 @@
                   "type": "object",
                   "properties": {
                     "isValid": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
                     },
                     "token": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "tok_a1b2c3d4e5"
+                    },
+                    "role": {
+                      "type": "string",
+                      "example": "operator"
                     },
                     "expiresAt": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 1717000000000
                     },
                     "createdAt": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 1716900000000
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "isValid": true,
+                      "token": "tok_a1b2c3d4e5",
+                      "role": "operator",
+                      "expiresAt": 1717000000000,
+                      "createdAt": 1716900000000
                     }
                   }
                 }
@@ -385,12 +680,13 @@
     "/auth/logout": {
       "post": {
         "summary": "Destroy session",
-        "description": "Destroys the current authenticated session.",
+        "description": "Destroys the current authenticated session and invalidates the token.",
         "operationId": "auth_logout",
         "tags": [
           "Auth"
         ],
         "x-ipc-channel": "auth:logout",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -405,7 +701,16 @@
                   "type": "object",
                   "properties": {
                     "ok": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true
                     }
                   }
                 }
@@ -421,12 +726,13 @@
     "/auth/rotate": {
       "post": {
         "summary": "Rotate session token",
-        "description": "Rotates the current session token and returns a new one.",
+        "description": "Rotates the current session token. The old token is immediately invalidated and a fresh one is returned.",
         "operationId": "auth_rotate",
         "tags": [
           "Auth"
         ],
         "x-ipc-channel": "auth:rotate",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -441,10 +747,26 @@
                   "type": "object",
                   "properties": {
                     "token": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "tok_f6g7h8i9j0"
+                    },
+                    "role": {
+                      "type": "string",
+                      "example": "operator"
                     },
                     "expiresAt": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 1717100000000
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "token": "tok_f6g7h8i9j0",
+                      "role": "operator",
+                      "expiresAt": 1717100000000
                     }
                   }
                 }
@@ -457,15 +779,264 @@
         }
       }
     },
+    "/health": {
+      "get": {
+        "summary": "Public health check",
+        "description": "Public endpoint (no auth required) returning application health status including uptime, memory, system info, IPC metrics, renderer stats, DB connectivity, and active alerts. Returns HTTP 200 for ok/degraded, 503 for unhealthy.",
+        "operationId": "health_check",
+        "tags": [
+          "Monitoring"
+        ],
+        "x-ipc-channel": "health:check",
+        "x-transport": "ipc",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "degraded",
+                        "unhealthy"
+                      ],
+                      "example": "ok"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "1.0.0"
+                    },
+                    "ts": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-05-28T12:00:00.000Z"
+                    },
+                    "uptimeMs": {
+                      "type": "number",
+                      "example": 3600000
+                    },
+                    "memory": {
+                      "type": "object",
+                      "properties": {
+                        "rss": {
+                          "type": "number",
+                          "example": 120000000
+                        },
+                        "heapUsed": {
+                          "type": "number",
+                          "example": 60000000
+                        },
+                        "heapTotal": {
+                          "type": "number",
+                          "example": 100000000
+                        },
+                        "external": {
+                          "type": "number",
+                          "example": 5000000
+                        }
+                      }
+                    },
+                    "system": {
+                      "type": "object",
+                      "properties": {
+                        "totalMem": {
+                          "type": "number",
+                          "example": 17179869184
+                        },
+                        "freeMem": {
+                          "type": "number",
+                          "example": 8589934592
+                        },
+                        "loadAvg": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 3,
+                          "maxItems": 3,
+                          "example": [
+                            1.5,
+                            1.2,
+                            1
+                          ]
+                        },
+                        "cpus": {
+                          "type": "number",
+                          "example": 8
+                        }
+                      }
+                    },
+                    "ipc": {
+                      "type": "object",
+                      "properties": {
+                        "calls": {
+                          "type": "number",
+                          "example": 1523
+                        },
+                        "errors": {
+                          "type": "number",
+                          "example": 2
+                        },
+                        "avgLatencyMs": {
+                          "type": "number",
+                          "example": 4.2
+                        }
+                      }
+                    },
+                    "renderer": {
+                      "type": "object",
+                      "properties": {
+                        "crashes": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "unresponsive": {
+                          "type": "number",
+                          "example": 0
+                        }
+                      }
+                    },
+                    "app": {
+                      "type": "object",
+                      "properties": {
+                        "startedAt": {
+                          "type": "number",
+                          "example": 1716900000000
+                        },
+                        "uncaughtExceptions": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "unhandledRejections": {
+                          "type": "number",
+                          "example": 0
+                        }
+                      }
+                    },
+                    "db": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "error": {
+                          "type": "string",
+                          "description": "Present only when ok is false"
+                        }
+                      }
+                    },
+                    "alerts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "high_heap"
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "warn",
+                              "error"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "example": []
+                    },
+                    "uptime": {
+                      "type": "object",
+                      "properties": {
+                        "uptimePercent": {
+                          "type": "number",
+                          "example": 99.95,
+                          "description": "Percentage of time in ok or degraded status"
+                        },
+                        "totalUptimeMs": {
+                          "type": "number",
+                          "example": 86400000
+                        },
+                        "totalDowntimeMs": {
+                          "type": "number",
+                          "example": 43200
+                        },
+                        "breakdown": {
+                          "type": "object",
+                          "properties": {
+                            "okMs": {
+                              "type": "number"
+                            },
+                            "degradedMs": {
+                              "type": "number"
+                            },
+                            "unhealthyMs": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "lastStatusChange": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "degraded",
+                            "unhealthy"
+                          ]
+                        },
+                        "lastStatusChangeAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "transitions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          },
+                          "maxItems": 10
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unhealthy — error-level alerts detected (e.g. DB unreachable, high IPC error rate)"
+          }
+        }
+      }
+    },
     "/monitor/health": {
       "get": {
         "summary": "System health check",
-        "description": "Returns application health status, version, platform info, and memory usage.",
+        "description": "Returns application health status including uptime, memory usage, system info, IPC call metrics, renderer crash counts, and process-level error counters.",
         "operationId": "monitor_health",
         "tags": [
           "Monitoring"
         ],
         "x-ipc-channel": "monitor:health",
+        "x-transport": "ipc",
         "responses": {
           "200": {
             "description": "Success",
@@ -480,39 +1051,116 @@
                         "ok",
                         "degraded",
                         "down"
-                      ]
+                      ],
+                      "example": "ok"
                     },
-                    "version": {
-                      "type": "string"
+                    "ts": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-05-28T12:00:00.000Z"
                     },
-                    "platform": {
-                      "type": "string"
-                    },
-                    "arch": {
-                      "type": "string"
-                    },
-                    "nodeVersion": {
-                      "type": "string"
-                    },
-                    "uptime": {
-                      "type": "number"
+                    "uptimeMs": {
+                      "type": "number",
+                      "example": 3600000
                     },
                     "memory": {
                       "type": "object",
                       "properties": {
-                        "total": {
-                          "type": "number"
+                        "rss": {
+                          "type": "number",
+                          "description": "Resident Set Size in bytes",
+                          "example": 120000000
                         },
-                        "free": {
-                          "type": "number"
+                        "heapUsed": {
+                          "type": "number",
+                          "example": 60000000
                         },
-                        "usage": {
-                          "type": "object"
+                        "heapTotal": {
+                          "type": "number",
+                          "example": 100000000
+                        },
+                        "external": {
+                          "type": "number",
+                          "example": 5000000
                         }
                       }
                     },
-                    "timestamp": {
-                      "type": "number"
+                    "system": {
+                      "type": "object",
+                      "properties": {
+                        "totalMem": {
+                          "type": "number",
+                          "example": 17179869184
+                        },
+                        "freeMem": {
+                          "type": "number",
+                          "example": 8589934592
+                        },
+                        "loadAvg": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 3,
+                          "maxItems": 3,
+                          "example": [
+                            1.5,
+                            1.2,
+                            1
+                          ]
+                        },
+                        "cpus": {
+                          "type": "number",
+                          "example": 8
+                        }
+                      }
+                    },
+                    "ipc": {
+                      "type": "object",
+                      "properties": {
+                        "calls": {
+                          "type": "number",
+                          "example": 1523
+                        },
+                        "errors": {
+                          "type": "number",
+                          "example": 2
+                        },
+                        "avgLatencyMs": {
+                          "type": "number",
+                          "example": 4.2
+                        }
+                      }
+                    },
+                    "renderer": {
+                      "type": "object",
+                      "properties": {
+                        "crashes": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "unresponsive": {
+                          "type": "number",
+                          "example": 0
+                        }
+                      }
+                    },
+                    "app": {
+                      "type": "object",
+                      "properties": {
+                        "startedAt": {
+                          "type": "number",
+                          "example": 1716900000000
+                        },
+                        "uncaughtExceptions": {
+                          "type": "number",
+                          "example": 0
+                        },
+                        "unhandledRejections": {
+                          "type": "number",
+                          "example": 0
+                        }
+                      }
                     }
                   }
                 }
@@ -525,12 +1173,13 @@
     "/agents": {
       "get": {
         "summary": "List agent configs",
-        "description": "Lists all registered agent configurations with pagination and optional status filter.",
+        "description": "Lists all registered agent configurations with pagination and optional status filter. Returns a paginated result with `items` array and total count.",
         "operationId": "agents_list",
         "tags": [
           "Agents"
         ],
         "x-ipc-channel": "agents:list",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -543,7 +1192,8 @@
             "required": false,
             "schema": {
               "type": "number",
-              "description": "Pagination offset"
+              "description": "Pagination offset",
+              "example": 0
             }
           },
           {
@@ -552,7 +1202,8 @@
             "required": false,
             "schema": {
               "type": "number",
-              "description": "Max items to return"
+              "description": "Max items to return (default: 50)",
+              "example": 20
             }
           },
           {
@@ -564,8 +1215,11 @@
               "enum": [
                 "idle",
                 "running",
-                "error"
-              ]
+                "spawning",
+                "error",
+                "stopped"
+              ],
+              "description": "Filter by agent status"
             }
           },
           {
@@ -579,7 +1233,8 @@
                 "updatedAt",
                 "name",
                 "status"
-              ]
+              ],
+              "description": "Sort field"
             }
           },
           {
@@ -591,7 +1246,8 @@
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "description": "Sort direction"
             }
           }
         ],
@@ -601,9 +1257,38 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Agent"
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Agent"
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 5
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "agent-1",
+                          "name": "claude-dev",
+                          "type": "claude",
+                          "status": "idle",
+                          "execPath": "/usr/local/bin/claude",
+                          "cwd": "/project",
+                          "createdAt": 1716900000000,
+                          "updatedAt": 1716900000000
+                        }
+                      ],
+                      "total": 1
+                    }
                   }
                 }
               }
@@ -619,12 +1304,13 @@
       },
       "post": {
         "summary": "Create agent config",
-        "description": "Registers a new agent configuration.",
+        "description": "Registers a new agent configuration. The agent type determines the CLI adapter used to spawn it.",
         "operationId": "agents_create",
         "tags": [
           "Agents"
         ],
         "x-ipc-channel": "agents:create",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -643,7 +1329,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "example": "claude-dev"
                   },
                   "type": {
                     "type": "string",
@@ -654,19 +1341,23 @@
                       "opencode",
                       "cursor",
                       "custom"
-                    ]
+                    ],
+                    "example": "claude"
                   },
                   "command": {
                     "type": "string",
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "example": "claude --print"
                   },
                   "execPath": {
                     "type": "string",
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "example": "/usr/local/bin/claude"
                   },
                   "cwd": {
                     "type": "string",
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "example": "/project"
                   }
                 }
               }
@@ -680,6 +1371,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Agent"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "agent-2",
+                      "name": "claude-dev",
+                      "type": "claude",
+                      "status": "idle",
+                      "execPath": "/usr/local/bin/claude",
+                      "cwd": "/project",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1716900000000
+                    }
+                  }
                 }
               }
             }
@@ -702,6 +1408,7 @@
           "Agents"
         ],
         "x-ipc-channel": "agents:get",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -724,6 +1431,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Agent"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "agent-1",
+                      "name": "claude-dev",
+                      "type": "claude",
+                      "status": "idle",
+                      "execPath": "/usr/local/bin/claude",
+                      "cwd": "/project",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1716900000000
+                    }
+                  }
                 }
               }
             }
@@ -738,12 +1460,13 @@
       },
       "patch": {
         "summary": "Update agent config",
-        "description": "Updates fields on an existing agent configuration.",
+        "description": "Updates fields on an existing agent configuration. Only provided fields are changed.",
         "operationId": "agents_update",
         "tags": [
           "Agents"
         ],
         "x-ipc-channel": "agents:update",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -771,13 +1494,15 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "agent-1"
                   },
                   "updates": {
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "claude-prod"
                       },
                       "type": {
                         "type": "string",
@@ -795,7 +1520,8 @@
                         "enum": [
                           "idle",
                           "running",
-                          "error"
+                          "error",
+                          "stopped"
                         ]
                       },
                       "command": {
@@ -821,6 +1547,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Agent"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "agent-1",
+                      "name": "claude-prod",
+                      "type": "claude",
+                      "status": "idle",
+                      "execPath": "/usr/local/bin/claude",
+                      "cwd": "/project",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -835,12 +1576,13 @@
       },
       "delete": {
         "summary": "Delete agent config",
-        "description": "Removes an agent configuration.",
+        "description": "Removes an agent configuration. Does not kill running processes — use `agents:kill` first if needed.",
         "operationId": "agents_delete",
         "tags": [
           "Agents"
         ],
         "x-ipc-channel": "agents:delete",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -867,7 +1609,8 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "agent-1"
                   }
                 }
               }
@@ -883,10 +1626,21 @@
                   "type": "object",
                   "properties": {
                     "deleted": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
                     },
                     "id": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "agent-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "deleted": true,
+                      "id": "agent-1"
                     }
                   }
                 }
@@ -905,12 +1659,13 @@
     "/agents/{id}/health-check": {
       "post": {
         "summary": "Validate agent executable",
-        "description": "Checks whether the agent executable exists and is runnable.",
+        "description": "Checks whether the agent executable exists on disk and whether any spawned process is still alive. Useful for diagnosing `error` status agents.",
         "operationId": "agents_health-check",
         "tags": [
           "Agents"
         ],
         "x-ipc-channel": "agents:health-check",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -937,7 +1692,8 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "agent-1"
                   }
                 }
               }
@@ -953,16 +1709,33 @@
                   "type": "object",
                   "properties": {
                     "ok": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
                     },
                     "execValid": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "Whether the executable path exists and is accessible",
+                      "example": true
                     },
                     "processAlive": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "Whether a spawned process is still running",
+                      "example": false
                     },
                     "status": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "idle"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true,
+                      "execValid": true,
+                      "processAlive": false,
+                      "status": "idle"
                     }
                   }
                 }
@@ -981,12 +1754,13 @@
     "/agents/spawn": {
       "post": {
         "summary": "Spawn agent process",
-        "description": "Spawns a new CLI agent process and returns session info.",
+        "description": "Spawns a new CLI agent process using the configured adapter. The process runs in the background; use `agents:status` to poll its state.",
         "operationId": "agents_spawn",
         "tags": [
           "Agent Processes"
         ],
         "x-ipc-channel": "agents:spawn",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1004,25 +1778,69 @@
                 "properties": {
                   "execPath": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "example": "/usr/local/bin/claude"
                   },
                   "name": {
                     "type": "string",
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "example": "my-agent"
                   },
                   "args": {
                     "type": "array",
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "example": [
+                      "--print",
+                      "--model",
+                      "opus"
+                    ]
                   },
                   "cwd": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "/project"
                   },
                   "env": {
                     "type": "object",
                     "additionalProperties": {
                       "type": "string"
+                    },
+                    "example": {
+                      "NODE_ENV": "production"
+                    }
+                  },
+                  "resourceLimits": {
+                    "type": "object",
+                    "properties": {
+                      "maxMemoryMB": {
+                        "type": "number",
+                        "description": "Max memory in MB",
+                        "example": 512
+                      },
+                      "maxCpuPercent": {
+                        "type": "number",
+                        "description": "Max CPU usage %",
+                        "example": 80
+                      },
+                      "timeoutMs": {
+                        "type": "number",
+                        "description": "Process timeout in ms",
+                        "example": 600000
+                      }
+                    }
+                  },
+                  "recovery": {
+                    "type": "object",
+                    "properties": {
+                      "maxRetries": {
+                        "type": "number",
+                        "example": 3
+                      },
+                      "backoffMs": {
+                        "type": "number",
+                        "example": 1000
+                      }
                     }
                   }
                 }
@@ -1040,26 +1858,45 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "format": "uuid"
+                      "format": "uuid",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
                     },
                     "name": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "my-agent"
                     },
                     "execPath": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "/usr/local/bin/claude"
                     },
                     "status": {
                       "type": "string",
                       "enum": [
                         "spawning",
                         "running"
-                      ]
+                      ],
+                      "example": "running"
                     },
                     "pid": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 12345
                     },
                     "startedAt": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 1717000000000
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "name": "my-agent",
+                      "execPath": "/usr/local/bin/claude",
+                      "status": "running",
+                      "pid": 12345,
+                      "startedAt": 1717000000000
                     }
                   }
                 }
@@ -1078,12 +1915,13 @@
     "/agents/processes/{id}": {
       "get": {
         "summary": "Get agent session status",
-        "description": "Returns the current status of a live agent process.",
+        "description": "Returns the current status of a live agent process including PID, exit code, resource usage, and retry count.",
         "operationId": "agents_status",
         "tags": [
           "Agent Processes"
         ],
         "x-ipc-channel": "agents:status",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1108,10 +1946,12 @@
                   "type": "object",
                   "properties": {
                     "id": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
                     },
                     "name": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "my-agent"
                     },
                     "status": {
                       "type": "string",
@@ -1120,28 +1960,92 @@
                         "running",
                         "stopped",
                         "error"
-                      ]
+                      ],
+                      "example": "running"
                     },
                     "pid": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 12345
                     },
                     "exitCode": {
                       "type": "number",
-                      "nullable": true
+                      "nullable": true,
+                      "example": null
                     },
                     "error": {
                       "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "example": null
                     },
                     "startedAt": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 1717000000000
                     },
                     "endedAt": {
                       "type": "number",
-                      "nullable": true
+                      "nullable": true,
+                      "example": null
                     },
                     "logCount": {
-                      "type": "number"
+                      "type": "number",
+                      "example": 42
+                    },
+                    "resourceUsage": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "memoryMB": {
+                          "type": "number",
+                          "example": 128
+                        },
+                        "cpuPercent": {
+                          "type": "number",
+                          "example": 15.2
+                        }
+                      }
+                    },
+                    "resourceLimits": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "maxMemoryMB": {
+                          "type": "number",
+                          "example": 512
+                        },
+                        "maxCpuPercent": {
+                          "type": "number",
+                          "example": 80
+                        },
+                        "timeoutMs": {
+                          "type": "number",
+                          "example": 600000
+                        }
+                      }
+                    },
+                    "retryCount": {
+                      "type": "number",
+                      "example": 0
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "name": "my-agent",
+                      "status": "running",
+                      "pid": 12345,
+                      "exitCode": null,
+                      "error": null,
+                      "startedAt": 1717000000000,
+                      "endedAt": null,
+                      "logCount": 42,
+                      "resourceUsage": {
+                        "memoryMB": 128,
+                        "cpuPercent": 15.2
+                      },
+                      "retryCount": 0
                     }
                   }
                 }
@@ -1160,12 +2064,13 @@
     "/agents/processes/{id}/kill": {
       "post": {
         "summary": "Kill agent process",
-        "description": "Sends a signal to terminate a live agent process. Defaults to SIGTERM, escalates to SIGKILL after 5s.",
+        "description": "Sends SIGTERM to the agent process. If it does not exit within 5 seconds, escalates to SIGKILL.",
         "operationId": "agents_kill",
         "tags": [
           "Agent Processes"
         ],
         "x-ipc-channel": "agents:kill",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1192,11 +2097,13 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                   },
                   "signal": {
                     "type": "string",
-                    "description": "Signal to send (default: SIGTERM)"
+                    "description": "Signal to send (default: SIGTERM)",
+                    "example": "SIGTERM"
                   }
                 }
               }
@@ -1212,13 +2119,24 @@
                   "type": "object",
                   "properties": {
                     "id": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
                     },
                     "status": {
                       "type": "string",
                       "enum": [
-                        "stopped"
-                      ]
+                        "terminated"
+                      ],
+                      "example": "terminated"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "status": "terminated"
                     }
                   }
                 }
@@ -1243,6 +2161,7 @@
           "Goals"
         ],
         "x-ipc-channel": "goals:list",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1254,7 +2173,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "example": 0
             }
           },
           {
@@ -1262,7 +2182,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "example": 20
             }
           },
           {
@@ -1311,9 +2232,40 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Goal"
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Goal"
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 3
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "goal-1",
+                          "title": "Ship MVP",
+                          "description": "Launch the minimum viable product",
+                          "status": "active",
+                          "taskIds": [
+                            "task-1",
+                            "task-2"
+                          ],
+                          "createdAt": 1716900000000,
+                          "updatedAt": 1716900000000
+                        }
+                      ],
+                      "total": 1
+                    }
                   }
                 }
               }
@@ -1329,12 +2281,13 @@
       },
       "post": {
         "summary": "Create goal",
-        "description": "Creates a new goal.",
+        "description": "Creates a new goal. Goals group related tasks together for tracking progress.",
         "operationId": "goals_create",
         "tags": [
           "Goals"
         ],
         "x-ipc-channel": "goals:create",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1353,11 +2306,13 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "example": "Ship MVP"
                   },
                   "description": {
                     "type": "string",
-                    "maxLength": 5000
+                    "maxLength": 5000,
+                    "example": "Launch the minimum viable product by end of quarter"
                   }
                 }
               }
@@ -1371,6 +2326,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Goal"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "goal-2",
+                      "title": "Ship MVP",
+                      "description": "Launch the minimum viable product by end of quarter",
+                      "status": "active",
+                      "taskIds": [],
+                      "createdAt": 1717000000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -1387,12 +2356,13 @@
     "/goals/{id}": {
       "get": {
         "summary": "Get goal",
-        "description": "Returns a single goal by ID.",
+        "description": "Returns a single goal by ID, including its linked task IDs.",
         "operationId": "goals_get",
         "tags": [
           "Goals"
         ],
         "x-ipc-channel": "goals:get",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1415,6 +2385,23 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Goal"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "goal-1",
+                      "title": "Ship MVP",
+                      "description": "Launch the minimum viable product",
+                      "status": "active",
+                      "taskIds": [
+                        "task-1",
+                        "task-2"
+                      ],
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1716900000000
+                    }
+                  }
                 }
               }
             }
@@ -1429,12 +2416,13 @@
       },
       "patch": {
         "summary": "Update goal",
-        "description": "Updates fields on an existing goal.",
+        "description": "Updates fields on an existing goal. Only provided fields are changed.",
         "operationId": "goals_update",
         "tags": [
           "Goals"
         ],
         "x-ipc-channel": "goals:update",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1462,13 +2450,15 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "goal-1"
                   },
                   "updates": {
                     "type": "object",
                     "properties": {
                       "title": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Ship MVP v2"
                       },
                       "description": {
                         "type": "string"
@@ -1479,7 +2469,8 @@
                           "active",
                           "completed",
                           "archived"
-                        ]
+                        ],
+                        "example": "completed"
                       }
                     }
                   }
@@ -1495,6 +2486,23 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Goal"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "goal-1",
+                      "title": "Ship MVP v2",
+                      "description": "Launch the minimum viable product",
+                      "status": "completed",
+                      "taskIds": [
+                        "task-1",
+                        "task-2"
+                      ],
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -1509,12 +2517,13 @@
       },
       "delete": {
         "summary": "Delete goal",
-        "description": "Removes a goal.",
+        "description": "Removes a goal. Linked tasks are unlinked but not deleted.",
         "operationId": "goals_delete",
         "tags": [
           "Goals"
         ],
         "x-ipc-channel": "goals:delete",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1541,7 +2550,8 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "goal-1"
                   }
                 }
               }
@@ -1557,10 +2567,21 @@
                   "type": "object",
                   "properties": {
                     "deleted": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
                     },
                     "id": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "goal-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "deleted": true,
+                      "id": "goal-1"
                     }
                   }
                 }
@@ -1579,12 +2600,13 @@
     "/tasks": {
       "get": {
         "summary": "List tasks",
-        "description": "Lists all tasks with pagination and optional filters.",
+        "description": "Lists all tasks with pagination and optional filters. Filter by status or parent goal.",
         "operationId": "tasks_list",
         "tags": [
           "Tasks"
         ],
         "x-ipc-channel": "tasks:list",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1596,7 +2618,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "example": 0
             }
           },
           {
@@ -1604,7 +2627,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "example": 20
             }
           },
           {
@@ -1615,9 +2639,11 @@
               "type": "string",
               "enum": [
                 "pending",
+                "assigned",
                 "running",
                 "done",
-                "failed"
+                "failed",
+                "blocked"
               ]
             }
           },
@@ -1626,7 +2652,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Filter tasks by parent goal"
             }
           },
           {
@@ -1662,9 +2689,38 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Task"
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Task"
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 10
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "task-1",
+                          "title": "Implement auth",
+                          "description": "Add JWT-based auth flow",
+                          "status": "done",
+                          "goalId": "goal-1",
+                          "assigneeAgentId": "agent-1",
+                          "createdAt": 1716900000000,
+                          "updatedAt": 1716950000000
+                        }
+                      ],
+                      "total": 1
+                    }
                   }
                 }
               }
@@ -1680,12 +2736,13 @@
       },
       "post": {
         "summary": "Create task",
-        "description": "Creates a new task. Optionally links to a parent goal.",
+        "description": "Creates a new task. Optionally links to a parent goal and assigns an agent.",
         "operationId": "tasks_create",
         "tags": [
           "Tasks"
         ],
         "x-ipc-channel": "tasks:create",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1704,17 +2761,21 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "example": "Implement auth"
                   },
                   "description": {
                     "type": "string",
-                    "maxLength": 5000
+                    "maxLength": 5000,
+                    "example": "Add JWT-based auth flow with refresh tokens"
                   },
                   "goalId": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "goal-1"
                   },
                   "assigneeAgentId": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "agent-1"
                   }
                 }
               }
@@ -1728,6 +2789,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Task"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "task-2",
+                      "title": "Implement auth",
+                      "description": "Add JWT-based auth flow with refresh tokens",
+                      "status": "pending",
+                      "goalId": "goal-1",
+                      "assigneeAgentId": "agent-1",
+                      "createdAt": 1717000000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -1750,6 +2826,7 @@
           "Tasks"
         ],
         "x-ipc-channel": "tasks:get",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1772,6 +2849,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Task"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "task-1",
+                      "title": "Implement auth",
+                      "description": "Add JWT-based auth flow",
+                      "status": "done",
+                      "goalId": "goal-1",
+                      "assigneeAgentId": "agent-1",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1716950000000
+                    }
+                  }
                 }
               }
             }
@@ -1786,12 +2878,13 @@
       },
       "patch": {
         "summary": "Update task",
-        "description": "Updates fields on an existing task.",
+        "description": "Updates fields on an existing task. Use to change status, reassign, or re-link to a different goal.",
         "operationId": "tasks_update",
         "tags": [
           "Tasks"
         ],
         "x-ipc-channel": "tasks:update",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1819,7 +2912,8 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "task-1"
                   },
                   "updates": {
                     "type": "object",
@@ -1834,10 +2928,13 @@
                         "type": "string",
                         "enum": [
                           "pending",
+                          "assigned",
                           "running",
                           "done",
-                          "failed"
-                        ]
+                          "failed",
+                          "blocked"
+                        ],
+                        "example": "running"
                       },
                       "goalId": {
                         "type": "string"
@@ -1859,6 +2956,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Task"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "task-1",
+                      "title": "Implement auth",
+                      "description": "Add JWT-based auth flow",
+                      "status": "running",
+                      "goalId": "goal-1",
+                      "assigneeAgentId": "agent-1",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -1873,12 +2985,13 @@
       },
       "delete": {
         "summary": "Delete task",
-        "description": "Removes a task.",
+        "description": "Removes a task. Does not affect the parent goal.",
         "operationId": "tasks_delete",
         "tags": [
           "Tasks"
         ],
         "x-ipc-channel": "tasks:delete",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1905,7 +3018,8 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "task-1"
                   }
                 }
               }
@@ -1921,10 +3035,1002 @@
                   "type": "object",
                   "properties": {
                     "deleted": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "example": true
                     },
                     "id": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "task-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "deleted": true,
+                      "id": "task-1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator": {
+      "get": {
+        "summary": "List DAGs",
+        "description": "Lists all DAG (Directed Acyclic Graph) workflow definitions with pagination and status filter.",
+        "operationId": "orchestrator_list",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:list",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "example": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "example": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "running",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "paused"
+              ]
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Dag"
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 2
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "dag-1",
+                          "name": "deploy-pipeline",
+                          "description": "CI/CD deployment workflow",
+                          "status": "pending",
+                          "taskCount": 4,
+                          "createdAt": 1716900000000,
+                          "updatedAt": 1716900000000
+                        }
+                      ],
+                      "total": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create DAG",
+        "description": "Creates a new DAG workflow definition. Tasks define the work items; edges define execution order. Task types: `agent` (runs via agent adapter), `noop` (placeholder), `manual` (requires human completion).",
+        "operationId": "orchestrator_create",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:create",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "tasks"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "example": "deploy-pipeline"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "example": "CI/CD deployment workflow"
+                  },
+                  "tasks": {
+                    "type": "array",
+                    "description": "Task nodes in the DAG",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "title"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "example": "Build"
+                        },
+                        "taskType": {
+                          "type": "string",
+                          "enum": [
+                            "agent",
+                            "noop",
+                            "manual"
+                          ],
+                          "example": "agent"
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "description": "Agent to execute this task (for agent type)"
+                        },
+                        "config": {
+                          "type": "object",
+                          "description": "Task-specific configuration"
+                        }
+                      }
+                    }
+                  },
+                  "edges": {
+                    "type": "array",
+                    "description": "Dependency edges between tasks",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "description": "Source task title or index"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Target task title or index"
+                        }
+                      }
+                    }
+                  },
+                  "maxParallel": {
+                    "type": "number",
+                    "min": 1,
+                    "max": 32,
+                    "description": "Max concurrent task execution",
+                    "example": 2
+                  },
+                  "retryMax": {
+                    "type": "number",
+                    "min": 0,
+                    "max": 10,
+                    "description": "Max retries per failed task",
+                    "example": 3
+                  },
+                  "retryBackoffMs": {
+                    "type": "number",
+                    "min": 100,
+                    "max": 60000,
+                    "description": "Initial retry backoff in ms",
+                    "example": 1000
+                  },
+                  "retryBackoffMult": {
+                    "type": "number",
+                    "min": 1,
+                    "max": 10,
+                    "description": "Backoff multiplier",
+                    "example": 2
+                  },
+                  "retryMaxBackoffMs": {
+                    "type": "number",
+                    "min": 1000,
+                    "max": 300000,
+                    "description": "Max backoff cap in ms",
+                    "example": 30000
+                  },
+                  "onFailure": {
+                    "type": "string",
+                    "enum": [
+                      "fail-fast",
+                      "best-effort"
+                    ],
+                    "description": "Failure strategy",
+                    "example": "fail-fast"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DagFull"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "dag-2",
+                      "name": "deploy-pipeline",
+                      "status": "pending",
+                      "tasks": [
+                        {
+                          "id": "dt-1",
+                          "title": "Build",
+                          "taskType": "agent",
+                          "status": "pending"
+                        }
+                      ],
+                      "edges": [],
+                      "maxParallel": 2,
+                      "retryMax": 3,
+                      "onFailure": "fail-fast",
+                      "createdAt": 1717000000000,
+                      "updatedAt": 1717000000000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}": {
+      "get": {
+        "summary": "Get DAG with tasks",
+        "description": "Returns the full DAG definition including all task nodes, edges, and current execution state.",
+        "operationId": "orchestrator_get",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:get",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DagFull"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "dag-1",
+                      "name": "deploy-pipeline",
+                      "description": "CI/CD deployment workflow",
+                      "status": "pending",
+                      "tasks": [
+                        {
+                          "id": "dag-task-1",
+                          "title": "Build",
+                          "taskType": "agent",
+                          "status": "pending"
+                        },
+                        {
+                          "id": "dag-task-2",
+                          "title": "Test",
+                          "taskType": "agent",
+                          "status": "pending"
+                        }
+                      ],
+                      "edges": [
+                        {
+                          "from": "dag-task-1",
+                          "to": "dag-task-2"
+                        }
+                      ],
+                      "maxParallel": 2,
+                      "retryMax": 3,
+                      "onFailure": "fail-fast",
+                      "createdAt": 1716900000000,
+                      "updatedAt": 1716900000000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}/start": {
+      "post": {
+        "summary": "Start DAG execution",
+        "description": "Begins executing the DAG. Tasks without dependencies start immediately; others wait for predecessors.",
+        "operationId": "orchestrator_start",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:start",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "dag-1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "dagId": {
+                      "type": "string",
+                      "example": "dag-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true,
+                      "dagId": "dag-1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}/pause": {
+      "post": {
+        "summary": "Pause DAG execution",
+        "description": "Pauses the DAG. Running tasks continue to completion; no new tasks are started.",
+        "operationId": "orchestrator_pause",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:pause",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "dag-1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "dagId": {
+                      "type": "string",
+                      "example": "dag-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true,
+                      "dagId": "dag-1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}/resume": {
+      "post": {
+        "summary": "Resume DAG execution",
+        "description": "Resumes a paused DAG. Queued tasks begin executing according to their dependencies.",
+        "operationId": "orchestrator_resume",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:resume",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "dag-1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "dagId": {
+                      "type": "string",
+                      "example": "dag-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true,
+                      "dagId": "dag-1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}/cancel": {
+      "post": {
+        "summary": "Cancel DAG execution",
+        "description": "Cancels the DAG. Running tasks are killed; pending tasks are marked cancelled.",
+        "operationId": "orchestrator_cancel",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:cancel",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "dag-1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "dagId": {
+                      "type": "string",
+                      "example": "dag-1"
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true,
+                      "dagId": "dag-1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{id}/progress": {
+      "get": {
+        "summary": "Get DAG progress",
+        "description": "Returns the current execution progress of a DAG including task-level status counts.",
+        "operationId": "orchestrator_progress",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:progress",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number",
+                      "example": 4
+                    },
+                    "pending": {
+                      "type": "number",
+                      "example": 1
+                    },
+                    "running": {
+                      "type": "number",
+                      "example": 1
+                    },
+                    "succeeded": {
+                      "type": "number",
+                      "example": 1
+                    },
+                    "failed": {
+                      "type": "number",
+                      "example": 0
+                    },
+                    "cancelled": {
+                      "type": "number",
+                      "example": 0
+                    },
+                    "percent": {
+                      "type": "number",
+                      "description": "Completion percentage",
+                      "example": 50
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "total": 4,
+                      "pending": 1,
+                      "running": 1,
+                      "succeeded": 1,
+                      "failed": 0,
+                      "cancelled": 0,
+                      "percent": 50
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{dagId}/tasks/{taskId}": {
+      "get": {
+        "summary": "Get DAG task detail",
+        "description": "Returns the detail of a single task within a DAG, including its output if completed.",
+        "operationId": "orchestrator_task_get",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:task:get",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DagTask"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "dag-task-1",
+                      "title": "Build",
+                      "taskType": "agent",
+                      "status": "succeeded",
+                      "output": {
+                        "exitCode": 0
+                      },
+                      "startedAt": 1717000000000,
+                      "endedAt": 1717000060000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/orchestrator/{dagId}/tasks/{taskId}/complete": {
+      "post": {
+        "summary": "Complete manual task",
+        "description": "Marks a manual-type task as complete or failed. Only applicable to tasks with `taskType: manual`.",
+        "operationId": "orchestrator_task_complete",
+        "tags": [
+          "Orchestrator"
+        ],
+        "x-ipc-channel": "orchestrator:task:complete",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dagId",
+                  "taskId",
+                  "success"
+                ],
+                "properties": {
+                  "dagId": {
+                    "type": "string",
+                    "example": "dag-1"
+                  },
+                  "taskId": {
+                    "type": "string",
+                    "example": "dag-task-1"
+                  },
+                  "output": {
+                    "type": "object",
+                    "description": "Task output data",
+                    "example": {
+                      "result": "approved"
+                    }
+                  },
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true
                     }
                   }
                 }
@@ -1943,12 +4049,13 @@
     "/logs": {
       "get": {
         "summary": "List log entries",
-        "description": "Lists log entries. Filter by agentId for session-specific logs.",
+        "description": "Lists log entries. Filter by agentId for session-specific logs or taskId for task-specific logs.",
         "operationId": "logs_list",
         "tags": [
           "Logs"
         ],
         "x-ipc-channel": "logs:list",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -1960,7 +4067,17 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Filter by agent session ID"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter by task ID"
             }
           },
           {
@@ -1968,7 +4085,9 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "description": "Max entries to return (default: 100)",
+              "example": 50
             }
           },
           {
@@ -1976,7 +4095,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "example": 0
             }
           }
         ],
@@ -1989,6 +4109,22 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/LogEntry"
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": [
+                      {
+                        "id": "log-1",
+                        "agentId": "agent-1",
+                        "taskId": null,
+                        "message": "Agent started successfully",
+                        "level": "info",
+                        "stream": "stdout",
+                        "timestamp": 1717000000000
+                      }
+                    ]
                   }
                 }
               }
@@ -2004,12 +4140,13 @@
       },
       "post": {
         "summary": "Append log entry",
-        "description": "Appends a new log entry to the global log buffer.",
+        "description": "Appends a new log entry to the global log buffer. The entry is also broadcast to subscribed renderers.",
         "operationId": "logs_append",
         "tags": [
           "Logs"
         ],
         "x-ipc-channel": "logs:append",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -2026,10 +4163,16 @@
                 ],
                 "properties": {
                   "agentId": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "agent-1"
+                  },
+                  "taskId": {
+                    "type": "string",
+                    "example": "task-1"
                   },
                   "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Processing batch 3/10"
                   },
                   "level": {
                     "type": "string",
@@ -2038,14 +4181,16 @@
                       "info",
                       "warn",
                       "error"
-                    ]
+                    ],
+                    "example": "info"
                   },
                   "stream": {
                     "type": "string",
                     "enum": [
                       "stdout",
                       "stderr"
-                    ]
+                    ],
+                    "example": "stdout"
                   }
                 }
               }
@@ -2059,6 +4204,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LogEntry"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "id": "log-2",
+                      "agentId": "agent-1",
+                      "taskId": "task-1",
+                      "message": "Processing batch 3/10",
+                      "level": "info",
+                      "stream": "stdout",
+                      "timestamp": 1717000000000
+                    }
+                  }
                 }
               }
             }
@@ -2075,12 +4234,13 @@
     "/stats/summary": {
       "get": {
         "summary": "Dashboard stats",
-        "description": "Returns aggregated counts for agents and tasks by status.",
+        "description": "Returns aggregated counts for agents and tasks by status. Used to populate the dashboard overview.",
         "operationId": "stats_summary",
         "tags": [
           "Stats"
         ],
         "x-ipc-channel": "stats:summary",
+        "x-transport": "ipc",
         "security": [
           {
             "bearerAuth": []
@@ -2098,19 +4258,24 @@
                       "type": "object",
                       "properties": {
                         "total": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 5
                         },
                         "running": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 2
                         },
                         "idle": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 2
                         },
                         "error": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 1
                         },
                         "stopped": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 0
                         }
                       }
                     },
@@ -2118,21 +4283,335 @@
                       "type": "object",
                       "properties": {
                         "total": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 12
                         },
                         "pending": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 3
+                        },
+                        "assigned": {
+                          "type": "number",
+                          "example": 2
                         },
                         "running": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 3
                         },
                         "done": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 3
                         },
                         "failed": {
-                          "type": "number"
+                          "type": "number",
+                          "example": 1
+                        },
+                        "blocked": {
+                          "type": "number",
+                          "example": 0
                         }
                       }
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "agents": {
+                        "total": 5,
+                        "running": 2,
+                        "idle": 2,
+                        "error": 1,
+                        "stopped": 0
+                      },
+                      "tasks": {
+                        "total": 12,
+                        "pending": 3,
+                        "assigned": 2,
+                        "running": 3,
+                        "done": 3,
+                        "failed": 1,
+                        "blocked": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          }
+        }
+      }
+    },
+    "/settings": {
+      "get": {
+        "summary": "Get all settings",
+        "description": "Returns the full application settings object.",
+        "operationId": "settings_get",
+        "tags": [
+          "Settings"
+        ],
+        "x-ipc-channel": "settings:get",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "type": "string",
+                      "enum": [
+                        "light",
+                        "dark",
+                        "system"
+                      ],
+                      "example": "dark"
+                    },
+                    "logLevel": {
+                      "type": "string",
+                      "enum": [
+                        "debug",
+                        "info",
+                        "warn",
+                        "error"
+                      ],
+                      "example": "info"
+                    },
+                    "autoStartAgents": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "maxConcurrentAgents": {
+                      "type": "number",
+                      "example": 4
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "theme": "dark",
+                      "logLevel": "info",
+                      "autoStartAgents": false,
+                      "maxConcurrentAgents": 4
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update settings",
+        "description": "Updates application settings. Merges provided keys into existing settings.",
+        "operationId": "settings_update",
+        "tags": [
+          "Settings"
+        ],
+        "x-ipc-channel": "settings:update",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "settings"
+                ],
+                "properties": {
+                  "settings": {
+                    "type": "object",
+                    "description": "Settings key-value pairs to update",
+                    "example": {
+                      "theme": "light",
+                      "logLevel": "debug"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Updated full settings object"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "theme": "light",
+                      "logLevel": "debug",
+                      "autoStartAgents": false,
+                      "maxConcurrentAgents": 4
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/update/check": {
+      "post": {
+        "summary": "Check for updates",
+        "description": "Triggers an update check against the configured update server.",
+        "operationId": "update_check",
+        "tags": [
+          "Updates"
+        ],
+        "x-ipc-channel": "update:check",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          }
+        }
+      }
+    },
+    "/update/download": {
+      "post": {
+        "summary": "Download update",
+        "description": "Downloads the available update. Progress is reported via renderer events.",
+        "operationId": "update_download",
+        "tags": [
+          "Updates"
+        ],
+        "x-ipc-channel": "update:download",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing token"
+          }
+        }
+      }
+    },
+    "/update/install": {
+      "post": {
+        "summary": "Install update and restart",
+        "description": "Installs the downloaded update and restarts the application.",
+        "operationId": "update_install",
+        "tags": [
+          "Updates"
+        ],
+        "x-ipc-channel": "update:install",
+        "x-transport": "ipc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "ok": true
                     }
                   }
                 }
