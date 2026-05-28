@@ -1,0 +1,81 @@
+Category,Sub-Dimension,AgentOps Current,Multica,Paperclip,Golutra,CrewAI,AutoGen,AgentOps Target,Gap Severity,Effort
+CLI Adapters,Provider count,1 (generic),12 (hard-coded),0,7 (hard-coded),N/A,N/A,5+ (dynamic registry),Critical,Medium
+CLI Adapters,Dynamic loading,Yes (classPath),No,No,No,N/A,N/A,Yes,Maintain,-
+CLI Adapters,Auto-detection,No,Yes (PATH scan),No,No,N/A,N/A,Yes,High,Low
+CLI Adapters,Session resumption,No,9/12 providers,No,Unknown,Partial,Yes,Yes,High,Medium
+CLI Adapters,MCP support,No,Claude only,No,Via golutra-mcp,No,No,Yes (Claude),Medium,Medium
+CLI Adapters,Stdout format parsing,__AGENT_OUTPUT__ marker,Per-provider,Stream-json,Per-provider,Structured messages,Structured messages,Per-provider + marker fallback,Medium,Medium
+CLI Adapters,Interactive prompt injection,No,No,No,Yes (stdin write),No,No,Yes,Medium,Medium
+CLI Adapters,Health check,Yes (which),Unknown,No,No,No,No,Yes,Maintain,-
+CLI Adapters,Hot-reload,Yes (load/unload),No,No,No,No,No,Yes,Maintain,-
+CLI Adapters,Persistence (SQLite),Yes,No (config file),No,No (config file),No,No,Yes,Maintain,-
+Team/Squad,Squad as assignee,No (grouping only),Yes,No,No,N/A,N/A,Yes,Critical,Medium
+Team/Squad,Leader delegation,No,Yes (@mention),No,No,Yes (hierarchical),Yes (selector),Yes,Critical,High
+Team/Squad,Squad-level instructions,No,Yes,No,No,Yes (crew rules),Yes (group chat rules),Yes,High,Low
+Team/Squad,Member roles (rich),member/leader enum,Free-text descriptions,No,No,role+goal+backstory,system message,Free-text + enum,Medium,Low
+Team/Squad,Trigger rules (event-driven),No,Yes,No,No,No,No,Yes,Medium,High
+Team/Squad,Multi-squad membership,No,Yes,No,No,N/A,N/A,Yes,Medium,Low
+Team/Squad,Intelligent routing,No,Yes (leader decides),No,Yes (manager),Yes,Yes,Yes,High,High
+Team/Squad,Batch start/stop,Yes,No (via leader),No,No,No,No,Yes,Maintain,-
+Team/Squad,Aggregated status,Yes,No,No,No,No,No,Yes,Maintain,-
+Communication,Result relay,Yes (task_handoffs),Via issue comments,Via goals,Via session,Task delegation,Message objects,Yes,Maintain,-
+Communication,Pub/sub (MessageBus),Yes,No,No,No,No,No,Yes,Maintain,-
+Communication,Agent-to-agent messaging,No,Via @mention comments,No,No,Task delegation,Direct messages,Yes,High,High
+Communication,Shared conversation context,No,Via issue thread,No,No,Memory systems,Conversation history,Yes,Critical,High
+Communication,Group chat,No,Issue comments,No,No,No,Core paradigm,Yes,High,High
+Communication,Shared memory/state,No,Workspace files,No,Memory layer,Memory systems,State objects,Yes,Medium,High
+Communication,Request/reply,Yes (MessageBus),No,No,No,No,No,Yes,Maintain,-
+Communication,Streaming to agents,No,No,No,Yes (stdin),Async kickoff,run_stream(),Yes,Medium,Medium
+Communication,Human-in-the-loop,Yes (governance),Via comments,No,No,Yes,Yes,Yes,Maintain,-
+Communication,Crash recovery replay,Yes (MessageBus),No,No,No,No,No,Yes,Maintain,-
+Project Isolation,Isolation unit,Per-agent,Per-task,Per-company,Per-session,Per-crew,Per-conversation,Per-task + per-squad,High,Medium
+Project Isolation,Auto-cleanup/GC,No,Yes (24h/72h/12h),No,No,No,No,Yes,Medium,Low
+Project Isolation,Context injection,No,Yes (skills+context files),No,Session-level,Knowledge sources,Conversation history,Yes,Medium,Medium
+Project Isolation,Size limits,Yes (max_size_bytes),Soft (GC),No,No,No,No,Yes,Maintain,-
+Project Isolation,Snapshots,Yes,No,No,No,No,No,Yes,Maintain,-
+Project Isolation,Multi-project,No (single implicit),Yes (workspace_id),Yes (multi-company),Session-based,Yes (crew-level),Yes (group chat),Yes,Medium,High
+DAG Orchestration,Cycle detection,Yes (Kahn's),No,No,No,No,No,Yes,Maintain,-
+DAG Orchestration,Parallel execution,Yes (maxParallel=4),No,No,Yes (unlimited),Async kickoff,Yes,Yes,Maintain,-
+DAG Orchestration,Retry with backoff,Yes (exponential),No,No,No,No,No,Yes,Maintain,-
+DAG Orchestration,Failure modes (fail-fast/best-effort),Yes,No,No,No,No,No,Yes,Maintain,-
+DAG Orchestration,Data flow edges,Yes (data_key),No,No,No,No,No,Yes,Maintain,-
+Governance,Budget enforcement,Yes (3-tier),No,Yes,No,No,No,Yes,Maintain,-
+Governance,RBAC (admin/operator/viewer),Yes,No,Yes,No,No,No,Yes,Maintain,-
+Governance,Approval gates,Yes,No,Yes,No,No,No,Yes,Maintain,-
+Governance,Audit logs,Yes,No,Yes,No,No,Yes,Yes,Maintain,-
+Agent Lifecycle,State machine,Yes (5 states),Simple (idle/running),No,Yes (inferred),No,No,Yes,Maintain,-
+Agent Lifecycle,Resource monitoring,Yes (RSS memory),No,No,No,No,No,Yes,Maintain,-
+Agent Lifecycle,Crash recovery,Yes (exponential backoff),No,No,No,No,No,Yes,Maintain,-
+Agent Lifecycle,Skill injection,Yes (AGENT_SKILLS env),Yes (per-provider path),Yes (routines),EverOS memory,Knowledge sources,No,Yes,Maintain,-
+UI/Desktop,Framework,Vue vanilla JS,Next.js 16,Unknown,Tauri + Vue 3,N/A,N/A,React (target),Critical,High
+UI/Desktop,Primary view,Dashboard + Kanban,Kanban board,Issue list,Desktop panels,N/A,N/A,Dashboard + Kanban + Timeline,Maintain,-
+UI/Desktop,Live terminal,Yes,No,No,No,N/A,N/A,Yes,Maintain,-
+UI/Desktop,Real-time updates,IPC events,WebSocket,API polling,Tauri events,N/A,N/A,WebSocket + IPC,Medium,Medium
+UI/Desktop,System tray,No,N/A,N/A,Yes (Tauri),N/A,N/A,Yes,Medium,Low
+UI/Desktop,OS notifications,No,N/A,N/A,Tauri notifications,N/A,N/A,Yes,Medium,Low
+UI/Desktop,Activity timeline,No (raw logs),Yes,Heartbeat,No,N/A,N/A,Yes,Medium,Medium
+UI/Desktop,Cost visibility in UI,Yes (budget),No,Tokens (logs),No,N/A,N/A,Yes + token detail,Maintain,-
+UI/Desktop,Parallel execution viz,Yes (agent cards),No,No,No,N/A,N/A,Yes (enhanced),Maintain,-
+UI/Desktop,Command palette,Cmd+K exists,Unknown,N/A,Inferred,N/A,N/A,Cmd+K with fuzzy search,Low,Low
+UI/Desktop,Workflow page,Placeholder,No,No,No,N/A,N/A,DAG visual editor,Medium,High
+Differentiation,Token-level cost tracking,No (budget only),No,Per-message tokens,No,N/A,N/A,Yes,High,Medium
+Differentiation,Leader-delegation squads,No,Yes,No,No,Yes,Yes,Yes,Critical,High
+Differentiation,Offline-first,Yes (local SQLite),No,No,Yes (config files),N/A,N/A,Yes,Maintain,-
+Differentiation,MCP integration,No,Claude only,No,Via golutra-mcp,No,No,Yes,Medium,Medium
+Differentiation,Skill portability,No,No,SKILL.md format,No,N/A,N/A,Import/export,Medium,Medium
+Ecosystem,Skills directory,No (module exists),Per-provider paths,skills/ dir,N/A,N/A,N/A,Yes,High,Low
+Ecosystem,Plugin system,Dynamic registry,Hard-coded switch,npm plugins,Compile-time,N/A,N/A,Dynamic registry,Maintain,-
+Ecosystem,Example projects,getting-started only,Docker+Helm,Bootstrap templates,Unknown,N/A,N/A,3+ example projects,Medium,Medium
+Ecosystem,Community adapters,No contribution path,Open-source,Npm registry,BSL 1.1,N/A,N/A,Adapter template + guide,Medium,Medium
+Ecosystem,License,TBD,MIT,MIT,BSL 1.1,MIT,MIT,MIT (recommended),High,-
+Ecosystem,API docs,OpenAPI 91KB + HTML,Inferred,REST docs,Unknown,N/A,N/A,OpenAPI + SDK guide,Maintain,-
+Quality,Unit tests,Vitest 28 files,Go test,Unknown,Unknown,Python test,Python test,50+ files,High,Medium
+Quality,Integration tests,8 files,Unknown,Heartbeat,Unknown,N/A,N/A,15+ files,Medium,Medium
+Quality,E2E tests,Playwright 3 specs,Playwright,Unknown,Unknown,N/A,N/A,10+ specs,Medium,Medium
+Quality,Coverage reporting,No,Unknown,Unknown,Unknown,Unknown,Unknown,70%+ threshold,High,Low
+Quality,SAST/DAST,No (manual review),Unknown,Unknown,Unknown,Unknown,Unknown,Automated SAST,Medium,Medium
+Quality,Performance benchmarks,Playwright perf spec,Unknown,Unknown,Unknown,N/A,N/A,Regression tracking,Medium,Medium
+Quality,Adapter test harness,No,Unknown,Unknown,Unknown,N/A,N/A,Standard test template,Medium,Medium
+Quality,CI pipeline,5 steps (lint+unit+API+E2E+build),GitHub Actions,Unknown,Unknown,GitHub Actions,GitHub Actions,5+ steps,Maintain,-
+Quality,Code signing,Yes (notarize.js),N/A,N/A,Unknown,N/A,N/A,Yes,Maintain,-
+Quality,Release automation,4 workflows (release/deploy/beta/rollback),Docker+Helm,npm publish,Unknown,N/A,N/A,4+ workflows,Maintain,-
