@@ -55,10 +55,11 @@ class TaskOrchestrator extends EventEmitter {
    * @param {import('./repositories/orchestrator.repository').OrchestratorRepository} opts.repo
    * @param {import('./agent-runtime').AgentRuntime} opts.runtime
    */
-  constructor({ repo, runtime }) {
+  constructor({ repo, runtime, costGuard }) {
     super();
     this.repo = repo;
     this.runtime = runtime;
+    this.costGuard = costGuard || null;
 
     // In-memory execution state per active DAG
     this._dags = new Map(); // dagId -> DagContext
@@ -488,6 +489,20 @@ class TaskOrchestrator extends EventEmitter {
       return;
     }
 
+    // Agent task — check budget before spawning
+    if (this.costGuard) {
+      const agentId = task.agentId || (task.agentConfig && task.agentConfig.agentId);
+      if (agentId) {
+        const budgetCheck = this.costGuard.checkAgent(agentId);
+        if (!budgetCheck.allowed) {
+          await this._completeTask(dagId, taskId, TASK_STATUS.FAILED, null, budgetCheck.reason);
+          this.emit('task:budget-blocked', { dagId, taskId, agentId, reason: budgetCheck.reason });
+          logger.warn('orchestrator.task-budget-blocked', { dagId, taskId, agentId, reason: budgetCheck.reason });
+          return;
+        }
+      }
+    }
+
     // Agent task — spawn via runtime
     if (!this.runtime) {
       await this._completeTask(dagId, taskId, TASK_STATUS.FAILED, null, 'No agent runtime available');
@@ -496,11 +511,25 @@ class TaskOrchestrator extends EventEmitter {
 
     try {
       const config = task.agentConfig || {};
+
+      // Gather upstream outputs for handoff context injection
+      const upstreamOutputs = this.repo.getUpstreamOutputs(taskId);
+      const agentEnv = { ...(config.env || {}) };
+      if (upstreamOutputs.length > 0) {
+        // Build TASK_INPUT from upstream outputs
+        const taskInput = {};
+        for (const { taskId: srcId, output, dataKey } of upstreamOutputs) {
+          const key = dataKey || srcId;
+          taskInput[key] = output;
+        }
+        agentEnv.TASK_INPUT = JSON.stringify(taskInput);
+      }
+
       const result = this.runtime.spawnAgent({
         execPath: config.execPath,
         args: config.args || [],
         cwd: config.cwd || process.cwd(),
-        env: config.env || {},
+        env: agentEnv,
         label: config.label || task.title,
         resourceLimits: config.resourceLimits,
         recovery: config.recovery,
@@ -651,7 +680,7 @@ class TaskOrchestrator extends EventEmitter {
   // ── Agent runtime event handlers ──
 
   _onAgentExit(data) {
-    const { agentId, code } = data;
+    const { agentId, code, output } = data;
     const mapping = this._agentTaskMap.get(agentId);
     if (!mapping) return;
 
@@ -660,7 +689,7 @@ class TaskOrchestrator extends EventEmitter {
     const status = success ? TASK_STATUS.SUCCEEDED : TASK_STATUS.FAILED;
     const error = success ? null : `Agent exited with code ${code}`;
 
-    this._completeTask(dagId, taskId, status, null, error).catch((err) => {
+    this._completeTask(dagId, taskId, status, output || null, error).catch((err) => {
       logger.error('orchestrator.complete-task-failed', { dagId, taskId, error: err.message });
     });
   }

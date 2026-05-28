@@ -336,6 +336,38 @@ class OrchestratorRepository {
     const edges = this.listEdgesByDag(dagId);
     return { dag, tasks, edges };
   }
+
+  /**
+   * Get upstream task outputs for a given task within a DAG.
+   * Follows incoming edges to find tasks with output_json.
+   * @param {string} taskId
+   * @returns {Array<{ taskId: string, output: Object, dataKey?: string }>}
+   */
+  getUpstreamOutputs(taskId) {
+    const edges = this._stmts.listEdgesByToTask.all({ taskId });
+    const results = [];
+    for (const edge of edges) {
+      const task = this.getTaskById(edge.from_task_id);
+      if (task && task.output) {
+        results.push({
+          taskId: task.id,
+          output: task.output,
+          dataKey: edge.data_key || null,
+        });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Get downstream task IDs for a given task within a DAG.
+   * @param {string} taskId
+   * @returns {string[]}
+   */
+  getDownstreamTasks(taskId) {
+    const edges = this._stmts.listEdgesByFromTask.all({ taskId });
+    return edges.map((e) => e.to_task_id);
+  }
 }
 
 module.exports = { OrchestratorRepository };

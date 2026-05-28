@@ -96,6 +96,8 @@ class AgentRuntime extends EventEmitter {
       process: proc,
       status: AGENT_STATUS.SPAWNING,
       logs: [],
+      output: null, // Structured JSON output captured from stdout
+      stdoutBuffer: '', // Buffer for multi-line output marker
       pid: proc.pid,
       startedAt: Date.now(),
     };
@@ -103,9 +105,24 @@ class AgentRuntime extends EventEmitter {
     this.agents.set(agentId, agent);
 
     proc.stdout.on('data', (data) => {
-      const line = data.toString();
-      agent.logs.push({ type: 'stdout', data: line, timestamp: Date.now() });
-      this.emit('log', { agentId, type: 'stdout', data: line });
+      const chunk = data.toString();
+      agent.logs.push({ type: 'stdout', data: chunk, timestamp: Date.now() });
+      this.emit('log', { agentId, type: 'stdout', data: chunk });
+
+      // Capture structured output: look for __AGENT_OUTPUT__ marker
+      agent.stdoutBuffer += chunk;
+      const marker = '__AGENT_OUTPUT__';
+      const markerIdx = agent.stdoutBuffer.indexOf(marker);
+      if (markerIdx !== -1) {
+        const jsonStart = markerIdx + marker.length;
+        const jsonStr = agent.stdoutBuffer.substring(jsonStart).trim();
+        try {
+          agent.output = JSON.parse(jsonStr);
+          this.emit('output', { agentId, output: agent.output });
+        } catch {
+          // Not valid JSON yet, keep buffering (may arrive in next chunk)
+        }
+      }
     });
 
     proc.stderr.on('data', (data) => {
@@ -130,13 +147,25 @@ class AgentRuntime extends EventEmitter {
       agent.exitCode = code;
       agent.exitSignal = signal;
       agent.endedAt = Date.now();
+
+      // Final attempt to parse structured output if marker was found but JSON was incomplete
+      if (!agent.output && agent.stdoutBuffer.includes('__AGENT_OUTPUT__')) {
+        const markerIdx = agent.stdoutBuffer.indexOf('__AGENT_OUTPUT__');
+        const jsonStart = markerIdx + '__AGENT_OUTPUT__'.length;
+        const jsonStr = agent.stdoutBuffer.substring(jsonStart).trim();
+        try {
+          agent.output = JSON.parse(jsonStr);
+          this.emit('output', { agentId, output: agent.output });
+        } catch { /* not valid JSON, ignore */ }
+      }
+
       this.emit('status-change', {
         agentId,
         status: agent.status,
         exitCode: code,
         exitSignal: signal,
       });
-      this.emit('exit', { agentId, code, signal });
+      this.emit('exit', { agentId, code, signal, output: agent.output });
     });
 
     return { agentId, status: agent.status };
@@ -187,6 +216,7 @@ class AgentRuntime extends EventEmitter {
       pid: agent.pid,
       exitCode: agent.exitCode ?? null,
       error: agent.error ?? null,
+      output: agent.output ?? null,
       startedAt: agent.startedAt,
       endedAt: agent.endedAt ?? null,
       logCount: agent.logs.length,
