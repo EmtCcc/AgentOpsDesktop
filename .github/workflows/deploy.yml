@@ -7,6 +7,9 @@ on:
     types:
       - completed
 
+permissions:
+  contents: write
+
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
