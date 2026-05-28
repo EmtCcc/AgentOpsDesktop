@@ -1,6 +1,9 @@
 'use strict';
 
 import { vi } from 'vitest';
+import { createRequire } from 'module';
+
+const cjsRequire = createRequire(import.meta.url);
 
 /**
  * Integration test harness.
@@ -9,47 +12,29 @@ import { vi } from 'vitest';
  * then exposes a `call(channel, payload)` helper that runs the full pipeline:
  *   auth check → payload validation → controller handler
  *
- * Usage:
- *   const harness = createHarness();
- *   const result = await harness.call('agents:list', { _auth: { token } });
+ * The test file MUST provide a hoisted vi.mock('electron') with ipcMain.
+ * Example:
+ *   const { handlers, mockIpcMain } = vi.hoisted(() => { ... });
+ *   vi.mock('electron', () => ({ ipcMain: mockIpcMain, ... }));
+ *   const harness = await createHarness({ handlers, mockIpcMain });
  */
 
-// Module-level mocks that survive across test files
-const handlers = new Map();
-let mockIpcMainHandle = null;
+async function createHarness({ handlers, mockIpcMain } = {}) {
+  if (!handlers) handlers = new Map();
+  if (!mockIpcMain) mockIpcMain = { handle: vi.fn((ch, h) => handlers.set(ch, h)), removeHandler: vi.fn() };
 
-async function createHarness() {
   // Clear previous handlers
   handlers.clear();
 
   // Reset modules so controllers get fresh in-memory stores
   vi.resetModules();
 
-  // Mock electron
-  vi.doMock('electron', () => {
-    mockIpcMainHandle = vi.fn((channel, handler) => {
-      handlers.set(channel, handler);
-    });
-    return {
-      ipcMain: {
-        handle: mockIpcMainHandle,
-        removeHandler: vi.fn(),
-      },
-      safeStorage: {
-        isEncryptionAvailable: () => true,
-        encryptString: (str) => Buffer.from(str, 'utf8'),
-        decryptString: (buf) => buf.toString('utf8'),
-      },
-      app: {
-        getPath: () => '/tmp/agentops-test',
-        getVersion: () => '0.1.0',
-        getName: () => 'agentops-desktop',
-        isReady: () => true,
-        on: vi.fn(),
-        whenReady: () => Promise.resolve(),
-      },
-    };
-  });
+  // Also clear Node's CJS require cache for source modules
+  for (const key of Object.keys(cjsRequire.cache)) {
+    if (key.includes('/src/main/') || key.includes('\\src\\main\\')) {
+      delete cjsRequire.cache[key];
+    }
+  }
 
   // Mock fs for token persistence
   vi.doMock('fs', async () => {
@@ -65,12 +50,16 @@ async function createHarness() {
     };
   });
 
-  // Mock updater to avoid electron-updater loading at import time
-  vi.doMock('../../../src/main/updater', () => ({
-    init: vi.fn(),
-    checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
-    quitAndInstall: vi.fn(),
+  // Mock electron-updater to avoid app.getVersion() at import time
+  vi.doMock('electron-updater', () => ({
+    autoUpdater: {
+      autoDownload: false,
+      autoInstallOnAppQuit: true,
+      on: vi.fn(),
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      quitAndInstall: vi.fn(),
+    },
   }));
 
   // Mock logger to silence output
@@ -96,7 +85,7 @@ async function createHarness() {
   const mockMainWindow = {
     webContents: { send: vi.fn() },
   };
-  bootstrapRoutes(mockMainWindow);
+  bootstrapRoutes(mockMainWindow, null, mockIpcMain);
 
   // Get the token manager for creating test sessions
   const { tokenManager } = await import('../../../src/main/ipc/index.js');
@@ -121,17 +110,20 @@ async function createHarness() {
 
     /**
      * Get a valid auth token payload.
+     * @param {string} [role] - Session role (default: 'operator')
      */
-    auth() {
-      const session = tokenManager.createSession();
+    auth(role) {
+      const session = tokenManager.createSession(role ? { role } : undefined);
       return { _auth: { token: session.token } };
     },
 
     /**
      * Merge auth with additional payload fields.
+     * @param {Object} payload
+     * @param {string} [role] - Session role (default: 'operator')
      */
-    withAuth(payload = {}) {
-      return { ...this.auth(), ...payload };
+    withAuth(payload = {}, role) {
+      return { ...this.auth(role), ...payload };
     },
   };
 }

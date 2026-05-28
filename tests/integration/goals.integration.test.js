@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHarness } from './helpers/test-harness.js';
 
-// Mock electron-updater before any source imports
-vi.mock('electron-updater', () => ({
-  autoUpdater: {
-    autoDownload: false,
-    autoInstallOnAppQuit: true,
-    on: vi.fn(),
-    checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
-    quitAndInstall: vi.fn(),
-  },
-}));
-
 describe('Goals integration', () => {
   let harness;
 
@@ -97,10 +85,11 @@ describe('Goals integration', () => {
       expect(result.title).toBe('Find me');
     });
 
-    it('throws NOT_FOUND for missing goal', async () => {
-      await expect(
-        harness.call('goals:get', harness.withAuth({ id: 'goal-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing goal', async () => {
+      const result = await harness.call('goals:get', harness.withAuth({ id: 'goal-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
+      expect(result.error.message).toMatch(/not found/i);
     });
   });
 
@@ -147,10 +136,10 @@ describe('Goals integration', () => {
       ).rejects.toThrow(/invalid fields/i);
     });
 
-    it('throws NOT_FOUND for missing goal', async () => {
-      await expect(
-        harness.call('goals:update', harness.withAuth({ id: 'goal-999', updates: { title: 'x' } }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing goal', async () => {
+      const result = await harness.call('goals:update', harness.withAuth({ id: 'goal-999', updates: { title: 'x' } }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 
@@ -167,10 +156,10 @@ describe('Goals integration', () => {
       expect(list.total).toBe(0);
     });
 
-    it('throws NOT_FOUND for missing goal', async () => {
-      await expect(
-        harness.call('goals:delete', harness.withAuth({ id: 'goal-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing goal', async () => {
+      const result = await harness.call('goals:delete', harness.withAuth({ id: 'goal-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 });

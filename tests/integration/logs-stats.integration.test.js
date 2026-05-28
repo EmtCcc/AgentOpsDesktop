@@ -1,13 +1,11 @@
-'use strict';
-
-const { describe, it, expect, beforeEach, afterEach, vi } = require('vitest');
-const { createHarness } = require('./helpers/test-harness');
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHarness } from './helpers/test-harness.js';
 
 describe('Logs integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {
@@ -100,8 +98,8 @@ describe('Logs integration', () => {
 describe('Stats integration', () => {
   let harness;
 
-  beforeEach(() => {
-    harness = createHarness();
+  beforeEach(async () => {
+    harness = await createHarness();
   });
 
   afterEach(() => {

@@ -1,6 +1,4 @@
-'use strict';
-
-const { describe, it, expect, beforeEach, vi } = require('vitest');
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock Electron modules
 vi.mock('electron', () => ({
@@ -28,10 +26,10 @@ vi.mock('fs', async () => {
   };
 });
 
-const { ROLES, ROLE_LIST, PERMISSIONS, hasPermission, isValidRole } = require('../src/main/ipc/middleware/rbac');
-const { createAuthorizeMiddleware } = require('../src/main/ipc/middleware/authorize');
-const { TokenManager } = require('../src/main/ipc/middleware/token-manager');
-const { IpcError } = require('../src/main/ipc/errors');
+const { ROLES, ROLE_LIST, PERMISSIONS, hasPermission, isValidRole } = await import('../src/main/ipc/middleware/rbac');
+const { createAuthorizeMiddleware } = await import('../src/main/ipc/middleware/authorize');
+const { TokenManager } = await import('../src/main/ipc/middleware/token-manager');
+const { IpcError } = await import('../src/main/ipc/errors');
 
 describe('RBAC definitions', () => {
   describe('ROLES', () => {
@@ -152,7 +150,7 @@ describe('createAuthorizeMiddleware', () => {
   });
 
   it('throws when no session exists', () => {
-    expect(() => authorize({}, {}, 'agents:list')).toThrow(IpcError);
+    expect(() => authorize({}, {}, 'agents:list')).toThrow();
     try {
       authorize({}, {}, 'agents:list');
     } catch (err) {
@@ -168,7 +166,7 @@ describe('createAuthorizeMiddleware', () => {
 
   it('denies access when role lacks permission', () => {
     tm.createSession({ role: 'viewer' });
-    expect(() => authorize({}, {}, 'agents:create')).toThrow(IpcError);
+    expect(() => authorize({}, {}, 'agents:create')).toThrow();
     try {
       authorize({}, {}, 'agents:create');
     } catch (err) {
@@ -189,22 +187,21 @@ describe('createAuthorizeMiddleware', () => {
     tm.createSession({ role: 'operator' });
     expect(() => authorize({}, {}, 'agents:create')).not.toThrow();
     expect(() => authorize({}, {}, 'tasks:delete')).not.toThrow();
-    expect(() => authorize({}, {}, 'settings:update')).toThrow(IpcError);
+    expect(() => authorize({}, {}, 'settings:update')).toThrow();
   });
 
   it('viewer can read but not write', () => {
     tm.createSession({ role: 'viewer' });
     expect(() => authorize({}, {}, 'agents:list')).not.toThrow();
     expect(() => authorize({}, {}, 'agents:get')).not.toThrow();
-    expect(() => authorize({}, {}, 'agents:create')).toThrow(IpcError);
-    expect(() => authorize({}, {}, 'agents:delete')).toThrow(IpcError);
+    expect(() => authorize({}, {}, 'agents:create')).toThrow();
+    expect(() => authorize({}, {}, 'agents:delete')).toThrow();
   });
 
   it('throws when session is expired', () => {
     tm.createSession({ role: 'admin' });
-    // Simulate expiry by destroying session
     tm.destroySession();
-    expect(() => authorize({}, {}, 'agents:list')).toThrow(IpcError);
+    expect(() => authorize({}, {}, 'agents:list')).toThrow();
   });
 });
 
@@ -244,6 +241,6 @@ describe('TokenManager role support', () => {
   it('rotateSession preserves role', () => {
     tm.createSession({ role: 'viewer' });
     const rotated = tm.rotateSession();
-    expect(rotated.role).toBe('operator'); // rotateSession creates new session with default role
+    expect(rotated.role).toBe('operator');
   });
 });

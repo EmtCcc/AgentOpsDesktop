@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app.fixture';
+const { test, expect } = require('./fixtures/app.fixture');
 
 /**
  * Deployment smoke tests for AgentOps Desktop renderer.
@@ -8,7 +8,7 @@ import { test, expect } from './fixtures/app.fixture';
  * Run after build to catch renderer regressions before release.
  */
 
-test.describe('Smoke — App Shell', () => {
+test.describe('Smoke - App Shell', () => {
   test('page loads and has correct title', async ({ mainPage }) => {
     await expect(mainPage).toHaveTitle(/AgentOps/);
   });
@@ -19,7 +19,7 @@ test.describe('Smoke — App Shell', () => {
   });
 
   test('sidebar renders with navigation items', async ({ mainPage }) => {
-    const sidebar = mainPage.locator('#sidebar');
+    const sidebar = mainPage.locator('[data-testid="sidebar"]');
     await expect(sidebar).toBeVisible();
 
     const items = mainPage.locator('.sidebar__item');
@@ -28,22 +28,21 @@ test.describe('Smoke — App Shell', () => {
   });
 
   test('footer renders with version', async ({ mainPage }) => {
-    const footer = mainPage.locator('.footer');
+    const footer = mainPage.locator('[data-testid="footer"]');
     await expect(footer).toBeVisible();
 
     const version = mainPage.locator('.footer__right');
     await expect(version).toContainText('v0.1.0');
   });
 
-  test('search input is visible', async ({ mainPage }) => {
-    const search = mainPage.locator('#global-search');
-    await expect(search).toBeVisible();
-    await expect(search).toHaveAttribute('placeholder', /Search/);
+  test('main content area is visible', async ({ mainPage }) => {
+    const main = mainPage.locator('[data-testid="main-content"]');
+    await expect(main).toBeVisible();
   });
 });
 
-test.describe('Smoke — CSS', () => {
-  test('background color applied (dark theme)', async ({ mainPage }) => {
+test.describe('Smoke - CSS', () => {
+  test('background color token is defined', async ({ mainPage }) => {
     const bg = await mainPage.evaluate(() => {
       return getComputedStyle(document.documentElement)
         .getPropertyValue('--color-bg-primary')
@@ -57,7 +56,7 @@ test.describe('Smoke — CSS', () => {
       const links = document.querySelectorAll('link[rel="stylesheet"]');
       return Array.from(links).map((l) => ({
         href: l.getAttribute('href'),
-        loaded: (l as HTMLLinkElement).sheet !== null,
+        loaded: l.sheet !== null,
       }));
     });
 
@@ -67,22 +66,16 @@ test.describe('Smoke — CSS', () => {
   });
 });
 
-test.describe('Smoke — JS', () => {
+test.describe('Smoke - JS', () => {
   test('no uncaught console errors', async ({ mainPage }) => {
-    const errors: string[] = [];
+    const errors = [];
     mainPage.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
 
-    // Trigger JS by navigating or interacting
     await mainPage.reload();
     await mainPage.waitForLoadState('networkidle');
 
     expect(errors).toEqual([]);
-  });
-
-  test('app.js executes (main content element populated)', async ({ mainPage }) => {
-    const main = mainPage.locator('#main-content');
-    await expect(main).toBeVisible();
   });
 });

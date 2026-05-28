@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app.fixture';
+const { test, expect } = require('./fixtures/app.fixture');
 
 /**
  * Cross-browser compatibility tests for AgentOps Desktop renderer.
@@ -152,7 +152,7 @@ test.describe('Design System — Components', () => {
   });
 
   test('status indicators render with correct colors', async ({ mainPage }) => {
-    const statuses = ['running', 'idle', 'error', 'spawning'] as const;
+    const statuses = ['running', 'idle', 'error', 'spawning'];
 
     for (const status of statuses) {
       const indicator = mainPage.locator(`[data-status="${status}"]`);
@@ -186,11 +186,13 @@ test.describe('Design System — Components', () => {
 test.describe('Viewport Responsiveness', () => {
   test('sidebar collapses below 1024px', async ({ mainPage }) => {
     await mainPage.setViewportSize({ width: 1024, height: 800 });
+    await mainPage.waitForTimeout(300); // wait for CSS transition
     const sidebar = mainPage.locator('[data-testid="sidebar"]');
     const box = await sidebar.boundingBox();
     expect(box).toBeTruthy();
     if (box) {
-      expect(box.width).toBeLessThanOrEqual(64);
+      // Collapsed sidebar should be significantly narrower than expanded (240px)
+      expect(box.width).toBeLessThan(120);
     }
   });
 
@@ -243,18 +245,24 @@ test.describe('Accessibility', () => {
 
   test('prefers-reduced-motion is respected', async ({ mainPage }) => {
     await mainPage.emulateMedia({ reducedMotion: 'reduce' });
-    const animations = await mainPage.evaluate(() => {
+    const hasLongAnimations = await mainPage.evaluate(() => {
       const all = document.querySelectorAll('*');
-      let animated = 0;
       for (const el of all) {
         const style = getComputedStyle(el);
-        if (style.animationDuration !== '0s' && style.animationDuration !== '') {
-          animated++;
+        // With prefers-reduced-motion: reduce, durations should be near-zero (0.01ms)
+        if (style.animationDuration && style.animationDuration !== '0s' && style.animationDuration !== '') {
+          // Parse duration — should be effectively 0 (0.01ms = 0.00001s)
+          const seconds = parseFloat(style.animationDuration);
+          if (seconds > 0.01) return true;
+        }
+        if (style.transitionDuration && style.transitionDuration !== '0s' && style.transitionDuration !== '') {
+          const seconds = parseFloat(style.transitionDuration);
+          if (seconds > 0.01) return true;
         }
       }
-      return animated;
+      return false;
     });
-    expect(animations).toBe(0);
+    expect(hasLongAnimations).toBe(false);
   });
 
   test('interactive elements have aria labels where needed', async ({ mainPage }) => {

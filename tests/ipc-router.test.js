@@ -28,13 +28,13 @@ describe('IpcRouter', () => {
   });
 
   it('bootstraps routes on ipcMain', async () => {
-    const { ipcMain } = await import('electron');
+    const mockIpcMain = { handle: vi.fn() };
     const handler = async () => 'result';
 
     router.register('test:channel', handler);
-    router.bootstrap();
+    router.bootstrap(mockIpcMain);
 
-    expect(ipcMain.handle).toHaveBeenCalledWith('test:channel', expect.any(Function));
+    expect(mockIpcMain.handle).toHaveBeenCalledWith('test:channel', expect.any(Function));
   });
 
   it('lists all registered routes', () => {

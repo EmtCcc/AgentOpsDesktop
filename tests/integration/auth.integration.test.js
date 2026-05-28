@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHarness } from './helpers/test-harness.js';
 
-// Mock electron-updater before any source imports
-vi.mock('electron-updater', () => ({
-  autoUpdater: {
-    autoDownload: false,
-    autoInstallOnAppQuit: true,
-    on: vi.fn(),
-    checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
-    quitAndInstall: vi.fn(),
-  },
-}));
-
 describe('Auth integration', () => {
   let harness;
 
@@ -44,9 +32,10 @@ describe('Auth integration', () => {
   });
 
   describe('auth:status', () => {
-    it('returns isValid false when no session', async () => {
+    it('returns isValid true when auto-session exists', async () => {
+      // bootstrapRoutes auto-creates an admin session
       const result = await harness.call('auth:status');
-      expect(result.isValid).toBe(false);
+      expect(result.isValid).toBe(true);
     });
 
     it('returns session info when logged in', async () => {

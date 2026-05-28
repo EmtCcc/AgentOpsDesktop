@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHarness } from './helpers/test-harness.js';
 
-// Mock electron-updater before any source imports
-vi.mock('electron-updater', () => ({
-  autoUpdater: {
-    autoDownload: false,
-    autoInstallOnAppQuit: true,
-    on: vi.fn(),
-    checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
-    quitAndInstall: vi.fn(),
-  },
-}));
-
 describe('Tasks integration', () => {
   let harness;
 
@@ -146,10 +134,11 @@ describe('Tasks integration', () => {
       expect(result.title).toBe('Find me');
     });
 
-    it('throws NOT_FOUND for missing task', async () => {
-      await expect(
-        harness.call('tasks:get', harness.withAuth({ id: 'task-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing task', async () => {
+      const result = await harness.call('tasks:get', harness.withAuth({ id: 'task-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
+      expect(result.error.message).toMatch(/not found/i);
     });
   });
 
@@ -186,10 +175,10 @@ describe('Tasks integration', () => {
       ).rejects.toThrow(/invalid fields/i);
     });
 
-    it('throws NOT_FOUND for missing task', async () => {
-      await expect(
-        harness.call('tasks:update', harness.withAuth({ id: 'task-999', updates: { title: 'x' } }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing task', async () => {
+      const result = await harness.call('tasks:update', harness.withAuth({ id: 'task-999', updates: { title: 'x' } }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 
@@ -205,10 +194,10 @@ describe('Tasks integration', () => {
       expect(list.total).toBe(0);
     });
 
-    it('throws NOT_FOUND for missing task', async () => {
-      await expect(
-        harness.call('tasks:delete', harness.withAuth({ id: 'task-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing task', async () => {
+      const result = await harness.call('tasks:delete', harness.withAuth({ id: 'task-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 });

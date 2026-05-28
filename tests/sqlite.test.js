@@ -29,6 +29,7 @@ describe('SQLite Repositories', () => {
         executable_path TEXT,
         working_directory TEXT,
         config_json     TEXT DEFAULT '{}',
+        owner_role      TEXT,
         created_at      TEXT NOT NULL,
         updated_at      TEXT NOT NULL
       );
@@ -38,6 +39,7 @@ describe('SQLite Repositories', () => {
         title           TEXT NOT NULL,
         description     TEXT,
         status          TEXT NOT NULL DEFAULT 'active',
+        owner_role      TEXT,
         created_at      TEXT NOT NULL,
         updated_at      TEXT NOT NULL
       );
@@ -50,6 +52,7 @@ describe('SQLite Repositories', () => {
         description     TEXT,
         status          TEXT NOT NULL DEFAULT 'pending',
         output_summary  TEXT,
+        owner_role      TEXT,
         started_at      TEXT,
         completed_at    TEXT,
         created_at      TEXT NOT NULL,
@@ -166,7 +169,6 @@ describe('SQLite Repositories', () => {
         goalId: goal.id,
         title: 'Design schema',
         description: 'Create the database schema',
-        agentId: 'agent-1',
       });
 
       expect(task.id).toBeDefined();

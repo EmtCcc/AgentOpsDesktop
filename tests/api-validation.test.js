@@ -40,6 +40,7 @@ describe('API request validation', () => {
     };
     const mockTokenManager = {
       createSession: ({ role }) => ({ token: 'test-token', role, expiresAt: Date.now() + 3600000 }),
+      validate: (t) => t === 'test-token',
       verifyToken: (t) => (t === 'test-token' ? { role: 'admin' } : null),
       getSessionInfo: () => ({ role: 'admin', isValid: true }),
       destroySession: () => {},

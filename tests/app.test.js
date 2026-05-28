@@ -6,7 +6,7 @@ describe('package.json', () => {
   it('has correct app metadata', () => {
     expect(pkg.name).toBe('agentops-desktop');
     expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(pkg.main).toBe('src/main/index.js');
+    expect(pkg.main).toBe('dist/main/index.js');
     expect(pkg.private).toBe(true);
   });
 

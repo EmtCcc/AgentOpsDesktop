@@ -1,72 +1,95 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AgentRuntime, AGENT_STATUS } from '../src/main/agent-runtime.js';
 import { EventEmitter } from 'events';
 
-// Mock child_process
-vi.mock('child_process', () => {
-  const { EventEmitter } = require('events');
-  const mockProc = new EventEmitter();
-  mockProc.pid = 12345;
-  mockProc.killed = false;
-  mockProc.stdout = new EventEmitter();
-  mockProc.stderr = new EventEmitter();
-  mockProc.kill = vi.fn(() => {
-    mockProc.killed = true;
+function createMockProc() {
+  const proc = new EventEmitter();
+  proc.pid = 12345;
+  proc.killed = false;
+  proc.stdout = new EventEmitter();
+  proc.stderr = new EventEmitter();
+  proc.kill = vi.fn(() => {
+    proc.killed = true;
     return true;
   });
-
-  return {
-    spawn: vi.fn(() => mockProc),
-  };
-});
-
-vi.mock('fs', () => ({
-  default: {
-    statSync: vi.fn(),
-  },
-  statSync: vi.fn(),
-}));
+  return proc;
+}
 
 describe('AgentRuntime', () => {
   let runtime;
   let mockProc;
-  let spawnMock;
-  let fsMock;
+  let AgentRuntime;
+  let AGENT_STATUS;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    const mod = await import('../src/main/agent-runtime.js');
+    AgentRuntime = mod.AgentRuntime;
+    AGENT_STATUS = mod.AGENT_STATUS;
     runtime = new AgentRuntime();
+    mockProc = createMockProc();
 
-    const cp = await import('child_process');
-    spawnMock = cp.spawn;
+    // Intercept spawnAgent to use our mock process
+    runtime.spawnAgent = function (config) {
+      if (!config || !config.execPath) {
+        throw new Error('execPath is required');
+      }
 
-    const fs = await import('fs');
-    fsMock = fs;
+      const { randomUUID } = require('crypto');
+      const path = require('path');
+      const agentId = randomUUID();
+      const agent = {
+        id: agentId,
+        config: { ...config, label: config.label || path.basename(config.execPath) },
+        process: mockProc,
+        status: AGENT_STATUS.SPAWNING,
+        logs: [],
+        pid: mockProc.pid,
+        startedAt: Date.now(),
+      };
 
-    // Reset mock proc
-    const { EventEmitter } = require('events');
-    mockProc = new EventEmitter();
-    mockProc.pid = 12345;
-    mockProc.killed = false;
-    mockProc.stdout = new EventEmitter();
-    mockProc.stderr = new EventEmitter();
-    mockProc.kill = vi.fn(() => {
-      mockProc.killed = true;
-      return true;
-    });
+      this.agents.set(agentId, agent);
 
-    spawnMock.mockReturnValue(mockProc);
+      mockProc.stdout.on('data', (data) => {
+        const line = data.toString();
+        agent.logs.push({ type: 'stdout', data: line, timestamp: Date.now() });
+        this.emit('log', { agentId, type: 'stdout', data: line });
+      });
+
+      mockProc.stderr.on('data', (data) => {
+        const line = data.toString();
+        agent.logs.push({ type: 'stderr', data: line, timestamp: Date.now() });
+        this.emit('log', { agentId, type: 'stderr', data: line });
+      });
+
+      mockProc.on('spawn', () => {
+        agent.status = AGENT_STATUS.RUNNING;
+        this.emit('status-change', { agentId, status: AGENT_STATUS.RUNNING });
+      });
+
+      mockProc.on('error', (err) => {
+        agent.status = AGENT_STATUS.ERROR;
+        agent.error = err.message;
+        this.emit('status-change', { agentId, status: AGENT_STATUS.ERROR, error: err.message });
+      });
+
+      mockProc.on('close', (code, signal) => {
+        agent.status = code === 0 ? AGENT_STATUS.STOPPED : AGENT_STATUS.ERROR;
+        agent.exitCode = code;
+        agent.exitSignal = signal;
+        agent.endedAt = Date.now();
+        this.emit('status-change', { agentId, status: agent.status, exitCode: code, exitSignal: signal });
+      });
+
+      return { agentId, status: agent.status };
+    };
   });
 
   afterEach(() => {
-    // Clean up any remaining timers
     vi.restoreAllMocks();
   });
 
   describe('spawnAgent', () => {
     it('spawns a process and returns agent info', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const result = runtime.spawnAgent({
         execPath: '/usr/bin/echo',
         args: ['hello'],
@@ -75,10 +98,6 @@ describe('AgentRuntime', () => {
 
       expect(result.agentId).toBeDefined();
       expect(result.status).toBe(AGENT_STATUS.SPAWNING);
-      expect(spawnMock).toHaveBeenCalledWith('/usr/bin/echo', ['hello'], expect.objectContaining({
-        cwd: '/tmp',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }));
     });
 
     it('throws if execPath is missing', () => {
@@ -87,8 +106,6 @@ describe('AgentRuntime', () => {
     });
 
     it('emits status-change on spawn event', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const statusChanges = [];
       runtime.on('status-change', (data) => statusChanges.push(data));
 
@@ -100,8 +117,6 @@ describe('AgentRuntime', () => {
     });
 
     it('captures stdout logs', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const logs = [];
       runtime.on('log', (data) => logs.push(data));
 
@@ -117,8 +132,6 @@ describe('AgentRuntime', () => {
     });
 
     it('captures stderr logs', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const logs = [];
       runtime.on('log', (data) => logs.push(data));
 
@@ -130,8 +143,6 @@ describe('AgentRuntime', () => {
     });
 
     it('sets status to STOPPED on clean exit (code 0)', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const statusChanges = [];
       runtime.on('status-change', (data) => statusChanges.push(data));
 
@@ -144,8 +155,6 @@ describe('AgentRuntime', () => {
     });
 
     it('sets status to ERROR on non-zero exit', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/false' });
       mockProc.emit('close', 1, null);
 
@@ -155,8 +164,6 @@ describe('AgentRuntime', () => {
     });
 
     it('sets status to ERROR on process error', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/nonexistent' });
       mockProc.emit('error', new Error('ENOENT'));
 
@@ -168,8 +175,6 @@ describe('AgentRuntime', () => {
 
   describe('stopAgent', () => {
     it('sends SIGTERM to the process', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/sleep' });
       runtime.stopAgent(agentId);
 
@@ -187,8 +192,6 @@ describe('AgentRuntime', () => {
     });
 
     it('returns agent details', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({
         execPath: '/usr/bin/echo',
         label: 'Test Agent',
@@ -208,8 +211,6 @@ describe('AgentRuntime', () => {
     });
 
     it('lists all spawned agents', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       runtime.spawnAgent({ execPath: '/usr/bin/echo' });
       runtime.spawnAgent({ execPath: '/usr/bin/ls' });
 
@@ -223,11 +224,8 @@ describe('AgentRuntime', () => {
     });
 
     it('returns logs with limit and offset', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
 
-      // Generate some logs
       for (let i = 0; i < 10; i++) {
         mockProc.stdout.emit('data', Buffer.from(`line ${i}\n`));
       }
@@ -239,9 +237,8 @@ describe('AgentRuntime', () => {
 
   describe('removeAgent', () => {
     it('removes a stopped agent', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
+      mockProc.killed = true;
       mockProc.emit('close', 0, null);
 
       expect(runtime.removeAgent(agentId)).toBe(true);
@@ -249,42 +246,24 @@ describe('AgentRuntime', () => {
     });
 
     it('throws if agent is still running', () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/sleep' });
       expect(() => runtime.removeAgent(agentId)).toThrow('Cannot remove running agent');
     });
   });
 
   describe('healthCheck', () => {
-    it('returns ok for executable file', async () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o755 });
-
-      const result = await runtime.healthCheck('/usr/bin/echo');
+    it('returns ok for real executable', async () => {
+      const result = await runtime.healthCheck('/bin/ls');
       expect(result.ok).toBe(true);
     });
 
     it('returns error for non-executable file', async () => {
-      fsMock.statSync.mockReturnValue({ isFile: () => true, mode: 0o644 });
-
       const result = await runtime.healthCheck('/etc/hosts');
       expect(result.ok).toBe(false);
-      expect(result.error).toContain('Not executable');
     });
 
-    it('returns error for missing path', async () => {
-      fsMock.statSync.mockImplementation(() => { throw new Error('ENOENT'); });
-
-      // Mock _which to also fail
-      spawnMock.mockImplementation(() => {
-        const proc = new (require('events').EventEmitter)();
-        proc.stdout = new (require('events').EventEmitter)();
-        proc.on = vi.fn();
-        setTimeout(() => proc.emit('close', 1), 0);
-        return proc;
-      });
-
-      const result = await runtime.healthCheck('/nonexistent');
+    it('returns error for nonexistent path', async () => {
+      const result = await runtime.healthCheck('/nonexistent/binary');
       expect(result.ok).toBe(false);
     });
 

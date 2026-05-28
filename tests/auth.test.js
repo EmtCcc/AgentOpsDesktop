@@ -1,7 +1,4 @@
-'use strict';
-
-const { describe, it, expect, beforeEach, vi } = require('vitest');
-const crypto = require('crypto');
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock Electron modules before importing
 vi.mock('electron', () => ({
@@ -29,8 +26,8 @@ vi.mock('fs', async () => {
   };
 });
 
-const { TokenManager } = require('../src/main/ipc/middleware/token-manager');
-const { createAuthMiddleware, AuthError } = require('../src/main/ipc/middleware/auth');
+const { TokenManager } = await import('../src/main/ipc/middleware/token-manager');
+const { createAuthMiddleware, AuthError } = await import('../src/main/ipc/middleware/auth');
 
 describe('TokenManager', () => {
   let tm;

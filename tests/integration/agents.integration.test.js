@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHarness } from './helpers/test-harness.js';
 
-// Mock electron-updater before any source imports
-vi.mock('electron-updater', () => ({
-  autoUpdater: {
-    autoDownload: false,
-    autoInstallOnAppQuit: true,
-    on: vi.fn(),
-    checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
-    quitAndInstall: vi.fn(),
-  },
-}));
-
 describe('Agents integration', () => {
   let harness;
 
@@ -120,10 +108,11 @@ describe('Agents integration', () => {
       expect(result.name).toBe('find-me');
     });
 
-    it('throws NOT_FOUND for missing agent', async () => {
-      await expect(
-        harness.call('agents:get', harness.withAuth({ id: 'agent-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing agent', async () => {
+      const result = await harness.call('agents:get', harness.withAuth({ id: 'agent-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
+      expect(result.error.message).toMatch(/not found/i);
     });
 
     it('rejects missing id', async () => {
@@ -167,10 +156,10 @@ describe('Agents integration', () => {
       ).rejects.toThrow(/must not be empty/i);
     });
 
-    it('throws NOT_FOUND for missing agent', async () => {
-      await expect(
-        harness.call('agents:update', harness.withAuth({ id: 'agent-999', updates: { name: 'x' } }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing agent', async () => {
+      const result = await harness.call('agents:update', harness.withAuth({ id: 'agent-999', updates: { name: 'x' } }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 
@@ -188,10 +177,10 @@ describe('Agents integration', () => {
       expect(list.total).toBe(0);
     });
 
-    it('throws NOT_FOUND for missing agent', async () => {
-      await expect(
-        harness.call('agents:delete', harness.withAuth({ id: 'agent-999' }))
-      ).rejects.toThrow(/not found/i);
+    it('returns NOT_FOUND for missing agent', async () => {
+      const result = await harness.call('agents:delete', harness.withAuth({ id: 'agent-999' }));
+      expect(result.ok).toBe(false);
+      expect(result.error.code).toBe('NOT_FOUND');
     });
   });
 
