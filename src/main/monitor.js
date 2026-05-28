@@ -2,6 +2,7 @@
 
 const os = require('os');
 const logger = require('./logger');
+const { version } = require('../../package.json');
 
 // ── Metrics ──
 
@@ -37,6 +38,7 @@ function getHealth() {
   const uptimeMs = Date.now() - metrics.app.startedAt;
   return {
     status: 'ok',
+    version,
     ts: new Date().toISOString(),
     uptimeMs,
     memory: {
@@ -60,6 +62,67 @@ function getHealth() {
     },
     renderer: { ...metrics.renderer },
     app: { ...metrics.app },
+  };
+}
+
+// ── Uptime Tracking ──
+
+const uptimeTracker = {
+  lastStatus: 'ok',
+  lastStatusAt: Date.now(),
+  totalOkMs: 0,
+  totalDegradedMs: 0,
+  totalUnhealthyMs: 0,
+  transitions: [],   // [{ from, to, at }]  last 100
+};
+
+const MAX_TRANSITIONS = 100;
+
+function recordStatusChange(newStatus) {
+  const now = Date.now();
+  const elapsed = now - uptimeTracker.lastStatusAt;
+  const prev = uptimeTracker.lastStatus;
+
+  if (prev === 'ok') uptimeTracker.totalOkMs += elapsed;
+  else if (prev === 'degraded') uptimeTracker.totalDegradedMs += elapsed;
+  else if (prev === 'unhealthy') uptimeTracker.totalUnhealthyMs += elapsed;
+
+  if (prev !== newStatus) {
+    uptimeTracker.transitions.push({ from: prev, to: newStatus, at: new Date(now).toISOString() });
+    if (uptimeTracker.transitions.length > MAX_TRANSITIONS) {
+      uptimeTracker.transitions.shift();
+    }
+  }
+
+  uptimeTracker.lastStatus = newStatus;
+  uptimeTracker.lastStatusAt = now;
+}
+
+function getUptimeStats() {
+  // Flush current period without mutating lastStatusAt
+  const now = Date.now();
+  const elapsed = now - uptimeTracker.lastStatusAt;
+  let okMs = uptimeTracker.totalOkMs;
+  let degradedMs = uptimeTracker.totalDegradedMs;
+  let unhealthyMs = uptimeTracker.totalUnhealthyMs;
+
+  if (uptimeTracker.lastStatus === 'ok') okMs += elapsed;
+  else if (uptimeTracker.lastStatus === 'degraded') degradedMs += elapsed;
+  else unhealthyMs += elapsed;
+
+  const totalMs = okMs + degradedMs + unhealthyMs;
+  const uptimePercent = totalMs > 0
+    ? Math.round(((okMs + degradedMs) / totalMs) * 10000) / 100
+    : 100;
+
+  return {
+    uptimePercent,
+    totalUptimeMs: okMs + degradedMs,
+    totalDowntimeMs: unhealthyMs,
+    breakdown: { okMs, degradedMs, unhealthyMs },
+    lastStatusChange: uptimeTracker.lastStatus,
+    lastStatusChangeAt: new Date(uptimeTracker.lastStatusAt).toISOString(),
+    transitions: uptimeTracker.transitions.slice(-10),  // last 10 for response
   };
 }
 
@@ -117,6 +180,18 @@ function checkAlerts(health) {
   return alerts;
 }
 
+/**
+ * Classify overall health status from alerts.
+ * - 'ok': no alerts
+ * - 'degraded': only warnings
+ * - 'unhealthy': at least one error-level alert
+ */
+function classifyStatus(alerts) {
+  if (!alerts || alerts.length === 0) return 'ok';
+  if (alerts.some((a) => a.severity === 'error')) return 'unhealthy';
+  return 'degraded';
+}
+
 // ── Periodic Health Tick ──
 
 let healthInterval = null;
@@ -125,8 +200,11 @@ function startHealthLoop(intervalMs = 30_000) {
   if (healthInterval) return;
   healthInterval = setInterval(() => {
     const health = getHealth();
-    checkAlerts(health);
+    const alerts = checkAlerts(health);
+    const status = classifyStatus(alerts);
+    recordStatusChange(status);
     logger.debug('health.tick', {
+      status,
       heapUsed: Math.round(health.memory.heapUsed / 1024 / 1024) + 'MB',
       ipcCalls: health.ipc.calls,
       ipcErrors: health.ipc.errors,
@@ -163,8 +241,12 @@ module.exports = {
   recordRendererUnresponsive,
   getHealth,
   checkAlerts,
+  classifyStatus,
+  recordStatusChange,
+  getUptimeStats,
   startHealthLoop,
   stopHealthLoop,
   installGlobalHandlers,
   metrics,
+  uptimeTracker,
 };

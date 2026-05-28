@@ -5,6 +5,9 @@ const { cors } = require('hono/cors');
 const { logger: honoLogger } = require('hono/logger');
 const { HTTPException } = require('hono/http-exception');
 
+const fs = require('fs');
+const path = require('path');
+
 const health = require('./routes/health');
 const agents = require('./routes/agents');
 const goals = require('./routes/goals');
@@ -48,6 +51,27 @@ function createApp({ repos, tokenManager }) {
       routes.push({ method: r.method, path: r.path });
     });
     return c.json({ ok: true, data: routes });
+  });
+
+  // ── API Documentation (public) ──
+  const docsDir = path.resolve(__dirname, '..', '..', 'docs');
+
+  app.get('/docs/openapi.yaml', (c) => {
+    try {
+      const spec = fs.readFileSync(path.join(docsDir, 'openapi.yaml'), 'utf8');
+      return c.text(spec, 200, { 'Content-Type': 'text/yaml' });
+    } catch {
+      return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Run npm run docs:generate first', status: 404 } }, 404);
+    }
+  });
+
+  app.get('/docs', (c) => {
+    try {
+      const html = fs.readFileSync(path.join(docsDir, 'api-docs.html'), 'utf8');
+      return c.html(html);
+    } catch {
+      return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Run npm run docs:generate first', status: 404 } }, 404);
+    }
   });
 
   // ── Protected routes ──

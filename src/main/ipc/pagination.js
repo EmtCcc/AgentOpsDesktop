@@ -32,8 +32,8 @@ function paginate(collection, params = {}) {
     const aVal = a[sortBy];
     const bVal = b[sortBy];
     if (aVal === bVal) return 0;
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
+    if (aVal === null || aVal === undefined) return 1;
+    if (bVal === null || bVal === undefined) return -1;
     return (aVal > bVal ? 1 : -1) * sortOrder;
   });
 

@@ -112,6 +112,35 @@ contextBridge.exposeInMainWorld('agentOps', {
     },
   },
 
+  orchestrator: {
+    list: (params) => _invoke('orchestrator:list', params),
+    get: (id) => _invoke('orchestrator:get', { id }),
+    create: (definition) => _invoke('orchestrator:create', definition),
+    start: (id) => _invoke('orchestrator:start', { id }),
+    pause: (id) => _invoke('orchestrator:pause', { id }),
+    resume: (id) => _invoke('orchestrator:resume', { id }),
+    cancel: (id) => _invoke('orchestrator:cancel', { id }),
+    getProgress: (id) => _invoke('orchestrator:progress', { id }),
+    getTask: (dagId, taskId) => _invoke('orchestrator:task:get', { dagId, taskId }),
+    completeManualTask: (dagId, taskId, output, success) =>
+      _invoke('orchestrator:task:complete', { dagId, taskId, output, success }),
+    onDagUpdate: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('orchestrator:event', handler);
+      return () => ipcRenderer.removeListener('orchestrator:event', handler);
+    },
+    onTaskUpdate: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('orchestrator:event', handler);
+      return () => ipcRenderer.removeListener('orchestrator:event', handler);
+    },
+    onProgress: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('orchestrator:progress', handler);
+      return () => ipcRenderer.removeListener('orchestrator:progress', handler);
+    },
+  },
+
   docs: {
     openApi: () => ipcRenderer.invoke('docs:api'),
   },

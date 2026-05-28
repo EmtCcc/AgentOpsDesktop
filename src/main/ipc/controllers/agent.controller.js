@@ -1,15 +1,15 @@
 'use strict';
 
 const { spawn } = require('child_process');
-const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { IpcError } = require('../errors');
 const { paginate } = require('../pagination');
+const { AgentEngine, AGENT_STATUS } = require('../../agent-engine');
 
 /**
  * Agent lifecycle controller.
- * Manages agent configs (CRUD) and live CLI agent processes (spawn/kill/status).
+ * Manages agent configs (CRUD) and live CLI agent processes (spawn/kill/pause/resume/status).
  *
  * Config API (matches preload.js bridge):
  *   agents:list()                  — list all registered agent configs
@@ -18,29 +18,24 @@ const { paginate } = require('../pagination');
  *   agents:delete(id)              — remove an agent config
  *   agents:health-check(id)        — check agent connectivity
  *
- * Live process API (new):
- *   agents:spawn({ name, execPath, args, cwd, env }) — spawn a live process
- *   agents:status({ id })                            — get live session status
- *   agents:kill({ id, signal })                      — kill a live session
+ * Live process API:
+ *   agents:spawn({ name, execPath, args, cwd, env, resourceLimits?, recovery? })
+ *   agents:status({ id })
+ *   agents:kill({ id, signal })
+ *   agents:pause({ id })
+ *   agents:resume({ id })
+ *   agents:logs({ id, limit?, offset? })
  */
 
 // ── Config store (persistent agent definitions) ──
 const agentConfigs = new Map();
 let nextConfigId = 1;
 
-// ── Live sessions (running processes) ──
-const sessions = new Map();
+// ── Agent engine (process lifecycle management) ──
+const engine = new AgentEngine();
 
 // ── Repository (injected) ──
 let agentRepo = null;
-
-const AGENT_STATUS = {
-  IDLE: 'idle',
-  SPAWNING: 'spawning',
-  RUNNING: 'running',
-  STOPPED: 'stopped',
-  ERROR: 'error',
-};
 
 function _which(cmd) {
   return new Promise((resolve) => {
@@ -85,36 +80,50 @@ const agentController = {
 
   /**
    * List agent configs with pagination.
+   * Operators see only their own resources; admin/viewer see all.
    * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status }
    */
-  async list(_event, params = {}) {
+  async list(event, params = {}) {
+    const role = event?.session?.role;
+    const ownerFilter = role === 'operator' ? role : null;
     if (agentRepo) {
-      return agentRepo.list(params);
+      return agentRepo.list({ ...params, ownerRole: ownerFilter });
     }
-    const filter = params.status
-      ? (a) => a.status === params.status
-      : undefined;
+    const filter = (a) => {
+      if (params.status && a.status !== params.status) return false;
+      if (ownerFilter && a.ownerRole && a.ownerRole !== ownerFilter) return false;
+      return true;
+    };
     return paginate(agentConfigs, { ...params, filter });
   },
 
   /**
    * Get a single agent config by ID.
+   * Operators can only access their own resources.
    * @param {string} id
    */
-  async get(_event, { id }) {
+  async get(event, { id }) {
+    const role = event?.session?.role;
     if (agentRepo) {
       const agent = agentRepo.getById(id);
       if (!agent) throw IpcError.notFound('Agent', id);
+      if (role === 'operator' && agent.ownerRole && agent.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       return agent;
     }
     const agent = agentConfigs.get(id);
     if (!agent) throw IpcError.notFound('Agent', id);
+    if (role === 'operator' && agent.ownerRole && agent.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     return agent;
   },
 
-  async create(_event, agent) {
+  async create(event, agent) {
+    const ownerRole = event?.session?.role || 'operator';
     if (agentRepo) {
-      return agentRepo.create(agent);
+      return agentRepo.create({ ...agent, ownerRole });
     }
     const id = `agent-${nextConfigId++}`;
     const record = {
@@ -125,6 +134,7 @@ const agentController = {
       command: agent.command || null,
       execPath: agent.execPath || null,
       cwd: agent.cwd || null,
+      ownerRole,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -132,41 +142,58 @@ const agentController = {
     return record;
   },
 
-  async update(_event, { id, updates }) {
+  async update(event, { id, updates }) {
+    const role = event?.session?.role;
     if (agentRepo) {
+      const existing = agentRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Agent', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       const updated = agentRepo.update(id, updates);
-      if (!updated) throw IpcError.notFound('Agent', id);
       return updated;
     }
     const existing = agentConfigs.get(id);
     if (!existing) throw IpcError.notFound('Agent', id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
     agentConfigs.set(id, updated);
     return updated;
   },
 
-  async delete(_event, { id }) {
+  async delete(event, { id }) {
+    const role = event?.session?.role;
     if (agentRepo) {
-      const deleted = agentRepo.delete(id);
-      if (!deleted) throw IpcError.notFound('Agent', id);
+      const existing = agentRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Agent', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
+      agentRepo.delete(id);
       return { deleted: true, id };
     }
     if (!agentConfigs.has(id)) throw IpcError.notFound('Agent', id);
+    const existing = agentConfigs.get(id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     agentConfigs.delete(id);
     return { deleted: true, id };
   },
 
   async healthCheck(_event, { id }) {
-    // Try live session first
-    const session = sessions.get(id);
-    if (session) {
-      const check = await _validateExecPath(session.execPath);
-      const alive = session.process && !session.process.killed && session.status === AGENT_STATUS.RUNNING;
+    // Try live agent first
+    const agent = engine.getAgent(id);
+    if (agent) {
+      const check = await _validateExecPath(agent.config.execPath);
+      const alive = agent.status === AGENT_STATUS.RUNNING;
       return {
         ok: check.ok && alive,
         execValid: check.ok,
         processAlive: alive,
-        status: session.status,
+        status: agent.status,
       };
     }
     // Fall back to config
@@ -181,114 +208,71 @@ const agentController = {
   // ── Live process management ──
 
   async spawn(_event, payload) {
-    const { name, execPath, args, cwd, env } = payload;
+    const { name, execPath, args, cwd, env, resourceLimits, recovery } = payload;
 
     const check = await _validateExecPath(execPath);
     if (!check.ok) throw new Error(check.error);
 
-    const id = randomUUID();
-    const proc = spawn(check.resolved, args || [], {
-      cwd: cwd || process.cwd(),
-      env: { ...process.env, ...(env || {}) },
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-    });
-
-    const session = {
-      id,
-      name: name || path.basename(execPath),
+    const result = engine.spawnAgent({
       execPath: check.resolved,
       args: args || [],
       cwd: cwd || process.cwd(),
-      process: proc,
-      status: AGENT_STATUS.SPAWNING,
-      pid: proc.pid,
-      logs: [],
-      startedAt: Date.now(),
-      endedAt: null,
-      exitCode: null,
-      error: null,
-    };
-
-    sessions.set(id, session);
-
-    proc.stdout.on('data', (data) => {
-      const line = data.toString();
-      session.logs.push({ type: 'stdout', data: line, timestamp: Date.now() });
-    });
-
-    proc.stderr.on('data', (data) => {
-      const line = data.toString();
-      session.logs.push({ type: 'stderr', data: line, timestamp: Date.now() });
-    });
-
-    proc.on('spawn', () => {
-      session.status = AGENT_STATUS.RUNNING;
-    });
-
-    proc.on('error', (err) => {
-      session.status = AGENT_STATUS.ERROR;
-      session.error = err.message;
-    });
-
-    proc.on('close', (code, signal) => {
-      session.status = code === 0 ? AGENT_STATUS.STOPPED : AGENT_STATUS.ERROR;
-      session.exitCode = code;
-      session.exitSignal = signal;
-      session.endedAt = Date.now();
+      env: env || {},
+      label: name || path.basename(execPath),
+      resourceLimits,
+      recovery,
     });
 
     return {
-      id: session.id,
-      name: session.name,
-      execPath: session.execPath,
-      status: session.status,
-      pid: session.pid,
-      startedAt: session.startedAt,
+      id: result.agentId,
+      status: result.status,
     };
   },
 
   async status(_event, { id }) {
-    const session = sessions.get(id);
-    if (!session) throw new Error(`Agent not found: ${id}`);
+    const agent = engine.getAgent(id);
+    if (!agent) throw new Error(`Agent not found: ${id}`);
     return {
-      id: session.id,
-      name: session.name,
-      status: session.status,
-      pid: session.pid,
-      exitCode: session.exitCode ?? null,
-      error: session.error ?? null,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt ?? null,
-      logCount: session.logs.length,
+      id: agent.id,
+      name: agent.config.label,
+      status: agent.status,
+      pid: agent.pid,
+      exitCode: agent.exitCode ?? null,
+      error: agent.error ?? null,
+      startedAt: agent.startedAt,
+      endedAt: agent.endedAt ?? null,
+      logCount: agent.logCount,
+      resourceUsage: agent.resourceUsage,
+      resourceLimits: agent.resourceLimits,
+      retryCount: agent.retryCount,
     };
   },
 
-  async kill(_event, { id, signal }) {
-    const session = sessions.get(id);
-    if (!session) throw new Error(`Agent not found: ${id}`);
-    if (!session.process || session.process.killed) {
-      throw new Error(`Agent already exited: ${id}`);
-    }
-
-    const sig = signal || 'SIGTERM';
-    session.process.kill(sig);
-
-    if (sig === 'SIGTERM') {
-      setTimeout(() => {
-        try {
-          if (session.process && !session.process.killed) {
-            session.process.kill('SIGKILL');
-          }
-        } catch { /* ignore */ }
-      }, 5000);
-    }
-
-    return { id, status: AGENT_STATUS.STOPPED };
+  async kill(_event, { id }) {
+    engine.stopAgent(id);
+    return { id, status: AGENT_STATUS.TERMINATED };
   },
 
-  /** Expose live sessions for cross-controller access (logs) */
-  _sessions: sessions,
+  async pause(_event, { id }) {
+    const result = engine.pauseAgent(id);
+    return { id, status: result.status };
+  },
+
+  async resume(_event, { id }) {
+    const result = engine.resumeAgent(id);
+    return { id, status: result.status };
+  },
+
+  async logs(_event, { id, limit, offset }) {
+    return engine.getLogs(id, { limit, offset });
+  },
+
+  async listLive() {
+    return engine.listAgents();
+  },
+
+  /** Expose agent engine for cross-controller access */
+  _engine: engine,
 
   /** Expose agent configs for cross-controller access (stats) */
   _configs: agentConfigs,
@@ -298,7 +282,7 @@ agentController.schemas = {
   list: {
     offset: { type: 'number' },
     limit: { type: 'number' },
-    status: { type: 'string', enum: ['idle', 'running', 'error'] },
+    status: { type: 'string', enum: ['idle', 'running', 'error', 'paused', 'terminated', 'created'] },
     sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'name', 'status'] },
     sortOrder: { type: 'string', enum: ['asc', 'desc'] },
   },
@@ -325,7 +309,7 @@ agentController.schemas = {
         const invalid = keys.filter((k) => !allowed.includes(k));
         if (invalid.length > 0) return `invalid fields: ${invalid.join(', ')}`;
         if (v.name !== undefined && (typeof v.name !== 'string' || v.name.length === 0)) return 'name must be a non-empty string';
-        if (v.status !== undefined && !['idle', 'running', 'error'].includes(v.status)) return 'status must be idle, running, or error';
+        if (v.status !== undefined && !['idle', 'running', 'error', 'paused', 'terminated', 'created'].includes(v.status)) return 'invalid status';
         if (v.type !== undefined && !['claude', 'codex', 'gemini', 'opencode', 'cursor', 'custom'].includes(v.type)) return 'invalid agent type';
         return true;
       },
@@ -343,13 +327,25 @@ agentController.schemas = {
     args: { type: 'array' },
     cwd: { type: 'string' },
     env: { type: 'object' },
+    resourceLimits: { type: 'object' },
+    recovery: { type: 'object' },
   },
   status: {
     id: { type: 'string', required: true },
   },
   kill: {
     id: { type: 'string', required: true },
-    signal: { type: 'string' },
+  },
+  pause: {
+    id: { type: 'string', required: true },
+  },
+  resume: {
+    id: { type: 'string', required: true },
+  },
+  logs: {
+    id: { type: 'string', required: true },
+    limit: { type: 'number' },
+    offset: { type: 'number' },
   },
 };
 

@@ -1,6 +1,5 @@
 'use strict';
 
-const { BrowserWindow } = require('electron');
 const path = require('path');
 const { IpcRouter } = require('./router');
 const { TokenManager } = require('./middleware/token-manager');
@@ -12,8 +11,9 @@ const taskController = require('./controllers/task.controller');
 const logController = require('./controllers/log.controller');
 const statsController = require('./controllers/stats.controller');
 const settingsController = require('./controllers/settings.controller');
+const orchestratorController = require('./controllers/orchestrator.controller');
 const monitor = require('../monitor');
-const updater = require('../updater');
+const logger = require('../logger');
 
 /** Shared token manager instance */
 const tokenManager = new TokenManager();
@@ -57,7 +57,7 @@ const tokenManager = new TokenManager();
  *
  *   docs:api            — Open API documentation in a new window
  */
-function bootstrapRoutes(mainWindow, repos) {
+function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   logController.setMainWindow(mainWindow);
 
   // Inject repositories into controllers
@@ -67,6 +67,7 @@ function bootstrapRoutes(mainWindow, repos) {
     taskController.setRepository(repos.tasks);
     logController.setRepository(repos.taskLogs);
     settingsController.setRepository(repos.settings);
+    orchestratorController.setRepository(repos.orchestrator);
   }
 
   // Initialize token manager
@@ -85,6 +86,7 @@ function bootstrapRoutes(mainWindow, repos) {
   const router = new IpcRouter();
   router.setAuthMiddleware(authMiddleware);
   router.setAuthorizeMiddleware(authorizeMiddleware);
+  router.setRoleGetter(() => tokenManager.getRole());
 
   // ── Auth (public) ──
   router.register('auth:login', (_event, payload) => {
@@ -143,6 +145,33 @@ function bootstrapRoutes(mainWindow, repos) {
   router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true, permission: 'tasks:update' });
   router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true, permission: 'tasks:delete' });
 
+  // ── Orchestrator (protected) ──
+  router.register('orchestrator:list', orchestratorController.list, { schema: orchestratorController.schemas.list, auth: true, permission: 'orchestrator:list' });
+  router.register('orchestrator:get', orchestratorController.get, { schema: orchestratorController.schemas.get, auth: true, permission: 'orchestrator:get' });
+  router.register('orchestrator:create', orchestratorController.create, { schema: orchestratorController.schemas.create, auth: true, permission: 'orchestrator:create' });
+  router.register('orchestrator:start', orchestratorController.start, { schema: orchestratorController.schemas.start, auth: true, permission: 'orchestrator:start' });
+  router.register('orchestrator:pause', orchestratorController.pause, { schema: orchestratorController.schemas.pause, auth: true, permission: 'orchestrator:pause' });
+  router.register('orchestrator:resume', orchestratorController.resume, { schema: orchestratorController.schemas.resume, auth: true, permission: 'orchestrator:resume' });
+  router.register('orchestrator:cancel', orchestratorController.cancel, { schema: orchestratorController.schemas.cancel, auth: true, permission: 'orchestrator:cancel' });
+  router.register('orchestrator:progress', orchestratorController.getProgress, { schema: orchestratorController.schemas.getProgress, auth: true, permission: 'orchestrator:progress' });
+  router.register('orchestrator:task:get', orchestratorController.getTask, { schema: orchestratorController.schemas.getTask, auth: true, permission: 'orchestrator:get' });
+  router.register('orchestrator:task:complete', orchestratorController.completeManualTask, { schema: orchestratorController.schemas.completeManualTask, auth: true, permission: 'orchestrator:create' });
+
+  // Wire orchestrator events → renderer push
+  if (orchestratorController._orchestrator && mainWindow) {
+    const orch = orchestratorController._orchestrator;
+    const events = ['dag:created', 'dag:started', 'dag:completed', 'dag:failed', 'dag:cancelled', 'dag:paused', 'dag:resumed',
+      'task:ready', 'task:dispatched', 'task:running', 'task:completed', 'task:failed', 'task:skipped', 'task:cancelled', 'task:retrying'];
+    for (const evt of events) {
+      orch.on(evt, (data) => {
+        try { mainWindow.webContents.send('orchestrator:event', { type: evt, ...data }); } catch {}
+      });
+    }
+    orch.on('dag:progress', (data) => {
+      try { mainWindow.webContents.send('orchestrator:progress', data); } catch {}
+    });
+  }
+
   // ── Logs (protected) ──
   router.register('logs:list', logController.list, { schema: logController.schemas.list, auth: true, permission: 'logs:list' });
   router.register('logs:append', logController.append, { schema: logController.schemas.append, auth: true, permission: 'logs:append' });
@@ -156,22 +185,26 @@ function bootstrapRoutes(mainWindow, repos) {
 
   // ── Updates (protected) ──
   router.register('update:check', async () => {
+    const updater = require('../updater');
     await updater.checkForUpdates();
     return { ok: true };
   }, { auth: true, permission: 'update:check' });
 
   router.register('update:download', async () => {
+    const updater = require('../updater');
     await updater.downloadUpdate();
     return { ok: true };
   }, { auth: true, permission: 'update:download' });
 
   router.register('update:install', () => {
+    const updater = require('../updater');
     updater.quitAndInstall();
     return { ok: true };
   }, { auth: true, permission: 'update:install' });
 
   // ── Docs (public) ──
   router.register('docs:api', () => {
+    const { BrowserWindow } = require('electron');
     const docsPath = path.resolve(__dirname, '..', '..', '..', 'docs', 'api-docs.html');
     const docsWindow = new BrowserWindow({
       width: 1100,
@@ -184,7 +217,7 @@ function bootstrapRoutes(mainWindow, repos) {
     return { ok: true };
   });
 
-  router.bootstrap();
+  router.bootstrap(electronIpcMain);
   return router;
 }
 

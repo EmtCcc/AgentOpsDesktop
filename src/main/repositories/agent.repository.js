@@ -18,8 +18,8 @@ class AgentRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO agents (id, name, executable_path, working_directory, agent_type, config_json, status, created_at, updated_at)
-        VALUES (@id, @name, @executablePath, @workingDirectory, @agentType, @configJson, @status, @createdAt, @updatedAt)
+        INSERT INTO agents (id, name, executable_path, working_directory, agent_type, config_json, status, owner_role, created_at, updated_at)
+        VALUES (@id, @name, @executablePath, @workingDirectory, @agentType, @configJson, @status, @ownerRole, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE agents
@@ -31,6 +31,8 @@ class AgentRepository {
       getById: this.db.prepare('SELECT * FROM agents WHERE id = @id'),
       list: this.db.prepare('SELECT * FROM agents ORDER BY created_at DESC'),
       listByStatus: this.db.prepare('SELECT * FROM agents WHERE status = @status ORDER BY created_at DESC'),
+      listByOwner: this.db.prepare('SELECT * FROM agents WHERE owner_role = @ownerRole ORDER BY created_at DESC'),
+      listByOwnerAndStatus: this.db.prepare('SELECT * FROM agents WHERE owner_role = @ownerRole AND status = @status ORDER BY created_at DESC'),
     };
   }
 
@@ -44,6 +46,7 @@ class AgentRepository {
       cwd: row.working_directory,
       config: row.config_json ? JSON.parse(row.config_json) : {},
       status: row.status,
+      ownerRole: row.owner_role || null,
       createdAt: new Date(row.created_at).getTime(),
       updatedAt: new Date(row.updated_at).getTime(),
     };
@@ -59,6 +62,7 @@ class AgentRepository {
       agentType: agent.type || 'custom',
       configJson: JSON.stringify(agent.config || {}),
       status: agent.status || 'idle',
+      ownerRole: agent.ownerRole || null,
       createdAt: agent.createdAt ? new Date(agent.createdAt).toISOString() : now,
       updatedAt: now,
     };
@@ -67,7 +71,7 @@ class AgentRepository {
   create(agent) {
     const params = this._toDbParams(agent);
     this._stmts.insert.run(params);
-    return this._toRecord({ ...this._toDbParams({ ...agent, id: params.id, createdAt: Date.now(), updatedAt: Date.now() }) });
+    return this.getById(params.id);
   }
 
   update(id, updates) {
@@ -91,10 +95,14 @@ class AgentRepository {
   }
 
   list(params = {}) {
-    const { offset = 0, limit = 20, status } = params;
+    const { offset = 0, limit = 20, status, ownerRole } = params;
 
     let rows;
-    if (status) {
+    if (ownerRole && status) {
+      rows = this._stmts.listByOwnerAndStatus.all({ ownerRole, status });
+    } else if (ownerRole) {
+      rows = this._stmts.listByOwner.all({ ownerRole });
+    } else if (status) {
       rows = this._stmts.listByStatus.all({ status });
     } else {
       rows = this._stmts.list.all();

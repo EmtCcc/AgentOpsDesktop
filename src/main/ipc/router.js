@@ -1,7 +1,6 @@
 'use strict';
 
-const { ipcMain } = require('electron');
-const { validate, ValidationError } = require('./middleware/validate');
+const { validate } = require('./middleware/validate');
 const { AuthError } = require('./middleware/auth');
 const { IpcError } = require('./errors');
 const logger = require('../logger');
@@ -24,6 +23,7 @@ class IpcRouter {
     this._routes = new Map();
     this._authMiddleware = null;
     this._authorizeMiddleware = null;
+    this._getRole = null;
   }
 
   /**
@@ -42,6 +42,16 @@ class IpcRouter {
    */
   setAuthorizeMiddleware(middleware) {
     this._authorizeMiddleware = middleware;
+  }
+
+  /**
+   * Set a function that returns the current session role.
+   * Used to attach session context to events for ownership checks.
+   *
+   * @param {Function} getRole - () => string|null
+   */
+  setRoleGetter(getRole) {
+    this._getRole = getRole;
   }
 
   /**
@@ -73,7 +83,8 @@ class IpcRouter {
    * Pipeline: auth check → authorization check → payload validation → handler invocation.
    * Errors propagate to the monitor wrapper already installed in main/index.js.
    */
-  bootstrap() {
+  bootstrap(electronIpcMain) {
+    const ipcMain = electronIpcMain || require('electron').ipcMain;
     for (const [channel, { handler, schema, auth, permission, strict }] of this._routes) {
       ipcMain.handle(channel, async (event, payload) => {
         // Auth check (if route requires it)
@@ -90,6 +101,11 @@ class IpcRouter {
             throw new IpcError('AUTHORIZE_UNCONFIGURED', 'Authorize middleware not configured', 500);
           }
           this._authorizeMiddleware(event, payload, permission);
+        }
+
+        // Attach session context to event for ownership checks in handlers
+        if (auth && this._authMiddleware) {
+          event.session = { role: this._getRole() };
         }
 
         // Strip _auth field before validation and handler

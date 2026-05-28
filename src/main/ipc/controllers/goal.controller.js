@@ -25,36 +25,50 @@ const goalController = {
 
   /**
    * List goals with pagination.
+   * Operators see only their own resources; admin/viewer see all.
    * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status }
    */
-  async list(_event, params = {}) {
+  async list(event, params = {}) {
+    const role = event?.session?.role;
+    const ownerFilter = role === 'operator' ? role : null;
     if (goalRepo) {
-      return goalRepo.list(params);
+      return goalRepo.list({ ...params, ownerRole: ownerFilter });
     }
-    const filter = params.status
-      ? (g) => g.status === params.status
-      : undefined;
+    const filter = (g) => {
+      if (params.status && g.status !== params.status) return false;
+      if (ownerFilter && g.ownerRole && g.ownerRole !== ownerFilter) return false;
+      return true;
+    };
     return paginate(goals, { ...params, filter });
   },
 
   /**
    * Get a single goal by ID.
+   * Operators can only access their own resources.
    * @param {string} id
    */
-  async get(_event, { id }) {
+  async get(event, { id }) {
+    const role = event?.session?.role;
     if (goalRepo) {
       const goal = goalRepo.getById(id);
       if (!goal) throw IpcError.notFound('Goal', id);
+      if (role === 'operator' && goal.ownerRole && goal.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       return goal;
     }
     const goal = goals.get(id);
     if (!goal) throw IpcError.notFound('Goal', id);
+    if (role === 'operator' && goal.ownerRole && goal.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     return goal;
   },
 
-  async create(_event, goal) {
+  async create(event, goal) {
+    const ownerRole = event?.session?.role || 'operator';
     if (goalRepo) {
-      return goalRepo.create(goal);
+      return goalRepo.create({ ...goal, ownerRole });
     }
     const id = `goal-${nextId++}`;
     const record = {
@@ -63,6 +77,7 @@ const goalController = {
       description: goal.description || null,
       status: 'active',
       taskIds: [],
+      ownerRole,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -70,26 +85,43 @@ const goalController = {
     return record;
   },
 
-  async update(_event, { id, updates }) {
+  async update(event, { id, updates }) {
+    const role = event?.session?.role;
     if (goalRepo) {
+      const existing = goalRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Goal', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       const updated = goalRepo.update(id, updates);
-      if (!updated) throw IpcError.notFound('Goal', id);
       return updated;
     }
     const existing = goals.get(id);
     if (!existing) throw IpcError.notFound('Goal', id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
     goals.set(id, updated);
     return updated;
   },
 
-  async delete(_event, { id }) {
+  async delete(event, { id }) {
+    const role = event?.session?.role;
     if (goalRepo) {
-      const deleted = goalRepo.delete(id);
-      if (!deleted) throw IpcError.notFound('Goal', id);
+      const existing = goalRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Goal', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
+      goalRepo.delete(id);
       return { deleted: true, id };
     }
     if (!goals.has(id)) throw IpcError.notFound('Goal', id);
+    const existing = goals.get(id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     goals.delete(id);
     return { deleted: true, id };
   },

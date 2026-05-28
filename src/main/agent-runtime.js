@@ -165,6 +165,7 @@ class AgentRuntime extends EventEmitter {
         }
       } catch { /* ignore */ }
     }, 5000);
+    forceTimer.unref();
 
     agent.process.on('close', () => {
       clearTimeout(forceTimer);

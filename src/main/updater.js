@@ -6,16 +6,12 @@ const logger = require('./logger');
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
-let updateAvailable = false;
-let updateDownloaded = false;
-
 function init(mainWindow) {
   autoUpdater.on('checking-for-update', () => {
     logger.info('updater.checking');
   });
 
   autoUpdater.on('update-available', (info) => {
-    updateAvailable = true;
     logger.info('updater.available', { version: info.version });
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update:available', { version: info.version });
@@ -31,7 +27,6 @@ function init(mainWindow) {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    updateDownloaded = true;
     logger.info('updater.downloaded', { version: info.version });
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update:downloaded', { version: info.version });

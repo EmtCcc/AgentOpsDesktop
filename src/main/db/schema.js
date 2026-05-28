@@ -111,6 +111,49 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_tasks_goal_status ON tasks(goal_id, status);
     `,
   },
+  {
+    version: 7,
+    name: 'add_owner_role',
+    up: `
+      ALTER TABLE agents ADD COLUMN owner_role TEXT;
+      ALTER TABLE goals  ADD COLUMN owner_role TEXT;
+      ALTER TABLE tasks  ADD COLUMN owner_role TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_agents_owner ON agents(owner_role);
+      CREATE INDEX IF NOT EXISTS idx_goals_owner  ON goals(owner_role);
+      CREATE INDEX IF NOT EXISTS idx_tasks_owner  ON tasks(owner_role);
+    `,
+  },
+  {
+    version: 8,
+    name: 'create_workspaces',
+    up: `
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id              TEXT PRIMARY KEY,
+        agent_id        TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        root_path       TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'active',
+        max_size_bytes  INTEGER,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS workspace_snapshots (
+        id              TEXT PRIMARY KEY,
+        workspace_id    TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        description     TEXT,
+        file_count      INTEGER DEFAULT 0,
+        size_bytes      INTEGER DEFAULT 0,
+        created_at      TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_workspaces_agent ON workspaces(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_workspaces_status ON workspaces(status);
+      CREATE INDEX IF NOT EXISTS idx_ws_snapshots_workspace ON workspace_snapshots(workspace_id);
+    `,
+  },
 ];
 
 module.exports = { migrations };

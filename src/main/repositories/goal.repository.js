@@ -14,8 +14,8 @@ class GoalRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO goals (id, title, description, status, created_at, updated_at)
-        VALUES (@id, @title, @description, @status, @createdAt, @updatedAt)
+        INSERT INTO goals (id, title, description, status, owner_role, created_at, updated_at)
+        VALUES (@id, @title, @description, @status, @ownerRole, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE goals
@@ -26,6 +26,8 @@ class GoalRepository {
       getById: this.db.prepare('SELECT * FROM goals WHERE id = @id'),
       list: this.db.prepare('SELECT * FROM goals ORDER BY created_at DESC'),
       listByStatus: this.db.prepare('SELECT * FROM goals WHERE status = @status ORDER BY created_at DESC'),
+      listByOwner: this.db.prepare('SELECT * FROM goals WHERE owner_role = @ownerRole ORDER BY created_at DESC'),
+      listByOwnerAndStatus: this.db.prepare('SELECT * FROM goals WHERE owner_role = @ownerRole AND status = @status ORDER BY created_at DESC'),
     };
   }
 
@@ -36,6 +38,7 @@ class GoalRepository {
       title: row.title,
       description: row.description,
       status: row.status,
+      ownerRole: row.owner_role || null,
       createdAt: new Date(row.created_at).getTime(),
       updatedAt: new Date(row.updated_at).getTime(),
     };
@@ -48,11 +51,12 @@ class GoalRepository {
       title: goal.title,
       description: goal.description || null,
       status: 'active',
+      ownerRole: goal.ownerRole || null,
       createdAt: now,
       updatedAt: now,
     };
     this._stmts.insert.run(params);
-    return this._toRecord({ ...params });
+    return this.getById(params.id);
   }
 
   update(id, updates) {
@@ -60,13 +64,19 @@ class GoalRepository {
     if (!existing) return null;
 
     const merged = {
-      ...existing,
+      ...this._toRecord(existing),
       ...updates,
       id,
-      updated_at: new Date().toISOString(),
     };
-    this._stmts.update.run(merged);
-    return this._toRecord(this._stmts.getById.get({ id }));
+    const params = {
+      id: merged.id,
+      title: merged.title,
+      description: merged.description,
+      status: merged.status,
+      updatedAt: new Date().toISOString(),
+    };
+    this._stmts.update.run(params);
+    return this.getById(id);
   }
 
   delete(id) {
@@ -80,10 +90,14 @@ class GoalRepository {
   }
 
   list(params = {}) {
-    const { offset = 0, limit = 20, status } = params;
+    const { offset = 0, limit = 20, status, ownerRole } = params;
 
     let rows;
-    if (status) {
+    if (ownerRole && status) {
+      rows = this._stmts.listByOwnerAndStatus.all({ ownerRole, status });
+    } else if (ownerRole) {
+      rows = this._stmts.listByOwner.all({ ownerRole });
+    } else if (status) {
       rows = this._stmts.listByStatus.all({ status });
     } else {
       rows = this._stmts.list.all();

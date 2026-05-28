@@ -27,15 +27,19 @@ const taskController = {
 
   /**
    * List tasks with pagination.
+   * Operators see only their own resources; admin/viewer see all.
    * @param {Object} [params] - { offset, limit, sortBy, sortOrder, status, goalId }
    */
-  async list(_event, params = {}) {
+  async list(event, params = {}) {
+    const role = event?.session?.role;
+    const ownerFilter = role === 'operator' ? role : null;
     if (taskRepo) {
-      return taskRepo.list(params);
+      return taskRepo.list({ ...params, ownerRole: ownerFilter });
     }
     const filter = (t) => {
       if (params.status && t.status !== params.status) return false;
       if (params.goalId && t.goalId !== params.goalId) return false;
+      if (ownerFilter && t.ownerRole && t.ownerRole !== ownerFilter) return false;
       return true;
     };
     return paginate(tasks, { ...params, filter });
@@ -43,22 +47,31 @@ const taskController = {
 
   /**
    * Get a single task by ID.
+   * Operators can only access their own resources.
    * @param {string} id
    */
-  async get(_event, { id }) {
+  async get(event, { id }) {
+    const role = event?.session?.role;
     if (taskRepo) {
       const task = taskRepo.getById(id);
       if (!task) throw IpcError.notFound('Task', id);
+      if (role === 'operator' && task.ownerRole && task.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       return task;
     }
     const task = tasks.get(id);
     if (!task) throw IpcError.notFound('Task', id);
+    if (role === 'operator' && task.ownerRole && task.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     return task;
   },
 
-  async create(_event, task) {
+  async create(event, task) {
+    const ownerRole = event?.session?.role || 'operator';
     if (taskRepo) {
-      return taskRepo.create(task);
+      return taskRepo.create({ ...task, ownerRole });
     }
     const id = `task-${nextId++}`;
     const record = {
@@ -68,6 +81,7 @@ const taskController = {
       status: 'pending',
       goalId: task.goalId || null,
       assigneeAgentId: task.assigneeAgentId || null,
+      ownerRole,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -86,37 +100,63 @@ const taskController = {
     return record;
   },
 
-  async update(_event, { id, updates }) {
+  async update(event, { id, updates }) {
+    const role = event?.session?.role;
     if (taskRepo) {
+      const existing = taskRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Task', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
       const updated = taskRepo.update(id, updates);
-      if (!updated) throw IpcError.notFound('Task', id);
       return updated;
     }
     const existing = tasks.get(id);
     if (!existing) throw IpcError.notFound('Task', id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     const updated = { ...existing, ...updates, id, updatedAt: Date.now() };
     tasks.set(id, updated);
     return updated;
   },
 
-  async delete(_event, { id }) {
+  async delete(event, { id }) {
+    const role = event?.session?.role;
     if (taskRepo) {
-      const deleted = taskRepo.delete(id);
-      if (!deleted) throw IpcError.notFound('Task', id);
+      const existing = taskRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Task', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
+      taskRepo.delete(id);
       return { deleted: true, id };
     }
     if (!tasks.has(id)) throw IpcError.notFound('Task', id);
+    const existing = tasks.get(id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     tasks.delete(id);
     return { deleted: true, id };
   },
 
-  async remove(_event, { id }) {
+  async remove(event, { id }) {
+    const role = event?.session?.role;
     if (taskRepo) {
-      const deleted = taskRepo.delete(id);
-      if (!deleted) throw IpcError.notFound('Task', id);
+      const existing = taskRepo.getById(id);
+      if (!existing) throw IpcError.notFound('Task', id);
+      if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+        throw IpcError.forbidden('Access denied: resource owned by another role');
+      }
+      taskRepo.delete(id);
       return { deleted: true, id };
     }
     if (!tasks.has(id)) throw IpcError.notFound('Task', id);
+    const existing = tasks.get(id);
+    if (role === 'operator' && existing.ownerRole && existing.ownerRole !== 'operator') {
+      throw IpcError.forbidden('Access denied: resource owned by another role');
+    }
     tasks.delete(id);
     return { deleted: true, id };
   },

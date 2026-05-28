@@ -6,12 +6,20 @@ const { getDb, closeDb } = require('./db/connection');
 const { runMigrations } = require('./db/migrations');
 const { createRepositories } = require('./repositories');
 const { bootstrapRoutes } = require('./ipc');
+const { AgentRuntime } = require('./agent-runtime');
+const { TaskOrchestrator } = require('./task-orchestrator');
+const orchestratorController = require('./ipc/controllers/orchestrator.controller');
 const updater = require('./updater');
 
 // Initialize database and repositories
 const db = getDb();
 runMigrations(db);
 const repos = createRepositories(db);
+
+// Create orchestrator runtime and orchestrator
+const orchestratorRuntime = new AgentRuntime();
+const orchestrator = new TaskOrchestrator({ repo: repos.orchestrator, runtime: orchestratorRuntime });
+orchestratorController.setOrchestrator(orchestrator);
 
 // Install global error handlers before anything else
 monitor.installGlobalHandlers();
@@ -72,6 +80,7 @@ app.whenReady().then(() => {
   logger.info('app.ready', { version: app.getVersion(), platform: process.platform });
   createWindow();
   bootstrapRoutes(mainWindow, repos);
+  orchestrator.recoverOnStartup();
   updater.init(mainWindow);
   updater.checkForUpdates();
   logger.info('ipc.bootstrapped');
@@ -85,8 +94,9 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   monitor.stopHealthLoop();
+  await orchestrator.shutdown();
   closeDb();
   logger.info('app.quit');
 });
