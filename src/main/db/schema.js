@@ -154,6 +154,104 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_ws_snapshots_workspace ON workspace_snapshots(workspace_id);
     `,
   },
+  {
+    version: 9,
+    name: 'create_schedules',
+    up: `
+      CREATE TABLE IF NOT EXISTS schedules (
+        id              TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        cron_expr       TEXT NOT NULL,
+        enabled         INTEGER NOT NULL DEFAULT 1,
+        goal_id         TEXT REFERENCES goals(id) ON DELETE SET NULL,
+        agent_id        TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        task_template   TEXT NOT NULL DEFAULT '{}',
+        max_executions  INTEGER,
+        execution_count INTEGER NOT NULL DEFAULT 0,
+        last_run_at     TEXT,
+        next_run_at     TEXT,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS schedule_logs (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        schedule_id TEXT NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+        task_id     TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+        status      TEXT NOT NULL CHECK (status IN ('triggered', 'skipped', 'failed')),
+        error       TEXT,
+        triggered_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON schedules(enabled);
+      CREATE INDEX IF NOT EXISTS idx_schedules_next_run ON schedules(next_run_at);
+      CREATE INDEX IF NOT EXISTS idx_schedule_logs_schedule ON schedule_logs(schedule_id);
+    `,
+  },
+  {
+    version: 10,
+    name: 'create_dag_tables',
+    up: `
+      CREATE TABLE IF NOT EXISTS dags (
+        id              TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        description     TEXT,
+        status          TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','running','succeeded','failed','cancelled','paused')),
+        max_parallel    INTEGER NOT NULL DEFAULT 4,
+        retry_max       INTEGER NOT NULL DEFAULT 0,
+        retry_backoff_ms INTEGER NOT NULL DEFAULT 1000,
+        retry_backoff_mult REAL NOT NULL DEFAULT 2.0,
+        retry_max_backoff_ms INTEGER NOT NULL DEFAULT 30000,
+        on_failure      TEXT NOT NULL DEFAULT 'fail-fast'
+          CHECK (on_failure IN ('fail-fast','best-effort')),
+        started_at      TEXT,
+        completed_at    TEXT,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS dag_tasks (
+        id              TEXT PRIMARY KEY,
+        dag_id          TEXT NOT NULL REFERENCES dags(id) ON DELETE CASCADE,
+        agent_id        TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        title           TEXT NOT NULL,
+        description     TEXT,
+        task_type       TEXT NOT NULL DEFAULT 'agent'
+          CHECK (task_type IN ('agent','noop','manual')),
+        status          TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','ready','running','succeeded','failed','skipped','cancelled')),
+        agent_config_json TEXT DEFAULT '{}',
+        retry_count     INTEGER NOT NULL DEFAULT 0,
+        retry_max       INTEGER,
+        output_json     TEXT,
+        error_message   TEXT,
+        started_at      TEXT,
+        completed_at    TEXT,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS dag_edges (
+        id              TEXT PRIMARY KEY,
+        dag_id          TEXT NOT NULL REFERENCES dags(id) ON DELETE CASCADE,
+        from_task_id    TEXT NOT NULL REFERENCES dag_tasks(id) ON DELETE CASCADE,
+        to_task_id      TEXT NOT NULL REFERENCES dag_tasks(id) ON DELETE CASCADE,
+        edge_type       TEXT NOT NULL DEFAULT 'dependency'
+          CHECK (edge_type IN ('dependency','data_flow')),
+        data_key        TEXT,
+        created_at      TEXT NOT NULL,
+        UNIQUE(dag_id, from_task_id, to_task_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dags_status ON dags(status);
+      CREATE INDEX IF NOT EXISTS idx_dag_tasks_dag ON dag_tasks(dag_id);
+      CREATE INDEX IF NOT EXISTS idx_dag_tasks_status ON dag_tasks(dag_id, status);
+      CREATE INDEX IF NOT EXISTS idx_dag_edges_dag ON dag_edges(dag_id);
+      CREATE INDEX IF NOT EXISTS idx_dag_edges_from ON dag_edges(from_task_id);
+      CREATE INDEX IF NOT EXISTS idx_dag_edges_to ON dag_edges(to_task_id);
+    `,
+  },
 ];
 
 module.exports = { migrations };
