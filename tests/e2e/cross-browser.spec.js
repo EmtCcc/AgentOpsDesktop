@@ -91,7 +91,7 @@ test.describe('Design System — Layout Shell', () => {
     expect(sidebarBox).toBeTruthy();
     if (sidebarBox && viewport) {
       if (viewport.width < 1024) {
-        expect(sidebarBox.width).toBe(0);
+        expect(sidebarBox.width).toBe(64);
       } else {
         expect(sidebarBox.width).toBe(240);
       }
