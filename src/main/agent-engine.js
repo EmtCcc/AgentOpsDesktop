@@ -4,7 +4,7 @@ const { spawn: realSpawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const { EventEmitter } = require('events');
 const path = require('path');
-const fs = require('fs');
+const _fs = require('fs');
 
 /**
  * Agent lifecycle states.
@@ -119,7 +119,7 @@ class AgentEngine extends EventEmitter {
 
   _getProcessResourceUsage(pid) {
     return new Promise((resolve) => {
-      const proc = spawn('ps', ['-o', 'rss=', '-p', String(pid)], { stdio: ['ignore', 'pipe', 'pipe'] });
+      const proc = realSpawn('ps', ['-o', 'rss=', '-p', String(pid)], { stdio: ['ignore', 'pipe', 'pipe'] });
       let stdout = '';
       proc.stdout.on('data', (d) => { stdout += d; });
       proc.on('close', (code) => {

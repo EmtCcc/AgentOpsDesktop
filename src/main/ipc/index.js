@@ -164,11 +164,11 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
       'task:ready', 'task:dispatched', 'task:running', 'task:completed', 'task:failed', 'task:skipped', 'task:cancelled', 'task:retrying'];
     for (const evt of events) {
       orch.on(evt, (data) => {
-        try { mainWindow.webContents.send('orchestrator:event', { type: evt, ...data }); } catch {}
+        try { mainWindow.webContents.send('orchestrator:event', { type: evt, ...data }); } catch { /* window closed */ }
       });
     }
     orch.on('dag:progress', (data) => {
-      try { mainWindow.webContents.send('orchestrator:progress', data); } catch {}
+      try { mainWindow.webContents.send('orchestrator:progress', data); } catch { /* window closed */ }
     });
   }
 
