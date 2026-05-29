@@ -1,4 +1,4 @@
-# API Health Check Verification — CMPAAA-683
+# API Health Check Verification — CMPAAA-709
 
 **Date**: 2026-05-30
 **Status**: ✅ Verified
@@ -118,6 +118,20 @@
 - **65/65 HTTP API integration tests passing** (tests/integration/http-api.integration.test.js)
 - **11/11 API scaffold tests passing** (tests/api-scaffold.test.js)
 - **132/132 total checks passing**
+- Endpoint returns HTTP 200 with valid JSON shape
+- DB connectivity check (`db.ok: true`) verified
+- Uptime stats (percent, breakdown, transitions) confirmed
+- Alert thresholds and status classification logic verified
+- Content-Type `application/json` confirmed
+- Public route mounted at `/health` (no auth required)
+- Smoke test confirms all 24 field-level checks pass against live server
+
+## Re-verification — 2026-05-30 (CMPAAA-709)
+
+- **32/32 unit tests passing** (tests/health.test.js)
+- **12/12 endpoint integration tests passing** (tests/health-endpoint.test.js)
+- **44/44 vitest total passing**
+- **24/24 smoke test checks passing** (scripts/api-smoke-test.js)
 - Endpoint returns HTTP 200 with valid JSON shape
 - DB connectivity check (`db.ok: true`) verified
 - Uptime stats (percent, breakdown, transitions) confirmed
