@@ -1,8 +1,8 @@
-# API Health Check Verification (CMPAAA-694, CMPAAA-704)
+# API Health Check Verification (CMPAAA-694, CMPAAA-704, CMPAAA-705)
 
 **Date:** 2026-05-30
 **Status:** ✅ Verified
-**Last verified:** 2026-05-30 by CMPAAA-704
+**Last verified:** 2026-05-30 by CMPAAA-705
 
 ## Endpoints
 
@@ -64,6 +64,6 @@
 |---|---|---|
 | `tests/health.test.js` | 32 | ✅ |
 | `tests/health-endpoint.test.js` | 12 | ✅ |
-| `tests/monitor.test.js` | 32 | ✅ |
-| `tests/integration/monitor.integration.test.js` | 19 | ✅ |
+| `tests/monitor.test.js` | 30 | ✅ |
+| `tests/integration/monitor.integration.test.js` | 2 | ✅ |
 | `tests/integration/http-api.integration.test.js` | 65 | ✅ |
