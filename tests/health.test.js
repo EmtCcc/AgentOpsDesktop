@@ -139,6 +139,37 @@ describe('API health check (checkAlerts)', () => {
       ])
     );
   });
+
+  it('fires high_cpu_load alert when load per CPU > 2.0', () => {
+    const health = {
+      ...monitor.getHealth(),
+      system: {
+        totalMem: 16 * 1024 * 1024 * 1024,
+        freeMem: 8 * 1024 * 1024 * 1024,
+        loadAvg: [8.0, 6.0, 4.0],
+        cpus: 2,
+      },
+    };
+    const alerts = monitor.checkAlerts(health);
+    expect(alerts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'high_cpu_load', severity: 'warn' }),
+      ])
+    );
+  });
+
+  it('fires high_ipc_latency alert when avg latency > 500ms', () => {
+    const health = {
+      ...monitor.getHealth(),
+      ipc: { calls: 100, errors: 0, avgLatencyMs: 750 },
+    };
+    const alerts = monitor.checkAlerts(health);
+    expect(alerts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'high_ipc_latency', severity: 'warn' }),
+      ])
+    );
+  });
 });
 
 describe('API health check (recordIpcCall)', () => {
