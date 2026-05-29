@@ -77,7 +77,7 @@
 | `tests/health-endpoint.test.js` | HTTP endpoint integration tests |
 | `scripts/api-smoke-test.js` | End-to-end smoke test |
 
-## Re-verification — 2026-05-30
+## Re-verification — 2026-05-30 (CMPAAA-679)
 
 - **42/42 unit tests passing** (vitest)
 - **24/24 smoke test checks passing** (api-smoke-test.js)
@@ -85,3 +85,14 @@
 - DB connectivity check (`db.ok: true`) verified
 - Uptime stats (percent, breakdown, transitions) confirmed
 - All alert thresholds and status classification logic verified
+
+## Re-verification — 2026-05-30 (CMPAAA-683)
+
+- **42/42 unit tests passing** (vitest)
+- **24/24 smoke test checks passing** (api-smoke-test.js)
+- **66/66 total checks passing**
+- Endpoint returns HTTP 200 with valid JSON shape
+- DB connectivity check (`db.ok: true`) verified
+- Uptime stats (percent, breakdown, transitions) confirmed
+- Alert thresholds and status classification logic verified
+- Content-Type `application/json` confirmed
