@@ -392,6 +392,175 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_skill_tags_tag ON skill_tags(tag);
     `,
   },
+  {
+    version: 16,
+    name: 'create_adapter_packages',
+    up: `
+      CREATE TABLE IF NOT EXISTS adapter_packages (
+        id              TEXT PRIMARY KEY,
+        name            TEXT NOT NULL UNIQUE,
+        version         TEXT NOT NULL,
+        description     TEXT,
+        author          TEXT,
+        repository      TEXT,
+        license         TEXT,
+        keywords        TEXT DEFAULT '[]',
+        entry_point     TEXT NOT NULL,
+        adapter_type    TEXT NOT NULL,
+        config_schema   TEXT DEFAULT '{}',
+        installed_path  TEXT NOT NULL,
+        source          TEXT NOT NULL DEFAULT 'local'
+          CHECK (source IN ('local', 'registry', 'git', 'file')),
+        source_url      TEXT,
+        installed_at    TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_adapter_packages_name ON adapter_packages(name);
+      CREATE INDEX IF NOT EXISTS idx_adapter_packages_source ON adapter_packages(source);
+      CREATE INDEX IF NOT EXISTS idx_adapter_packages_adapter_type ON adapter_packages(adapter_type);
+    `,
+  },
+  {
+    version: 17,
+    name: 'create_settings_and_telemetry',
+    up: `
+      CREATE TABLE IF NOT EXISTS settings (
+        key         TEXT PRIMARY KEY,
+        value       TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS telemetry_events (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type  TEXT NOT NULL,
+        event_data  TEXT DEFAULT '{}',
+        session_id  TEXT,
+        created_at  TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_telemetry_type ON telemetry_events(event_type);
+      CREATE INDEX IF NOT EXISTS idx_telemetry_created ON telemetry_events(created_at);
+      CREATE INDEX IF NOT EXISTS idx_telemetry_session ON telemetry_events(session_id);
+    `,
+  },
+  {
+    version: 18,
+    name: 'add_task_workspace_support',
+    up: `
+      -- Add task_id column to link workspaces to tasks (nullable for agent-level workspaces)
+      ALTER TABLE workspaces ADD COLUMN task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL;
+
+      -- Add injected_files column to track which project files were injected
+      ALTER TABLE workspaces ADD COLUMN injected_files TEXT DEFAULT '[]';
+
+      -- Add gc_at column for GC scheduling (null = not eligible for GC)
+      ALTER TABLE workspaces ADD COLUMN gc_at TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_workspaces_task ON workspaces(task_id);
+      CREATE INDEX IF NOT EXISTS idx_workspaces_gc ON workspaces(gc_at);
+    `,
+  },
+  {
+    version: 19,
+    name: 'add_squad_instructions',
+    up: `
+      ALTER TABLE squads ADD COLUMN instructions TEXT;
+    `,
+  },
+  {
+    version: 20,
+    name: 'create_shared_context',
+    up: `
+      CREATE TABLE IF NOT EXISTS shared_context (
+        id          TEXT PRIMARY KEY,
+        dag_id      TEXT NOT NULL REFERENCES dags(id) ON DELETE CASCADE,
+        key         TEXT NOT NULL,
+        value       TEXT NOT NULL DEFAULT '{}',
+        updated_by  TEXT,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL,
+        UNIQUE(dag_id, key)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_shared_context_dag ON shared_context(dag_id);
+      CREATE INDEX IF NOT EXISTS idx_shared_context_dag_key ON shared_context(dag_id, key);
+    `,
+  },
+  {
+    version: 21,
+    name: 'add_squad_assignment',
+    up: `
+      -- Make Squads first-class assignees for Goals, Tasks, and DAG Tasks
+      ALTER TABLE goals ADD COLUMN squad_id TEXT REFERENCES squads(id) ON DELETE SET NULL;
+      ALTER TABLE tasks ADD COLUMN squad_id TEXT REFERENCES squads(id) ON DELETE SET NULL;
+      ALTER TABLE dag_tasks ADD COLUMN squad_id TEXT REFERENCES squads(id) ON DELETE SET NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_goals_squad ON goals(squad_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_squad ON tasks(squad_id);
+      CREATE INDEX IF NOT EXISTS idx_dag_tasks_squad ON dag_tasks(squad_id);
+    `,
+  },
+  {
+    version: 22,
+    name: 'add_squad_trigger_rules',
+    up: `
+      ALTER TABLE squads ADD COLUMN trigger_rules TEXT DEFAULT '{}';
+    `,
+  },
+  {
+    version: 23,
+    name: 'add_skill_format_fields',
+    up: `
+      -- Paperclip SKILL.md compatible fields for import/export portability
+      ALTER TABLE skills ADD COLUMN version       TEXT;
+      ALTER TABLE skills ADD COLUMN allowed_tools TEXT DEFAULT '[]';
+      ALTER TABLE skills ADD COLUMN hooks         TEXT DEFAULT '{}';
+    `,
+  },
+  {
+    version: 24,
+    name: 'create_group_chat',
+    up: `
+      CREATE TABLE IF NOT EXISTS chat_sessions (
+        id              TEXT PRIMARY KEY,
+        title           TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active', 'paused', 'completed')),
+        strategy_type   TEXT NOT NULL DEFAULT 'round-robin'
+          CHECK (strategy_type IN ('round-robin', 'manager-assign', 'topic-trigger', 'human-assign')),
+        strategy_config TEXT DEFAULT '{}',
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_participants (
+        chat_id     TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+        agent_id    TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        role        TEXT NOT NULL DEFAULT 'expert'
+          CHECK (role IN ('manager', 'expert', 'observer')),
+        status      TEXT NOT NULL DEFAULT 'idle'
+          CHECK (status IN ('speaking', 'listening', 'idle')),
+        added_at    TEXT NOT NULL,
+        PRIMARY KEY (chat_id, agent_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id          TEXT PRIMARY KEY,
+        chat_id     TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+        agent_id    TEXT,
+        content     TEXT NOT NULL,
+        type        TEXT NOT NULL DEFAULT 'chat'
+          CHECK (type IN ('chat', 'instruction', 'system')),
+        created_at  TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_chat_sessions_status ON chat_sessions(status);
+      CREATE INDEX IF NOT EXISTS idx_chat_participants_chat ON chat_participants(chat_id);
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_chat ON chat_messages(chat_id);
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(chat_id, created_at);
+    `,
+  },
 ];
 
 module.exports = { migrations };

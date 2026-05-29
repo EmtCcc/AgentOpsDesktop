@@ -4,6 +4,10 @@ import { mountTasksPage } from './pages/TasksPage.jsx';
 import { mountLogsPage } from './pages/LogsPage.jsx';
 import { mountSettingsPage } from './pages/SettingsPage.jsx';
 import { mountSquadsPage } from './pages/SquadsPage.jsx';
+import { mountActivityTimelinePage } from './pages/ActivityTimelinePage.jsx';
+import { mountWorkflowsPage } from './pages/WorkflowsPage.jsx';
+import { mountCostDashboardPage } from './pages/CostDashboardPage.jsx';
+import { mountGroupChatPage } from './pages/GroupChatPage.jsx';
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -115,6 +119,9 @@ function renderPage(page) {
     settings: renderSettings,
     workflows: renderWorkflows,
     squads: renderSquads,
+    groupchat: renderGroupChat,
+    activity: renderActivityTimeline,
+    cost: renderCostDashboard,
   };
 
   const renderer = renderers[page];
@@ -615,38 +622,36 @@ function renderSquads(container) {
   _reactUnmount = mountSquadsPage(root);
 }
 
-// ── Workflows Page ──
+// ── Group Chat Page ──
+
+function renderGroupChat(container) {
+  container.innerHTML = '<div id="react-groupchat-root" style="height:100%"></div>';
+  const root = container.querySelector('#react-groupchat-root');
+  _reactUnmount = mountGroupChatPage(root);
+}
+
+// ── Activity Timeline Page ──
+
+function renderActivityTimeline(container) {
+  container.innerHTML = '<div id="react-activity-root"></div>';
+  const root = container.querySelector('#react-activity-root');
+  _reactUnmount = mountActivityTimelinePage(root);
+}
+
+// ── Workflows Page (React) ──
 
 function renderWorkflows(container) {
-  container.innerHTML = `
-    <div class="page-container">
-      <div class="page-header">
-        <div class="page-header__content">
-          <h1 class="page-header__title">Workflows</h1>
-          <p class="page-header__desc">Manage automated workflows and pipelines</p>
-        </div>
-        <div class="page-header__actions">
-          <button class="btn btn--primary" id="btn-create-workflow">
-            ${icons.plus} Create workflow
-          </button>
-        </div>
-      </div>
+  container.innerHTML = '<div id="react-workflows-root"></div>';
+  const root = container.querySelector('#react-workflows-root');
+  _reactUnmount = mountWorkflowsPage(root);
+}
 
-      <div class="empty-state">
-        <div class="empty-state__icon">${landingIcons.workflow}</div>
-        <div class="empty-state__title">No workflows configured</div>
-        <div class="empty-state__desc">Create automated workflows to orchestrate complex agent tasks.</div>
-        <div class="empty-state__actions">
-          <button class="btn btn--primary">
-            ${icons.plus} Create workflow
-          </button>
-          <button class="btn btn--secondary">
-            Learn more
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+// ── Cost Dashboard Page (React) ──
+
+function renderCostDashboard(container) {
+  container.innerHTML = '<div id="react-cost-root"></div>';
+  const root = container.querySelector('#react-cost-root');
+  _reactUnmount = mountCostDashboardPage(root);
 }
 
 // ── Init ──
@@ -706,6 +711,90 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sidebarVersion) sidebarVersion.textContent = `v${version}`;
   if (footerVersion) footerVersion.textContent = `v${version}`;
 
+  // Update banner
+  initUpdateBanner();
+
   // Initial page
   navigate('landing');
 });
+
+// ── Update Banner ──
+
+function initUpdateBanner() {
+  const api = window.agentOps?.update;
+  if (!api) return;
+
+  let bannerEl = null;
+  let progressEl = null;
+  let statusTextEl = null;
+
+  function createBanner(version) {
+    if (bannerEl) return;
+    bannerEl = document.createElement('div');
+    bannerEl.id = 'update-banner';
+    bannerEl.setAttribute('role', 'status');
+    bannerEl.setAttribute('aria-live', 'polite');
+    bannerEl.innerHTML = `
+      <div class="update-banner__content">
+        <span class="update-banner__icon">${icons.rocket}</span>
+        <span class="update-banner__text">Update v${escapeHtml(version)} is available</span>
+        <span class="update-banner__progress-text" id="update-banner-status"></span>
+        <div class="update-banner__progress" id="update-banner-progress" style="display:none">
+          <div class="update-banner__progress-bar" id="update-banner-progress-bar"></div>
+        </div>
+        <div class="update-banner__actions">
+          <button class="btn btn--primary btn--sm" id="update-banner-action">Download</button>
+          <button class="btn btn--ghost btn--sm" id="update-banner-dismiss">Dismiss</button>
+        </div>
+      </div>
+    `;
+    const header = document.querySelector('.header');
+    if (header) header.insertAdjacentElement('afterend', bannerEl);
+    else document.body.prepend(bannerEl);
+
+    progressEl = document.getElementById('update-banner-progress-bar');
+    statusTextEl = document.getElementById('update-banner-status');
+
+    document.getElementById('update-banner-action').addEventListener('click', () => {
+      api.download();
+    });
+    document.getElementById('update-banner-dismiss').addEventListener('click', () => {
+      removeBanner();
+    });
+  }
+
+  function removeBanner() {
+    if (bannerEl) { bannerEl.remove(); bannerEl = null; progressEl = null; statusTextEl = null; }
+  }
+
+  api.onAvailable((info) => {
+    createBanner(info.version);
+  });
+
+  api.onProgress((p) => {
+    if (!bannerEl) return;
+    const progressBar = document.getElementById('update-banner-progress');
+    if (progressBar) progressBar.style.display = '';
+    if (progressEl) progressEl.style.width = `${p.percent}%`;
+    if (statusTextEl) statusTextEl.textContent = `${Math.round(p.percent)}%`;
+    const actionBtn = document.getElementById('update-banner-action');
+    if (actionBtn) { actionBtn.textContent = 'Downloading...'; actionBtn.disabled = true; }
+  });
+
+  api.onDownloaded((info) => {
+    if (!bannerEl) createBanner(info.version);
+    if (statusTextEl) statusTextEl.textContent = 'Ready to install';
+    const progressBar = document.getElementById('update-banner-progress');
+    if (progressBar) progressBar.style.display = 'none';
+    const actionBtn = document.getElementById('update-banner-action');
+    if (actionBtn) {
+      actionBtn.textContent = 'Install & Restart';
+      actionBtn.disabled = false;
+      actionBtn.onclick = () => api.install();
+    }
+  });
+
+  api.onError(() => {
+    removeBanner();
+  });
+}

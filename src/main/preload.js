@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('agentOps', {
     spawn: (config) => _invoke('agents:spawn', config),
     status: (id) => _invoke('agents:status', { id }),
     kill: (id, signal) => _invoke('agents:kill', { id, signal }),
+    sendInput: (id, data) => _invoke('agents:sendInput', { id, data }),
   },
 
   goals: {
@@ -99,19 +100,47 @@ contextBridge.exposeInMainWorld('agentOps', {
     update: (settings) => _invoke('settings:update', { settings }),
   },
 
+  notifications: {
+    get: () => ipcRenderer.invoke('notifications:get'),
+    update: (config) => ipcRenderer.invoke('notifications:update', { config }),
+  },
+
   update: {
     check: () => _invoke('update:check'),
     download: () => _invoke('update:download'),
     install: () => ipcRenderer.invoke('update:install'),
+    defer: (version) => _invoke('update:defer', { version }),
+    clearDefer: () => _invoke('update:clear-defer'),
+    info: () => _invoke('update:info'),
+    onChecking: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('update:checking', handler);
+      return () => ipcRenderer.removeListener('update:checking', handler);
+    },
     onAvailable: (callback) => {
       const handler = (_event, info) => callback(info);
       ipcRenderer.on('update:available', handler);
       return () => ipcRenderer.removeListener('update:available', handler);
     },
+    onNotAvailable: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('update:not-available', handler);
+      return () => ipcRenderer.removeListener('update:not-available', handler);
+    },
+    onProgress: (callback) => {
+      const handler = (_event, progress) => callback(progress);
+      ipcRenderer.on('update:progress', handler);
+      return () => ipcRenderer.removeListener('update:progress', handler);
+    },
     onDownloaded: (callback) => {
       const handler = (_event, info) => callback(info);
       ipcRenderer.on('update:downloaded', handler);
       return () => ipcRenderer.removeListener('update:downloaded', handler);
+    },
+    onError: (callback) => {
+      const handler = (_event, err) => callback(err);
+      ipcRenderer.on('update:error', handler);
+      return () => ipcRenderer.removeListener('update:error', handler);
     },
   },
 
@@ -144,6 +173,14 @@ contextBridge.exposeInMainWorld('agentOps', {
     },
   },
 
+  sharedContext: {
+    set: (dagId, key, value, updatedBy) => _invoke('sharedContext:set', { dagId, key, value, updatedBy }),
+    get: (dagId, key) => _invoke('sharedContext:get', { dagId, key }),
+    getMany: (dagId, keys) => _invoke('sharedContext:getMany', { dagId, keys }),
+    list: (dagId) => _invoke('sharedContext:list', { dagId }),
+    delete: (dagId, key) => _invoke('sharedContext:delete', { dagId, key }),
+  },
+
   adapters: {
     list: (params) => _invoke('adapters:list', params),
     get: (id) => _invoke('adapters:get', { id }),
@@ -154,6 +191,34 @@ contextBridge.exposeInMainWorld('agentOps', {
     unload: (id) => _invoke('adapters:unload', { id }),
     listLoaded: () => _invoke('adapters:listLoaded'),
     healthCheck: (id) => _invoke('adapters:healthCheck', { id }),
+  },
+
+  adapterRegistry: {
+    search: (query, opts) => _invoke('adapterRegistry:search', { query, ...opts }),
+    listInstalled: (params) => _invoke('adapterRegistry:listInstalled', params),
+    getPackage: (name) => _invoke('adapterRegistry:getPackage', { name }),
+    install: (name, opts) => _invoke('adapterRegistry:install', { name, ...opts }),
+    installFromFile: (filePath, opts) => _invoke('adapterRegistry:installFromFile', { filePath, ...opts }),
+    uninstall: (name, opts) => _invoke('adapterRegistry:uninstall', { name, ...opts }),
+    update: (name, opts) => _invoke('adapterRegistry:update', { name, ...opts }),
+    checkUpdates: () => _invoke('adapterRegistry:checkUpdates'),
+    featured: (opts) => _invoke('adapterRegistry:featured', opts),
+    scanLocal: () => _invoke('adapterRegistry:scanLocal'),
+    registerLocal: (discovered) => _invoke('adapterRegistry:registerLocal', { discovered }),
+  },
+
+  cost: {
+    listBudgets: (params) => _invoke('cost:listBudgets', params),
+    getBudget: (id) => _invoke('cost:getBudget', { id }),
+    createBudget: (budget) => _invoke('cost:createBudget', budget),
+    updateBudget: (id, updates) => _invoke('cost:updateBudget', { id, updates }),
+    deleteBudget: (id) => _invoke('cost:deleteBudget', { id }),
+    getCostReport: (params) => _invoke('cost:getCostReport', params),
+    resetBudgets: () => _invoke('cost:resetBudgets'),
+    getSpendByModel: (params) => _invoke('cost:getSpendByModel', params),
+    getSpendByTask: (params) => _invoke('cost:getSpendByTask', params),
+    getTokensByAgent: (params) => _invoke('cost:getTokensByAgent', params),
+    getSpendTrends: (params) => _invoke('cost:getSpendTrends', params),
   },
 
   squads: {
@@ -168,6 +233,56 @@ contextBridge.exposeInMainWorld('agentOps', {
     batchStart: (squadId) => _invoke('squads:batchStart', { squadId }),
     batchStop: (squadId) => _invoke('squads:batchStop', { squadId }),
     aggregatedStatus: (squadId) => _invoke('squads:aggregatedStatus', { squadId }),
+    evaluateTriggerRule: (event, squadId, agentId) => _invoke('squads:evaluateTriggerRule', { event, squadId, agentId }),
+    applyTriggerRule: (event, squadId, agentId) => _invoke('squads:applyTriggerRule', { event, squadId, agentId }),
+    onEvent: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('squad:event', handler);
+      return () => ipcRenderer.removeListener('squad:event', handler);
+    },
+  },
+
+  skills: {
+    list: (params) => _invoke('skills:list', params),
+    get: (id) => _invoke('skills:get', { id }),
+    create: (skill) => _invoke('skills:create', skill),
+    update: (id, updates) => _invoke('skills:update', { id, updates }),
+    delete: (id) => _invoke('skills:delete', { id }),
+    listTags: () => _invoke('skills:listTags'),
+    searchByTags: (tags) => _invoke('skills:searchByTags', { tags }),
+    importSkillMd: (content, overwrite) => _invoke('skills:importSkillMd', { content, overwrite }),
+    exportSkillMd: (id) => _invoke('skills:exportSkillMd', { id }),
+    validateSkillMd: (content) => _invoke('skills:validateSkillMd', { content }),
+    importFromDirectory: (dirPath, overwrite) => _invoke('skills:importFromDirectory', { dirPath, overwrite }),
+  },
+
+  telemetry: {
+    stats: () => _invoke('telemetry:stats'),
+    setEnabled: (enabled) => _invoke('telemetry:setEnabled', { enabled }),
+    exportData: () => _invoke('telemetry:export'),
+    clearData: () => _invoke('telemetry:clear'),
+  },
+
+  chat: {
+    list: (params) => _invoke('chat:list', params),
+    get: (id) => _invoke('chat:get', { id }),
+    create: (opts) => _invoke('chat:create', opts),
+    update: (id, updates) => _invoke('chat:update', { id, updates }),
+    delete: (id) => _invoke('chat:delete', { id }),
+    start: (id) => _invoke('chat:start', { id }),
+    pause: (id) => _invoke('chat:pause', { id }),
+    resume: (id) => _invoke('chat:resume', { id }),
+    stop: (id) => _invoke('chat:stop', { id }),
+    sendMessage: (id, content) => _invoke('chat:sendMessage', { id, content }),
+    listMessages: (id, since) => _invoke('chat:listMessages', { id, since }),
+    addParticipant: (id, agentId, role) => _invoke('chat:addParticipant', { id, agentId, role }),
+    removeParticipant: (id, agentId) => _invoke('chat:removeParticipant', { id, agentId }),
+    getState: (id) => _invoke('chat:getState', { id }),
+    onEvent: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('chat:event', handler);
+      return () => ipcRenderer.removeListener('chat:event', handler);
+    },
   },
 
   docs: {

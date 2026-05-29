@@ -17,7 +17,11 @@ const scheduleController = require('./controllers/schedule.controller');
 const squadController = require('./controllers/squad.controller');
 const costController = require('./controllers/cost.controller');
 const adapterController = require('./controllers/adapter.controller');
+const adapterRegistryController = require('./controllers/adapter-registry.controller');
 const skillController = require('./controllers/skill.controller');
+const sharedContextController = require('./controllers/shared-context.controller');
+const telemetryController = require('./controllers/telemetry.controller');
+const chatController = require('./controllers/chat.controller');
 const monitor = require('../monitor');
 const logger = require('../logger');
 
@@ -63,7 +67,7 @@ const tokenManager = new TokenManager();
  *
  *   docs:api            — Open API documentation in a new window
  */
-function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
+function bootstrapRoutes(mainWindow, repos, electronIpcMain, { notificationService, chatEngine } = {}) {
   logController.setMainWindow(mainWindow);
 
   // Local repo references for inline handlers
@@ -85,6 +89,13 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
     statsController.setCostRepository(repos.costs);
     adapterController.setRepository(repos.adapters);
     skillController.setRepository(repos.skills);
+    sharedContextController.setRepository(repos.sharedContext);
+    telemetryController.setRepository(repos.telemetry);
+    chatController.setRepository(repos.chats);
+    chatController.setAgentRepository(repos.agents);
+    if (chatEngine) {
+      chatController.setEngine(chatEngine);
+    }
   }
 
   // Initialize token manager
@@ -147,6 +158,7 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('agents:spawn', agentController.spawn, { schema: agentController.schemas.spawn, auth: true, permission: 'agents:spawn' });
   router.register('agents:status', agentController.status, { schema: agentController.schemas.status, auth: true, permission: 'agents:status' });
   router.register('agents:kill', agentController.kill, { schema: agentController.schemas.kill, auth: true, permission: 'agents:kill' });
+  router.register('agents:sendInput', agentController.sendInput, { schema: agentController.schemas.sendInput, auth: true, permission: 'agents:spawn' });
 
   // ── Goals (protected) ──
   router.register('goals:list', goalController.list, { schema: goalController.schemas.list, auth: true, permission: 'goals:list' });
@@ -231,6 +243,8 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('squads:batchStart', squadController.batchStart, { schema: squadController.schemas.batchStart, auth: true, permission: 'squads:update' });
   router.register('squads:batchStop', squadController.batchStop, { schema: squadController.schemas.batchStop, auth: true, permission: 'squads:update' });
   router.register('squads:aggregatedStatus', squadController.getAggregatedStatus, { schema: squadController.schemas.getAggregatedStatus, auth: true, permission: 'squads:get' });
+  router.register('squads:evaluateTriggerRule', squadController.evaluateTriggerRule, { schema: squadController.schemas.evaluateTriggerRule, auth: true, permission: 'squads:get' });
+  router.register('squads:applyTriggerRule', squadController.applyTriggerRule, { schema: squadController.schemas.applyTriggerRule, auth: true, permission: 'squads:update' });
 
   // ── Cost / Budget (protected) ──
   router.register('cost:listBudgets', costController.listBudgets, { schema: costController.schemas.listBudgets, auth: true, permission: 'cost:listBudgets' });
@@ -243,6 +257,10 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('cost:listUsage', costController.listUsage, { schema: costController.schemas.listUsage, auth: true, permission: 'cost:listUsage' });
   router.register('cost:getCostReport', costController.getCostReport, { schema: costController.schemas.getCostReport, auth: true, permission: 'cost:getCostReport' });
   router.register('cost:resetBudgets', costController.resetBudgets, { schema: costController.schemas.resetBudgets, auth: true, permission: 'cost:resetBudgets' });
+  router.register('cost:getSpendByModel', costController.getSpendByModel, { schema: costController.schemas.getSpendByModel, auth: true, permission: 'cost:getSpendByModel' });
+  router.register('cost:getSpendByTask', costController.getSpendByTask, { schema: costController.schemas.getSpendByTask, auth: true, permission: 'cost:getSpendByTask' });
+  router.register('cost:getTokensByAgent', costController.getTokensByAgent, { schema: costController.schemas.getTokensByAgent, auth: true, permission: 'cost:getTokensByAgent' });
+  router.register('cost:getSpendTrends', costController.getSpendTrends, { schema: costController.schemas.getSpendTrends, auth: true, permission: 'cost:getSpendTrends' });
 
   // ── Adapters (protected) ──
   router.register('adapters:list', adapterController.list, { schema: adapterController.schemas.list, auth: true, permission: 'adapters:list' });
@@ -255,6 +273,19 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('adapters:listLoaded', adapterController.listLoaded, { auth: true, permission: 'adapters:list' });
   router.register('adapters:healthCheck', adapterController.healthCheck, { schema: adapterController.schemas.healthCheck, auth: true, permission: 'adapters:healthCheck' });
 
+  // ── Adapter Registry (protected) ──
+  router.register('adapterRegistry:search', adapterRegistryController.search, { schema: adapterRegistryController.schemas.search, auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:listInstalled', adapterRegistryController.listInstalled, { schema: adapterRegistryController.schemas.listInstalled, auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:getPackage', adapterRegistryController.getPackage, { schema: adapterRegistryController.schemas.getPackage, auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:install', adapterRegistryController.install, { schema: adapterRegistryController.schemas.install, auth: true, permission: 'adapters:create' });
+  router.register('adapterRegistry:installFromFile', adapterRegistryController.installFromFile, { schema: adapterRegistryController.schemas.installFromFile, auth: true, permission: 'adapters:create' });
+  router.register('adapterRegistry:uninstall', adapterRegistryController.uninstall, { schema: adapterRegistryController.schemas.uninstall, auth: true, permission: 'adapters:delete' });
+  router.register('adapterRegistry:update', adapterRegistryController.update, { schema: adapterRegistryController.schemas.update, auth: true, permission: 'adapters:update' });
+  router.register('adapterRegistry:checkUpdates', adapterRegistryController.checkUpdates, { auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:featured', adapterRegistryController.getFeatured, { schema: adapterRegistryController.schemas.getFeatured, auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:scanLocal', adapterRegistryController.scanLocal, { auth: true, permission: 'adapters:list' });
+  router.register('adapterRegistry:registerLocal', adapterRegistryController.registerLocal, { schema: adapterRegistryController.schemas.registerLocal, auth: true, permission: 'adapters:create' });
+
   // ── Skills (protected) ──
   router.register('skills:list', skillController.list, { schema: skillController.schemas.list, auth: true, permission: 'skills:list' });
   router.register('skills:get', skillController.get, { schema: skillController.schemas.get, auth: true, permission: 'skills:get' });
@@ -263,6 +294,33 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   router.register('skills:delete', skillController.delete, { schema: skillController.schemas.delete, auth: true, permission: 'skills:delete' });
   router.register('skills:listTags', skillController.listTags, { auth: true, permission: 'skills:list' });
   router.register('skills:searchByTags', skillController.searchByTags, { schema: skillController.schemas.searchByTags, auth: true, permission: 'skills:list' });
+  router.register('skills:importSkillMd', skillController.importSkillMd, { schema: skillController.schemas.importSkillMd, auth: true, permission: 'skills:create' });
+  router.register('skills:exportSkillMd', skillController.exportSkillMd, { schema: skillController.schemas.exportSkillMd, auth: true, permission: 'skills:get' });
+  router.register('skills:validateSkillMd', skillController.validateSkillMd, { schema: skillController.schemas.validateSkillMd, auth: true, permission: 'skills:list' });
+  router.register('skills:importFromDirectory', skillController.importFromDirectory, { schema: skillController.schemas.importFromDirectory, auth: true, permission: 'skills:create' });
+
+  // ── Shared Context / Blackboard (protected) ──
+  router.register('sharedContext:set', sharedContextController.set, { schema: sharedContextController.schemas.set, auth: true, permission: 'orchestrator:create' });
+  router.register('sharedContext:get', sharedContextController.get, { schema: sharedContextController.schemas.get, auth: true, permission: 'orchestrator:get' });
+  router.register('sharedContext:getMany', sharedContextController.getMany, { schema: sharedContextController.schemas.getMany, auth: true, permission: 'orchestrator:get' });
+  router.register('sharedContext:list', sharedContextController.list, { schema: sharedContextController.schemas.list, auth: true, permission: 'orchestrator:get' });
+  router.register('sharedContext:delete', sharedContextController.delete, { schema: sharedContextController.schemas.delete, auth: true, permission: 'orchestrator:create' });
+
+  // ── Group Chat (protected) ──
+  router.register('chat:list', chatController.list, { schema: chatController.schemas.list, auth: true, permission: 'orchestrator:list' });
+  router.register('chat:get', chatController.get, { schema: chatController.schemas.get, auth: true, permission: 'orchestrator:get' });
+  router.register('chat:create', chatController.create, { schema: chatController.schemas.create, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:update', chatController.update, { schema: chatController.schemas.update, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:delete', chatController.delete, { schema: chatController.schemas.delete, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:start', chatController.start, { schema: chatController.schemas.start, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:pause', chatController.pause, { schema: chatController.schemas.pause, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:resume', chatController.resume, { schema: chatController.schemas.resume, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:stop', chatController.stop, { schema: chatController.schemas.stop, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:sendMessage', chatController.sendMessage, { schema: chatController.schemas.sendMessage, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:listMessages', chatController.listMessages, { schema: chatController.schemas.listMessages, auth: true, permission: 'orchestrator:get' });
+  router.register('chat:addParticipant', chatController.addParticipant, { schema: chatController.schemas.addParticipant, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:removeParticipant', chatController.removeParticipant, { schema: chatController.schemas.removeParticipant, auth: true, permission: 'orchestrator:create' });
+  router.register('chat:getState', chatController.getState, { schema: chatController.schemas.getState, auth: true, permission: 'orchestrator:get' });
 
   // Wire orchestrator events → renderer push
   if (orchestratorController._orchestrator && mainWindow) {
@@ -280,6 +338,25 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
     orch.on('task:budget-blocked', (data) => {
       try { mainWindow.webContents.send('cost:budget-blocked', data); } catch { /* window closed */ }
     });
+    orch.on('squad:leader-reactivated', (data) => {
+      try { mainWindow.webContents.send('squad:event', { type: 'leader-reactivated', ...data }); } catch { /* window closed */ }
+    });
+    orch.on('squad:member-complete', (data) => {
+      try { mainWindow.webContents.send('squad:event', { type: 'member-complete', ...data }); } catch { /* window closed */ }
+    });
+    orch.on('squad:member-spawned', (data) => {
+      try { mainWindow.webContents.send('squad:event', { type: 'member-spawned', ...data }); } catch { /* window closed */ }
+    });
+  }
+
+  // Wire chat engine events → renderer push
+  if (chatEngine && mainWindow) {
+    const chatEvents = ['message', 'agent-status', 'turn-change', 'session-status', 'stream', 'error'];
+    for (const evt of chatEvents) {
+      chatEngine.on(evt, (data) => {
+        try { mainWindow.webContents.send('chat:event', { type: evt, ...data }); } catch { /* window closed */ }
+      });
+    }
   }
 
   // ── Logs (protected) ──
@@ -292,6 +369,23 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
   // ── Settings (protected) ──
   router.register('settings:get', settingsController.get, { schema: settingsController.schemas.get, auth: true, permission: 'settings:get' });
   router.register('settings:update', settingsController.update, { schema: settingsController.schemas.update, auth: true, permission: 'settings:update' });
+
+  // ── Telemetry (protected) ──
+  router.register('telemetry:stats', telemetryController.getStats, { schema: telemetryController.schemas.getStats, auth: true, permission: 'settings:get' });
+  router.register('telemetry:setEnabled', telemetryController.setEnabled, { schema: telemetryController.schemas.setEnabled, auth: true, permission: 'settings:update' });
+  router.register('telemetry:export', telemetryController.exportData, { schema: telemetryController.schemas.exportData, auth: true, permission: 'settings:get' });
+  router.register('telemetry:clear', telemetryController.clearData, { schema: telemetryController.schemas.clearData, auth: true, permission: 'settings:update' });
+
+  // ── Notifications (protected) ──
+  if (notificationService) {
+    router.register('notifications:get', () => notificationService.getConfig(), {
+      auth: true, permission: 'settings:get',
+    });
+    router.register('notifications:update', (_event, { config }) => notificationService.setConfig(config), {
+      schema: { config: { type: 'object', required: true } },
+      auth: true, permission: 'settings:update',
+    });
+  }
 
   // ── Updates (protected) ──
   router.register('update:check', async () => {
@@ -311,6 +405,23 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain) {
     updater.quitAndInstall();
     return { ok: true };
   }, { auth: true, permission: 'update:install' });
+
+  router.register('update:defer', (_event, { version }) => {
+    const updater = require('../updater');
+    updater.deferVersion(version);
+    return { ok: true };
+  }, { schema: { version: { type: 'string', required: true } }, auth: true, permission: 'update:install' });
+
+  router.register('update:clear-defer', () => {
+    const updater = require('../updater');
+    updater.clearDefer();
+    return { ok: true };
+  }, { auth: true, permission: 'update:install' });
+
+  router.register('update:info', () => {
+    const updater = require('../updater');
+    return updater.getUpdateInfo();
+  }, { auth: true, permission: 'update:check' });
 
   // ── Docs (public) ──
   router.register('docs:api', () => {

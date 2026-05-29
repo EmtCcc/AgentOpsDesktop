@@ -9,7 +9,12 @@ const { ScheduleRepository } = require('./schedule.repository');
 const { SquadRepository } = require('./squad.repository');
 const { CostRepository } = require('./cost.repository');
 const { AdapterRepository } = require('./adapter.repository');
+const { AdapterPackageRepository } = require('./adapter-package.repository');
 const { SkillRepository } = require('./skill.repository');
+const { SharedContextRepository } = require('./shared-context.repository');
+const { SettingsRepository } = require('../db/repositories/settings.repository');
+const { TelemetryRepository } = require('./telemetry.repository');
+const { ChatRepository } = require('./chat.repository');
 
 /**
  * Initialize all repositories with a database connection.
@@ -26,8 +31,13 @@ function createRepositories(db) {
     squads: new SquadRepository(db),
     costs: new CostRepository(db),
     adapters: new AdapterRepository(db),
+    adapterPackages: new AdapterPackageRepository(db),
     skills: new SkillRepository(db),
+    sharedContext: new SharedContextRepository(db),
+    settings: new SettingsRepository(db),
+    telemetry: new TelemetryRepository(db),
+    chats: new ChatRepository(db),
   };
 }
 
-module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository, OrchestratorRepository, ScheduleRepository, SquadRepository, CostRepository, AdapterRepository, SkillRepository };
+module.exports = { createRepositories, AgentRepository, GoalRepository, TaskRepository, TaskLogRepository, OrchestratorRepository, ScheduleRepository, SquadRepository, CostRepository, AdapterRepository, AdapterPackageRepository, SkillRepository, SharedContextRepository, SettingsRepository, TelemetryRepository, ChatRepository };
