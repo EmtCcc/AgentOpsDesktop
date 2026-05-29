@@ -1,6 +1,6 @@
 # Phase 2 Roadmap — CLI Adapters / Squad Intelligence / Agent Communication
 
-> Last updated: 2026-05-29 (Round 2)
+> Last updated: 2026-05-29 (Round 3 — Final)
 > Based on: `docs/phase2-competitive-analysis.md` and `docs/phase2-gap-matrix.csv`
 > Dependencies: Phase 1 P0 (CMPAAA-282 ~ CMPAAA-285) — ALL DONE
 
@@ -30,19 +30,19 @@
 | CMPAAA-330 | Agent-to-agent messaging | ✅ DONE | `message-bus.js` + `socket-server.js` + `socket-client.js` | 优秀：完整 pub/sub + NDJSON + 身份验证 |
 | CMPAAA-331 | Mid-execution context injection | ✅ DONE | `sendInput()` in all adapters | 合格：stdin write |
 | CMPAAA-332 | Per-task workspace isolation | ✅ DONE | `workspace-manager.js` (migration v18) | 优秀：路径沙箱 + 快照 + GC |
-| CMPAAA-333 | Group chat mode | ✅ DONE | (需验证前端) | 待验证：后端已实现 |
+| CMPAAA-333 | Group chat mode | ✅ DONE | `group-chat-engine.js` | 优秀：round-robin + human-assign 策略，对话历史，pause/resume |
 
 ### 实现与分析之间的差距
 
 | 差距 | 严重性 | 描述 | 建议 |
 |------|--------|------|------|
-| **Group Chat 前端** | Medium | 后端 GroupChatManager 已实现，但前端 UI 可能未完全暴露 | Round 3 验证 |
+| **Group Chat 增强** | Medium | GroupChatEngine 已实现 round-robin/human-assign，缺少 LLM-driven speaker selection | Phase 3 考虑 |
 | **Codex Session Resume** | Low | Codex CLI 不支持 session resume，适配器层无法弥补 | 文档说明限制 |
 | **Gemini 结构化输出** | Low | Gemini CLI 无结构化输出，LineDelimitedJsonParser 为兜底 | 文档说明限制 |
 | **负载均衡** | Medium | Squad 无 Member 负载检测和均衡调度 | Phase 3 考虑 |
 | **动态 Member 选择** | Medium | Leader 只能 delegate 到预配置的 Member | Phase 3 考虑 |
 | **符号链接逃逸** | Low | resolveSafe() 未检测 symlink | 安全加固 |
-| **Group Chat 消息历史** | Medium | 无共享对话历史，Agent 看不到彼此推理 | Phase 3 考虑 |
+| **Group Chat 跨会话历史** | Low | GroupChatEngine 有会话内对话历史，但无跨会话持久化 | Phase 3 考虑 |
 
 ---
 

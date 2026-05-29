@@ -22,7 +22,7 @@ Communication,Result relay,Yes (task_handoffs),Via issue comments,Via goals,Via 
 Communication,Pub/sub (MessageBus),Yes,No,No,No,No,No,Yes,Maintain,-,5,Topic wildcards (*, **), request/reply, back-pressure, crash recovery
 Communication,Agent-to-agent messaging,No,Via @mention comments,No,No,Task delegation,Direct messages,Yes,High,High,4,SocketBusServer with NDJSON protocol + squad namespace isolation
 Communication,Shared conversation context,No,Via issue thread,No,No,Memory systems,Conversation history,Yes,Critical,High,3,Shared Context key-value store; no full conversation history
-Communication,Group chat,No,Issue comments,No,No,No,Core paradigm,Yes,High,High,1,Not implemented; highest priority gap
+Communication,Group chat,Yes (GroupChatEngine),Issue comments,No,No,No,Core paradigm,Yes,Maintain,-,3,group-chat-engine.js: round-robin + human-assign strategies, conversation history, max-turns limit, pause/resume
 Communication,Shared memory/state,No,Workspace files,No,Memory layer,Memory systems,State objects,Yes,Medium,High,4,SharedContext with DAG-scoped key-value + updated_by tracking
 Communication,Request/reply,Yes (MessageBus),No,No,No,No,No,Yes,Maintain,-,5,Correlation IDs + configurable timeout; unique among competitors
 Communication,Streaming to agents,No,No,No,Yes (stdin),Async kickoff,run_stream(),Yes,Medium,Medium,3,sendInput() exists but CLI -p mode limits streaming

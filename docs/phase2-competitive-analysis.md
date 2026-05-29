@@ -1,6 +1,6 @@
 # Phase 2: Competitive Deep Analysis — CLI Adapters / Team Mode / Group Chat / Project Isolation
 
-> Last updated: 2026-05-29 (Round 2)
+> Last updated: 2026-05-29 (Round 3 — Final)
 > Scope: Deep technical comparison across 4 dimensions beyond Phase 1 baseline
 > Competitors: Multica, Paperclip, Golutra, CrewAI, AutoGen, AgentOps Desktop
 
@@ -105,7 +105,7 @@ class AgentAdapter extends EventEmitter {
 | Gap | Severity | Description |
 |-----|----------|-------------|
 | **Only 1 adapter** | Critical | `GenericCliAdapter` works for any CLI but has no provider-specific intelligence (model selection, session resume, MCP) |
-| **No auto-detection** | High | Users must manually configure every agent; Multica auto-detects 12 CLIs on PATH |
+| **Auto-detection limited** | Low | `cli-scanner.js` detects 5 known CLIs (claude, codex, gemini, opencode, cursor-agent); fewer than Multica's 12 but same mechanism |
 | **No session resumption** | High | 9/12 Multica providers support resume; AgentOps has none |
 | **No MCP integration** | Medium | MCP is becoming the standard for tool integration; only Claude Code supports it natively |
 | **No stdout format negotiation** | Medium | Each agent CLI outputs differently; need per-provider parsers or a format abstraction |
@@ -392,7 +392,7 @@ Group Chat → Selector 选择下一个 Speaker
 | **Conversation history** | Via issue comments | Core paradigm | Via memory | ❌ No shared conversation |
 | **Real-time streaming** | Stdout parsing | `run_stream()` | Async kickoff | Stdout capture only |
 | **Agent-to-agent messaging** | Via @mention comments | Direct message objects | Task delegation | ❌ Only task handoffs |
-| **Group discussion** | Issue thread | Group chat pattern | N/A | ❌ No group chat |
+| **Group discussion** | Issue thread | Group chat pattern | N/A | ✅ GroupChatEngine (round-robin + human-assign) |
 | **Shared memory** | Workspace files | Conversation context | Memory systems | ❌ No shared memory |
 | **Human-in-the-loop** | Via comments | Built-in | N/A | ✅ Governance gates |
 
@@ -406,7 +406,7 @@ AutoGen's group chat is the most sophisticated multi-agent communication model:
 4. Speaker selection can be round-robin, random, or LLM-driven
 5. Max consecutive auto-reply limit prevents infinite loops
 
-**AgentOps gap**: No equivalent of group chat. Task handoffs are one-directional (upstream → downstream). No mechanism for agents to discuss, debate, or collaboratively refine outputs.
+**AgentOps implementation**: `GroupChatEngine` provides round-robin and human-assign turn strategies, conversation history sharing, max-turns limit, and pause/resume. However, it lacks AutoGen's LLM-driven speaker selection and the shared conversation history visible to all participants at all times.
 
 ### 3.4 Shared State / Blackboard Pattern (LangGraph/CrewAI)
 
@@ -481,7 +481,7 @@ CrewAI's memory systems:
 
 | 能力 | 状态 | 影响 |
 |------|------|------|
-| Group chat (多 Agent 讨论) | ❌ | 无法进行多 Agent 协作讨论 |
+| Group chat (多 Agent 讨论) | ✅ 已实现 | GroupChatEngine 支持 round-robin/human-assign 策略，完整对话历史 |
 | 共享对话历史 | ❌ | Agent 看不到彼此的推理过程 |
 | 实时流式通信 | ❌ | Agent 只在 spawn 时接收输入 |
 | 消息优先级 | ❌ | 所有消息同等优先级 |
@@ -493,9 +493,9 @@ CrewAI's memory systems:
 |-----|----------|-------------|
 | **No shared conversation context** | Critical | Agents can't see each other's reasoning — only final outputs |
 | **No agent-to-agent messaging** | High | Only task handoffs (async, one-directional); no real-time agent comms |
-| **No group chat** | High | No mechanism for multi-agent discussion or collaborative refinement |
+| **Group chat limited** | Medium | GroupChatEngine exists but lacks LLM-driven speaker selection and streaming response display |
 | **No shared memory/state** | Medium | No blackboard pattern; agents can't read/write shared workspace |
-| **MessageBus unused by agents** | Medium | MessageBus exists but agents don't use it for inter-agent communication |
+| **MessageBus underutilized** | Low | SocketBus + GroupChatEngine use MessageBus; agents within squads can communicate, but cross-squad messaging not yet supported |
 | **No streaming to agents** | Low | Agents receive input only at spawn time; no mid-execution context injection |
 
 ---
@@ -638,7 +638,7 @@ resolveSafe(rootPath, relPath) {
 | P1 | Intelligent squad delegation (leader-driven) | Squads are dumb parallel runners | High |
 | P1 | Shared conversation context for multi-agent | Agents can't see each other's reasoning | High |
 | P1 | Session resumption | Lose context on restart | Medium |
-| P2 | Group chat / agent discussion | No collaborative refinement | High |
+| P2 | Group chat enhancement | Round-robin only; lacks LLM-driven speaker selection | Medium |
 | P2 | Per-task workspace isolation | Tasks share agent workspace | Medium |
 | P2 | MCP integration | Missing the emerging standard | Medium |
 | P3 | Interactive prompt injection | Can't steer running agents | Medium |
@@ -681,7 +681,7 @@ AgentOps Desktop's unique value proposition after Phase 2:
 | Provider 数量 | 5 (12 providers) | 4 (4 adapters, dynamic registry) | 4 (7 providers) | Multica 最多；AgentOps 动态注册更灵活 |
 | 接口完整性 | 4 (单一 Execute) | 5 (4+3 方法) | 4 (~5 方法) | AgentOps 接口最丰富：spawn/kill/healthCheck/execute + sendInput/readStream/resumeSession |
 | 动态加载 | 1 (硬编码 switch) | 5 (classPath require) | 1 (编译时) | AgentOps 唯一支持运行时插件加载 |
-| 自动检测 | 5 (PATH scan) | 5 (cli-scanner.js) | 1 (无) | 两者均实现 PATH 扫描 |
+| 自动检测 | 5 (PATH scan) | 5 (cli-scanner.js) | 1 (无) | 两者均实现 PATH 扫描；AgentOps 检测 5 个已知 CLI |
 | Session 管理 | 4 (9/12 支持) | 4 (Claude 支持) | 2 (未知) | AgentOps 对 Claude 有完整 resume |
 | MCP 支持 | 3 (仅 Claude) | 4 (Claude 专用适配器) | 3 (golutra-mcp) | AgentOps 通过专用适配器注入 |
 | 输出解析 | 4 (per-provider) | 4 (per-provider parser) | 4 (per-provider) | 三者均有 provider-specific 解析 |
@@ -705,11 +705,11 @@ AgentOps Desktop's unique value proposition after Phase 2:
 |------|---------|----------|--------|---------|---------|
 | Pub/Sub | 1 (无) | 5 (MessageBus) | 1 (无) | 1 (无) | AgentOps 唯一有完整 pub/sub |
 | Agent-to-Agent | 3 (@mention) | 4 (SocketBus) | 3 (Task delegation) | 5 (Direct messages) | AutoGen 最原生 |
-| Group Chat | 3 (Issue thread) | 1 (未实现) | 1 (N/A) | 5 (核心范式) | AutoGen 领先 |
+| Group Chat | 3 (Issue thread) | 3 (GroupChatEngine) | 1 (N/A) | 5 (核心范式) | AutoGen 领先；AgentOps 已实现 round-robin + human-assign |
 | 共享状态 | 3 (Workspace files) | 4 (Shared Context) | 5 (Memory systems) | 4 (State objects) | CrewAI 记忆系统最丰富 |
 | Request/Reply | 1 (无) | 5 (correlation IDs) | 1 (无) | 3 (基础) | AgentOps 最完善 |
 | 持久化 | 1 (无) | 5 (SQLite + crash recovery) | 1 (无) | 1 (无) | AgentOps 唯一有持久化 |
-| **综合** | **2.0** | **4.0** | **1.7** | **3.3** | AgentOps 在基础设施层领先，但应用层缺失 |
+| **综合** | **2.0** | **4.3** | **1.7** | **3.3** | AgentOps 基础设施层领先；Group Chat 已实现但仍弱于 AutoGen |
 
 ### 6.4 项目隔离评分
 
@@ -753,7 +753,20 @@ AgentOps Desktop's unique value proposition after Phase 2:
 4. Wire MessageBus for agent-to-agent messaging within squads
 
 ### Medium-term (Phase 2.3 — Communication)
-1. Add shared conversation context (blackboard pattern) to DAG orchestrator
-2. Implement group chat mode for multi-agent discussion
-3. Enable mid-execution prompt injection via MessageBus
-4. Add per-task workspace isolation with auto-GC
+1. Add shared conversation context (blackboard pattern) to DAG orchestrator ✅
+2. Enhance group chat with LLM-driven speaker selection and streaming display
+3. Enable mid-execution prompt injection via MessageBus ✅
+4. Add per-task workspace isolation with auto-GC ✅
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [Phase 2 Gap Matrix](phase2-gap-matrix.csv) | 50-dimension scoring matrix with rationale |
+| [Phase 2 Roadmap](phase2-roadmap.md) | Implementation status, success metrics, risk assessment |
+| [Phase 2 Round 2 Changelog](phase2-round2-changelog.md) | Round 2 changes and self-review findings |
+| [Phase 2 Round 3 Changelog](phase2-round3-changelog.md) | Round 3 final review changes |
+| [Competitive Summary](competitive-summary.md) | High-level competitive positioning |
+| [Phase 3 Competitive Analysis](phase3-competitive-analysis.md) | Next-phase analysis |
