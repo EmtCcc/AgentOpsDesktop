@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Test: verify git commit gate via CHANGELOG.md update (CMPAAA-470, 2026-05-29)
+### Added
+
+#### Group Chat
+- Group chat engine (`group-chat-engine.js`) for multi-agent conversation orchestration
+- Group Chat UI page with session management, participant control, and message history
+- Chat IPC controller with 15 methods (CRUD, start/pause/resume/stop, sendMessage, listMessages, addParticipant/removeParticipant, getState)
+- Chat repository for session and message persistence
+- Chat strategies: round-robin, manager-assign, topic-trigger, human-assign
+
+#### IPC Extensions
+- Message Bus IPC controller (publish, subscribe, unsubscribe, request, replay, stats)
+- Shared Context IPC controller (DAG-scoped key-value blackboard for agent collaboration)
+- Governance IPC controller (approval gates: register, approve, listPending)
+- System IPC controller (healthCheck, listRoutes)
+- Telemetry IPC controller (getStats, setEnabled, exportData, clearData)
+
+#### Squad Improvements
+- Squad wildcard agent matching
+- Squad load balancing across members
+
+#### Plugin System Extensions
+- Adapter registry service layer for package management (install, update, uninstall)
+- Adapter registry HTTP API endpoints (`/api/adapter-registry/*`)
+
+#### UI
+- Cost Dashboard page for budget visualization and spending tracking
+- Activity Timeline page for event history
+
+#### Documentation
+- Documentation completeness audit (CMPAAA-601)
+- IPC API documentation for 6 new namespaces (35 methods)
+
+#### Testing
+- Round 2 regression test suite (CMPAAA-594): 1460 tests, 60 files, 0 failures
+- SharedContext concurrent access tests (5 scenarios: interleaved writes, cross-DAG isolation, bulk consistency)
+- Coverage: 62.68% statements, 78.28% branches (all above 50% threshold)
+- Full report: `docs/ROUND2-REGRESSION-TEST-REPORT-CMPAAA-594.md`
+
+### Changed
+- IPC controller count increased from 16 to 20
 
 ## [0.1.0] - 2026-05-28
 
