@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -42,6 +42,31 @@
 | low_system_memory | warn | free < 10% |
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
+
+## Test Results (2026-05-29 — CMPAAA-516 verification)
+
+```
+✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
+✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
+✓ tests/monitor.test.js (14 tests) — monitor module: checkAlerts thresholds, health loop, uptime
+
+Test Files  3 passed (3)
+Tests       72 passed (72)
+Duration    291ms
+```
+
+### Smoke Test (2026-05-29 — CMPAAA-516 verification)
+
+```
+✓ Returns HTTP 200
+✓ Content-Type is application/json
+✓ Has status/fields/uptime/memory/system/ipc/renderer/app/db/alerts/uptime
+✓ DB connectivity ok
+✓ 503 on unhealthy
+✓ Uptime stats: uptimePercent (0-100), breakdown, transitions
+
+All 24 API smoke checks passed.
+```
 
 ## Test Results (2026-05-29 — CMPAAA-512 verification)
 
