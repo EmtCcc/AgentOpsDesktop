@@ -186,6 +186,41 @@ describe('WorkspaceManager', () => {
       const resolved = manager.resolveSafe(root, 'src/deep/nested/file.js');
       expect(resolved).toBe(path.resolve(root, 'src/deep/nested/file.js'));
     });
+
+    it('blocks symlink that escapes workspace', () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-symlink-'));
+      const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-outside-'));
+      const outsideFile = path.join(outsideDir, 'secret.txt');
+      fs.writeFileSync(outsideFile, 'SENSITIVE');
+      const symlinkPath = path.join(root, 'escape-link');
+      fs.symlinkSync(outsideFile, symlinkPath);
+
+      expect(() => manager.resolveSafe(root, 'escape-link')).toThrow('Symlink escape denied');
+
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    });
+
+    it('allows symlink that stays within workspace', () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-symlink-'));
+      const targetFile = path.join(root, 'real.txt');
+      fs.writeFileSync(targetFile, 'data');
+      const symlinkPath = path.join(root, 'link.txt');
+      fs.symlinkSync(targetFile, symlinkPath);
+
+      const resolved = manager.resolveSafe(root, 'link.txt');
+      expect(resolved).toBe(symlinkPath);
+
+      fs.rmSync(root, { recursive: true, force: true });
+    });
+
+    it('allows paths to nonexistent files (write path)', () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-symlink-'));
+      const resolved = manager.resolveSafe(root, 'src/new-file.js');
+      expect(resolved).toBe(path.resolve(root, 'src/new-file.js'));
+
+      fs.rmSync(root, { recursive: true, force: true });
+    });
   });
 
   describe('file operations', () => {

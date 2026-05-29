@@ -58,6 +58,27 @@ class WorkspaceManager extends EventEmitter {
     if (resolved !== rootPath && !resolved.startsWith(normalizedRoot)) {
       throw new Error(`Path escape denied: "${relPath}" resolves outside workspace`);
     }
+
+    // Symlink escape detection: if the resolved path is a symlink,
+    // verify its real target still resides within the workspace boundary.
+    try {
+      const stat = fs.lstatSync(resolved);
+      if (stat.isSymbolicLink()) {
+        const realTarget = fs.realpathSync(resolved);
+        const realRoot = fs.realpathSync(rootPath);
+        const normalizedRealRoot = realRoot + path.sep;
+        if (realTarget !== realRoot && !realTarget.startsWith(normalizedRealRoot)) {
+          throw new Error(
+            `Symlink escape denied: "${relPath}" points to "${realTarget}" outside workspace`
+          );
+        }
+      }
+    } catch (err) {
+      // ENOENT is fine — the file may not exist yet (write path).
+      // Re-throw our own escape errors and other unexpected failures.
+      if (err.code !== 'ENOENT') throw err;
+    }
+
     return resolved;
   }
 
