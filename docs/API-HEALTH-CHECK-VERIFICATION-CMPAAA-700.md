@@ -1,7 +1,7 @@
 # API Health Check Verification — CMPAAA-700
 
 **Date**: 2026-05-30
-**Status**: ✅ Verified
+**Status**: ✅ All checks pass
 
 ## Test Results
 
@@ -16,18 +16,22 @@
 
 ## Endpoint Verification
 
-- `GET /health` returns HTTP 200 with valid JSON
-- Content-Type: `application/json`
-- DB connectivity check (`db.ok: true`) verified
-- Uptime stats (percent, breakdown, transitions) confirmed
-- All alert thresholds and status classification logic verified
-- Version string matches semver format
-- ISO timestamp validated
-- Returns HTTP 503 when DB is unreachable
+| Check | Result |
+|-------|--------|
+| `GET /health` returns HTTP 200 | ✅ |
+| Content-Type is `application/json` | ✅ |
+| Returns all required fields | ✅ |
+| DB connectivity check works | ✅ |
+| Uptime stats present | ✅ |
+| Alert thresholds validated | ✅ |
+| HTTP 503 on DB failure | ✅ |
+| Version matches semver | ✅ |
+| ISO timestamp format | ✅ |
 
 ## Response Shape
 
-All required fields present: `status`, `version`, `ts`, `uptimeMs`, `memory`, `system`, `ipc`, `renderer`, `app`, `db`, `alerts`, `uptime`.
+All required fields present and typed correctly:
+`status`, `version`, `ts`, `uptimeMs`, `memory`, `system`, `ipc`, `renderer`, `app`, `db`, `alerts`, `uptime`
 
 ## Alert Thresholds
 
