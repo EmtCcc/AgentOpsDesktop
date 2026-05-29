@@ -163,4 +163,65 @@ describe('SharedContextRepository', () => {
       expect(repo.get('dag-1', 'obj').value).toEqual(obj);
     });
   });
+
+  describe('concurrent access patterns', () => {
+    it('interleaved writes from multiple agents maintain data consistency', () => {
+      // Simulate 3 agents writing to different keys in the same DAG
+      const agents = ['agent-1', 'agent-2', 'agent-3'];
+      for (let i = 0; i < 10; i++) {
+        for (const agent of agents) {
+          repo.set('dag-1', `key-${i}`, { agent, step: i }, agent);
+        }
+      }
+      // Last writer wins — all keys should have agent-3
+      for (let i = 0; i < 10; i++) {
+        const record = repo.get('dag-1', `key-${i}`);
+        expect(record.value.agent).toBe('agent-3');
+        expect(record.updatedBy).toBe('agent-3');
+      }
+    });
+
+    it('write-then-read within same DAG returns latest value', () => {
+      repo.set('dag-1', 'counter', 0);
+      // Simulate rapid increments
+      for (let i = 1; i <= 100; i++) {
+        repo.set('dag-1', 'counter', i);
+      }
+      expect(repo.get('dag-1', 'counter').value).toBe(100);
+    });
+
+    it('concurrent writes to different DAGs do not interfere', () => {
+      // Insert dag-A and dag-B first (FK requirement)
+      db.prepare(`INSERT INTO dags (id, name, created_at, updated_at) VALUES ('dag-A', 'A', datetime('now'), datetime('now'))`).run();
+      db.prepare(`INSERT INTO dags (id, name, created_at, updated_at) VALUES ('dag-B', 'B', datetime('now'), datetime('now'))`).run();
+      // Write to dag-A and dag-B alternately
+      for (let i = 0; i < 10; i++) {
+        repo.set('dag-A', 'shared-key', { dag: 'A', step: i });
+        repo.set('dag-B', 'shared-key', { dag: 'B', step: i });
+      }
+      expect(repo.get('dag-A', 'shared-key').value.dag).toBe('A');
+      expect(repo.get('dag-B', 'shared-key').value.dag).toBe('B');
+    });
+
+    it('concurrent delete and write does not corrupt state', () => {
+      repo.set('dag-1', 'volatile', 'exists');
+      repo.delete('dag-1', 'volatile');
+      repo.set('dag-1', 'volatile', 'recreated');
+      expect(repo.get('dag-1', 'volatile').value).toBe('recreated');
+    });
+
+    it('bulk write then bulk read is consistent', () => {
+      const count = 50;
+      for (let i = 0; i < count; i++) {
+        repo.set('dag-1', `bulk-${i}`, { index: i });
+      }
+      const all = repo.list('dag-1');
+      expect(all).toHaveLength(count);
+      // Verify all keys are present
+      for (let i = 0; i < count; i++) {
+        const record = repo.get('dag-1', `bulk-${i}`);
+        expect(record.value.index).toBe(i);
+      }
+    });
+  });
 });
