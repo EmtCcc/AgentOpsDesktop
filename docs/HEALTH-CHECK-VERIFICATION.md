@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-521
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-520 / CMPAAA-521 / CMPAAA-523
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -265,3 +265,44 @@ All 24 API smoke checks passed.
 ### Verification Summary
 
 CMPAAA-520: API health endpoint verified. GET /health responds correctly with full status payload. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready.
+
+## CMPAAA-523 Verification (2026-05-29)
+
+**Status:** done
+**Verified:** 2026-05-29T19:15:38+08:00
+
+### Test Results
+
+```
+✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
+✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
+
+Test Files  2 passed (2)
+Tests       42 passed (42)
+Duration    286ms
+```
+
+### Smoke Test
+
+```
+✓ Returns HTTP 200
+✓ Content-Type is application/json
+✓ Has status field (ok|degraded|unhealthy)
+✓ Has version field (semver)
+✓ Has ISO timestamp
+✓ Has uptimeMs (non-negative)
+✓ Memory object with rss/heapUsed/heapTotal/external
+✓ System object with totalMem/freeMem/loadAvg/cpus
+✓ IPC object with calls/errors/avgLatencyMs
+✓ Has renderer object
+✓ Has app object
+✓ DB connectivity ok
+✓ Alerts array, status/alerts consistency
+✓ Uptime stats: uptimePercent (0-100), breakdown, transitions
+
+All 24 API smoke checks passed.
+```
+
+### Verification Summary
+
+CMPAAA-523: API health endpoint verified. GET /health responds correctly with full status payload. 42 unit tests and 24 smoke checks all green. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready. No code changes required — re-verification only.
