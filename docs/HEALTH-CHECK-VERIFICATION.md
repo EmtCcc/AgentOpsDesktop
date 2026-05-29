@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification)
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501
 **Date:** 2026-05-29
 **Status:** PASS
 
