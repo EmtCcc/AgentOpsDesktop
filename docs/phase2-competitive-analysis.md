@@ -104,12 +104,12 @@ class AgentAdapter extends EventEmitter {
 
 | Gap | Severity | Description |
 |-----|----------|-------------|
-| **Only 1 adapter** | Critical | `GenericCliAdapter` works for any CLI but has no provider-specific intelligence (model selection, session resume, MCP) |
-| **Auto-detection limited** | Low | `cli-scanner.js` detects 5 known CLIs (claude, codex, gemini, opencode, cursor-agent); fewer than Multica's 12 but same mechanism |
-| **No session resumption** | High | 9/12 Multica providers support resume; AgentOps has none |
-| **No MCP integration** | Medium | MCP is becoming the standard for tool integration; only Claude Code supports it natively |
-| **No stdout format negotiation** | Medium | Each agent CLI outputs differently; need per-provider parsers or a format abstraction |
-| **No interactive prompt injection** | Medium | Golutra injects prompts into running terminal streams; AgentOps only spawns and captures |
+| **Provider count gap** | Medium | 4 adapters (Generic + Claude + Codex + Gemini) with dynamic registry; fewer than Multica's 12 but extensible |
+| **Auto-detection** | Low | `cli-scanner.js` detects 5 known CLIs (claude, codex, gemini, opencode, cursor-agent); matches Multica's mechanism |
+| **Session resumption partial** | Medium | Claude adapter supports `--resume`; Codex/Gemini CLIs don't support session resume natively |
+| **MCP integration** | Low | Claude adapter has dedicated `--mcp-config` injection; other CLIs don't support MCP |
+| **Stdout parsing** | Low | Per-provider parsers implemented: `ClaudeCodeStreamParser` for Claude, `LineDelimitedJsonParser` for others |
+| **Interactive prompt injection** | Medium | `sendInput()` implemented but CLI `-p` mode limits stdin interaction |
 
 ### 1.6 CLI Interface Real-World Test Data (Round 2 新增)
 
@@ -355,12 +355,12 @@ Group Chat → Selector 选择下一个 Speaker
 
 | Gap | Severity | Description |
 |-----|----------|-------------|
-| **No intelligent delegation** | Critical | batchStart runs all members blindly; no leader-driven routing |
-| **No squad-level instructions** | High | Cannot inject team-specific guidance into agent prompts |
-| **Squad not assignable** | High | Squad is a grouping, not a first-class task assignee |
-| **No trigger rules** | Medium | No event-driven re-activation when members complete work |
-| **No memory/context sharing** | Medium | Agents in a squad share no context beyond task handoffs |
-| **No hierarchical orchestration** | Medium | No manager-worker pattern; only flat parallel execution |
+| **Intelligent delegation** | ✅ Resolved | Leader-only spawn + MessageBus delegate + member-result feedback loop |
+| **Squad-level instructions** | ✅ Resolved | `instructions` TEXT column + `AGENT_SQUAD_INSTRUCTIONS` env injection |
+| **Squad assignable** | ✅ Resolved | `squad_id` as valid assignee for goals/tasks/dag_tasks (migration v21) |
+| **Trigger rules** | ✅ Resolved | 3 event types: `member_complete`, `error`, `all_complete` with configurable actions |
+| **Memory/context sharing** | ✅ Resolved | SharedContext key-value store + task handoffs + env injection |
+| **Hierarchical orchestration** | Low | No manager-worker pattern; leader-delegation covers most use cases |
 
 ---
 
@@ -612,10 +612,10 @@ resolveSafe(rootPath, relPath) {
 
 | Gap | Severity | Description |
 |-----|----------|-------------|
-| **No per-task isolation** | Medium | Workspaces are per-agent; different tasks share the same working directory |
-| **No auto-cleanup/GC** | Medium | No automatic cleanup of completed task workspaces |
-| **No context injection** | Medium | Agents don't receive project-specific files/skills at spawn time |
-| **No multi-project support** | Low | Single implicit company; no project-level isolation |
+| **Per-task isolation** | ✅ Resolved | `createForTask()` with isolated directories + path sandbox |
+| **Auto-cleanup/GC** | ✅ Resolved | `scheduleGc()` + 7-day archived cleanup |
+| **Context injection** | ✅ Resolved | `injectProjectTree()` + `injectFiles` with skip patterns |
+| **Multi-project support** | Low | Per-task isolation exists; no cross-project boundaries |
 
 ---
 
@@ -631,18 +631,18 @@ resolveSafe(rootPath, relPath) {
 
 ### 5.2 Critical Gaps Summary
 
-| Priority | Gap | Impact | Effort |
-|----------|-----|--------|--------|
-| P0 | Provider-specific adapters (Claude, Codex, Gemini) | Users get generic experience for all agents | Medium |
-| P0 | Auto-detection of installed CLIs | Manual config is friction | Low |
-| P1 | Intelligent squad delegation (leader-driven) | Squads are dumb parallel runners | High |
-| P1 | Shared conversation context for multi-agent | Agents can't see each other's reasoning | High |
-| P1 | Session resumption | Lose context on restart | Medium |
-| P2 | Group chat enhancement | Round-robin only; lacks LLM-driven speaker selection | Medium |
-| P2 | Per-task workspace isolation | Tasks share agent workspace | Medium |
-| P2 | MCP integration | Missing the emerging standard | Medium |
-| P3 | Interactive prompt injection | Can't steer running agents | Medium |
-| P3 | Auto-cleanup / GC for workspaces | Disk usage grows unbounded | Low |
+| Priority | Gap | Status | Impact | Effort |
+|----------|-----|--------|--------|--------|
+| P0 | Provider-specific adapters (Claude, Codex, Gemini) | ✅ DONE | Users get generic experience for all agents | Medium |
+| P0 | Auto-detection of installed CLIs | ✅ DONE | Manual config is friction | Low |
+| P1 | Intelligent squad delegation (leader-driven) | ✅ DONE | Squads are dumb parallel runners | High |
+| P1 | Shared conversation context for multi-agent | ✅ DONE | Agents can't see each other's reasoning | High |
+| P1 | Session resumption | ⚠️ Partial | Lose context on restart (Claude only) | Medium |
+| P2 | Group chat enhancement | ⚠️ Partial | Round-robin only; lacks LLM-driven speaker selection | Medium |
+| P2 | Per-task workspace isolation | ✅ DONE | Tasks share agent workspace | Medium |
+| P2 | MCP integration | ✅ DONE | Missing the emerging standard | Medium |
+| P3 | Interactive prompt injection | ⚠️ Partial | Can't steer running agents (sendInput exists, limited) | Medium |
+| P3 | Auto-cleanup / GC for workspaces | ✅ DONE | Disk usage grows unbounded | Low |
 
 ### 5.3 Strategic Positioning
 
@@ -739,24 +739,31 @@ AgentOps Desktop's unique value proposition after Phase 2:
 
 ## 7. Recommendations
 
-### Immediate (Phase 2.1 — CLI Adapters)
-1. Build `ClaudeCodeAdapter` with `--output-format stream-json` parsing, session resumption, MCP config
-2. Build `CodexAdapter` with cloud task submission and polling
-3. Build `GeminiCliAdapter` with large-context support
-4. Add PATH auto-detection for installed CLIs
-5. Extend `AgentAdapter` interface with `sendInput()`, `readStream()`, `resumeSession()`
+### Phase 2.1 — CLI Adapters (ALL DONE)
+1. ✅ Build `ClaudeCodeAdapter` with `--output-format stream-json` parsing, session resumption, MCP config
+2. ✅ Build `CodexAdapter` with cloud task submission and polling
+3. ✅ Build `GeminiCliAdapter` with large-context support
+4. ✅ Add PATH auto-detection for installed CLIs (`cli-scanner.js`)
+5. ✅ Extend `AgentAdapter` interface with `sendInput()`, `readStream()`, `resumeSession()`
 
-### Near-term (Phase 2.2 — Squad Intelligence)
-1. Add `squadInstructions` field to squad model
-2. Implement leader-delegation pattern: only leader starts, leader routes to members
-3. Add trigger rules: member completion → re-activate leader
-4. Wire MessageBus for agent-to-agent messaging within squads
+### Phase 2.2 — Squad Intelligence (ALL DONE)
+1. ✅ Add `squadInstructions` field to squad model (migration v19)
+2. ✅ Implement leader-delegation pattern: only leader starts, leader routes to members
+3. ✅ Add trigger rules: member completion → re-activate leader
+4. ✅ Wire MessageBus for agent-to-agent messaging within squads
 
-### Medium-term (Phase 2.3 — Communication)
-1. Add shared conversation context (blackboard pattern) to DAG orchestrator ✅
-2. Enhance group chat with LLM-driven speaker selection and streaming display
-3. Enable mid-execution prompt injection via MessageBus ✅
-4. Add per-task workspace isolation with auto-GC ✅
+### Phase 2.3 — Communication (3/4 DONE)
+1. ✅ Add shared conversation context (blackboard pattern) to DAG orchestrator
+2. ⏳ Enhance group chat with LLM-driven speaker selection and streaming display → Phase 3
+3. ✅ Enable mid-execution prompt injection via MessageBus
+4. ✅ Add per-task workspace isolation with auto-GC
+
+### Phase 3 Candidates (from Round 3 review)
+1. **Group chat enhancement** — LLM-driven speaker selection, streaming response display
+2. **Cross-squad messaging** — MessageBus namespace bridging for inter-squad coordination
+3. **Shared conversation persistence** — Cross-session conversation history for Group Chat
+4. **Load balancing** — Squad member load detection and intelligent routing
+5. **Dynamic member selection** — Leader discovers and delegates to unconfigured members
 
 ---
 
