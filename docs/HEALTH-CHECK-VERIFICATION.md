@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-520 / CMPAAA-521 / CMPAAA-522 / CMPAAA-523 / CMPAAA-526 / CMPAAA-527
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-520 / CMPAAA-521 / CMPAAA-522 / CMPAAA-523 / CMPAAA-526 / CMPAAA-527 / CMPAAA-537
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -430,3 +430,54 @@ All 24 API smoke checks passed.
 ### Verification Summary
 
 CMPAAA-527: API health endpoint verified. GET /health responds correctly with full status payload. 72 unit tests and 24 smoke checks all green. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready. No code changes required — re-verification only.
+
+## CMPAAA-537 Verification (2026-05-29)
+
+**Status:** done
+**Verified:** 2026-05-29T20:32:00+08:00
+
+### Test Results
+
+```
+✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
+✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
+
+Test Files  2 passed (2)
+Tests       42 passed (42)
+Duration    329ms
+```
+
+### Smoke Test
+
+```
+✓ Returns HTTP 200
+✓ Content-Type is application/json
+✓ Has status field
+✓ Has version field
+✓ Version matches semver
+✓ Has ISO timestamp
+✓ Has uptimeMs (non-negative)
+✓ Has memory object
+✓ Memory has rss/heapUsed/heapTotal/external
+✓ Has system object
+✓ System has totalMem/freeMem/loadAvg/cpus
+✓ Has ipc object
+✓ IPC has calls/errors/avgLatencyMs
+✓ Has renderer object
+✓ Has app object
+✓ DB connectivity ok
+✓ Alerts is array
+✓ Status is valid
+✓ Has uptime object
+✓ Uptime has uptimePercent
+✓ Uptime percent 0-100
+✓ Uptime has breakdown
+✓ Breakdown has okMs/degradedMs/unhealthyMs
+✓ Uptime has transitions array
+
+All 24 API smoke checks passed.
+```
+
+### Verification Summary
+
+CMPAAA-537: API health endpoint verified. GET /health responds correctly with full status payload. 42 unit tests and 24 smoke checks all green. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready. No code changes required — re-verification only.
