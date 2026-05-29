@@ -237,7 +237,7 @@
 
 ---
 
-## 5. 信息架构
+## 8. 信息架构
 
 **可用性评分：4 / 5**
 
@@ -260,16 +260,43 @@
 
 ---
 
+## 跨功能共性问题
+
+### 🔴 P0: 后端功能无前端暴露
+- MessageBus 优先级、Squad 通配符、负载均衡可视化 — 三项功能后端已就绪，但前端无对应 UI
+- 用户无法感知、配置、监控这些核心能力
+
+### 🔴 P0: 文档严重缺失
+- getting-started.md 只覆盖基础工作流（connect → define → run → review）
+- Round 2 的 5 项新功能无一出现在用户文档中
+- 新用户完全不知道 Group Chat、负载均衡、消息优先级的存在
+
+### 🟡 P1: 错误消息技术化
+- "Symlink escape denied"、"Path escape denied"、"Agent exited with code 1"
+- 应转换为用户友好语言 + 建议操作
+
+### 🟡 P1: 静默失败
+- 低优先级消息被丢弃无通知
+- 过载 agent 被跳过无提示
+- 通配符解析失败无诊断
+
+### 🟢 P2: 反馈渠道不足
+- 无 in-app 反馈入口
+- 无错误日志查看 UI
+- 无功能使用统计
+
+---
+
 ## 总分汇总
 
-| 维度 | 评分 | 核心问题 |
-|------|------|---------|
-| Group Chat 交互 | 3/5 | 策略选项不自解释、Human Assign 未实现、错误不可见 |
-| Squad 管理 | 3/5 | instructions/triggerRules 丢失、Leader 显示 ID、无编辑功能 |
-| 错误反馈 | 2/5 | Group Chat 错误静默吞掉、无全局错误边界、发送失败无反馈 |
-| 学习曲线 | 3/5 | 无引导流程、概念区分不清、触发规则缺说明 |
-| 信息架构 | 4/5 | 整体结构合理，细节可优化 |
-| **综合** | **3.0 / 5** | |
+| 功能 | 综合分 | 核心问题 |
+|------|--------|---------|
+| Group Chat (CMPAAA-539) | 3.0/5 | 策略选项不自解释、Human Assign 未实现、错误不可见 |
+| Symlink 修复 (CMPAAA-540) | 1.7/5 | 错误消息技术化、无文档、无结构化错误码 |
+| Squad 负载均衡 (CMPAAA-541) | 2.8/5 | overload_threshold 未暴露、过载跳过静默、无文档 |
+| MessageBus 优先级 (CMPAAA-542) | 2.0/5 | 无前端 UI、无文档、消息丢弃静默 |
+| Squad 动态发现 (CMPAAA-543) | 1.8/5 | 无前端 UI、无文档、解析失败静默 |
+| **总体** | **2.3/5** | |
 
 ---
 
@@ -279,22 +306,28 @@
 
 1. **修复 Squad instructions/triggerRules 丢失**（SQ-1）— 用户填写的数据不生效，是数据丢失 bug
 2. **Group Chat 引擎错误对用户可见**（ER-1）— 在消息流中显示错误系统消息，而非仅 console.error
-3. **Group Chat 数据加载失败显示错误状态**（ER-2）— 加载失败时显示错误提示 + 重试按钮，而非空白
+3. **Group Chat 数据加载失败显示错误状态**（ER-2）— 加载失败时显示错误提示 + 重试按钮
 4. **发送消息失败添加错误反馈**（ER-5）— 发送失败时恢复输入框内容并显示错误提示
+5. **MessageBus 优先级前端 UI**（新增）— 用户需要能设置和查看消息优先级
+6. **Squad 通配符成员配置 UI**（新增）— 用户需要能配置 wildcard 成员和查看解析状态
 
 ### P1 — 应该修复（显著提升体验）
 
-5. **禁用或标记未实现的策略**（GC-2）— Human Assign 策略要么实现，要么从 UI 中移除或标记 "Coming Soon"
-6. **Squad Leader 显示名称而非 ID**（SQ-3）— 从 agents 列表中查找名称
-7. **添加 React Error Boundary**（ER-4）— 防止 JS 错误导致白屏
-8. **策略选项添加说明**（GC-1, LC-3）— 为每个策略添加 tooltip 或说明文字
+7. **禁用或标记未实现的策略**（GC-2）— Human Assign 策略要么实现，要么标记 "Coming Soon"
+8. **Squad Leader 显示名称而非 ID**（SQ-3）— 从 agents 列表中查找名称
+9. **添加 React Error Boundary**（ER-4）— 防止 JS 错误导致白屏
+10. **Round 2 用户文档补全**（新增）— getting-started.md 补充 Group Chat、负载均衡、优先级、通配符说明
+11. **错误消息用户友好化**（新增）— "Symlink escape denied" → "此链接指向工作区外的文件"
+12. **静默失败通知机制**（新增）— 过载跳过、消息丢弃、通配符解析失败需有 UI 提示
 
 ### P2 — 建议修复（提升整体质量）
 
-9. **参与者面板可折叠**（GC-4）— 添加折叠/展开按钮
-10. **添加加载状态指示器**（GC-5）— 选择会话后显示 loading
-11. **Status 信息改用持久展示**（SQ-4）— Toast 改为可关闭的详情面板
-12. **首次使用引导**（LC-1）— 简单的空状态引导或 tooltip 链接到文档
+13. **参与者面板可折叠**（GC-4）— 添加折叠/展开按钮
+14. **添加加载状态指示器**（GC-5）— 选择会话后显示 loading
+15. **Status 信息改用持久展示**（SQ-4）— Toast 改为可关闭的详情面板
+16. **首次使用引导**（LC-1）— 简单的空状态引导或 tooltip 链接到文档
+17. **策略选项添加说明**（GC-1, LC-3）— 为每个策略添加 tooltip 或说明文字
+18. **Squad 负载可视化面板**（新增）— 前端展示 member workload 和 overload 状态
 
 ---
 
@@ -305,23 +338,29 @@
 | [BUG] Squad 创建时 instructions 和 triggerRules 未传递到后端 | SQ-1 | P0 |
 | [BUG] Group Chat 引擎错误对用户不可见 | ER-1, ER-2 | P0 |
 | [BUG] Group Chat 发送消息失败无错误反馈 | ER-5 | P0 |
+| [UX] MessageBus 消息优先级前端 UI | CMPAAA-542 | P1 |
+| [UX] Squad 通配符成员配置 UI | CMPAAA-543 | P1 |
+| [UX] Round 2 用户文档补全 | 全部 | P1 |
+| [UX] 错误消息用户友好化 | CMPAAA-540 | P1 |
+| [UX] 静默失败通知机制 | CMPAAA-541, 542, 543 | P1 |
 | [UX] 禁用或标记未实现的 Group Chat 策略 | GC-2 | P1 |
 | [UX] Squad Leader 显示 agentId 而非名称 | SQ-3 | P1 |
 | [UX] 添加 React Error Boundary 防止白屏 | ER-4 | P1 |
 | [UX] 策略选项和触发规则添加说明文案 | GC-1, SQ-2, LC-3 | P2 |
+| [UX] Squad 负载可视化面板 | CMPAAA-541 | P2 |
 
 ---
 
 ## 验证方法
 
 本审查基于以下方法：
-1. **源码静态分析**：逐行审查 GroupChatPage.jsx（827 行）、SquadsPage.jsx（555 行）、group-chat-engine.js（410 行）
+1. **源码静态分析**：逐行审查 GroupChatPage.jsx、SquadsPage.jsx、group-chat-engine.js、workspace-manager.js、message-bus.js、squad.repository.js
 2. **设计规格对照**：对照 group-chat-spec.md 和 UX-RESEARCH-GROUP-CHAT.md 检查实现完整性
 3. **启发式评估**：基于 Nielsen 10 Usability Heuristics 评估交互设计
 4. **错误路径分析**：追踪所有 catch 块和 error 事件的处理逻辑
 
-未进行实际运行时测试。建议后续结合 E2E 测试（已有 `tests/e2e/group-chat.spec.js` 和 `tests/e2e/squads.spec.js`）进行运行时验证。
+未进行实际运行时测试。建议后续结合 E2E 测试进行运行时验证。
 
 ---
 
-*本报告由 UX Researcher 创建，基于源码审查和设计规格对照。*
+*本报告由 Customer Success Manager 创建，基于源码审查和设计规格对照。*
