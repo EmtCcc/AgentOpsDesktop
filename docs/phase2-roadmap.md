@@ -34,15 +34,16 @@
 
 ### 实现与分析之间的差距
 
-| 差距 | 严重性 | 描述 | 建议 |
-|------|--------|------|------|
-| **Group Chat 增强** | Medium | GroupChatEngine 已实现 round-robin/human-assign，缺少 LLM-driven speaker selection | Phase 3 考虑 |
-| **Codex Session Resume** | Low | Codex CLI 不支持 session resume，适配器层无法弥补 | 文档说明限制 |
-| **Gemini 结构化输出** | Low | Gemini CLI 无结构化输出，LineDelimitedJsonParser 为兜底 | 文档说明限制 |
-| **负载均衡** | Medium | Squad 无 Member 负载检测和均衡调度 | Phase 3 考虑 |
-| **动态 Member 选择** | Medium | Leader 只能 delegate 到预配置的 Member | Phase 3 考虑 |
-| **符号链接逃逸** | Low | resolveSafe() 未检测 symlink | 安全加固 |
-| **Group Chat 跨会话历史** | Low | GroupChatEngine 有会话内对话历史，但无跨会话持久化 | Phase 3 考虑 |
+| 差距 | 严重性 | 描述 | 状态 | 跟踪 Issue |
+|------|--------|------|------|-----------|
+| **Group Chat 前端暴露** | High | 后端 GroupChatEngine 已实现，前端 UI 可能未完全暴露 | 🔴 进行中 | [CMPAAA-539](/CMPAAA/issues/CMPAAA-539) |
+| **符号链接逃逸** | High | resolveSafe() 未检测 symlink，存在路径逃逸风险 | 🔴 进行中 | [CMPAAA-540](/CMPAAA/issues/CMPAAA-540) |
+| **Squad 负载均衡** | Medium | Squad 无 Member 负载检测和均衡调度 | 🔴 进行中 | [CMPAAA-541](/CMPAAA/issues/CMPAAA-541) |
+| **MessageBus 消息优先级** | Medium | MessageBus 无消息优先级机制 | 🟡 待开始 | [CMPAAA-542](/CMPAAA/issues/CMPAAA-542) |
+| **Squad 动态 Member 发现** | Medium | Leader 只能 delegate 到预配置的 Member | 🟡 待开始 | [CMPAAA-543](/CMPAAA/issues/CMPAAA-543) |
+| **Codex Session Resume** | Low | Codex CLI 不支持 session resume，适配器层无法弥补 | ⚪ 文档说明 | — |
+| **Gemini 结构化输出** | Low | Gemini CLI 无结构化输出，LineDelimitedJsonParser 为兜底 | ⚪ 文档说明 | — |
+| **Group Chat 跨会话历史** | Low | GroupChatEngine 有会话内对话历史，但无跨会话持久化 | ⚪ Phase 3 | — |
 
 ---
 
