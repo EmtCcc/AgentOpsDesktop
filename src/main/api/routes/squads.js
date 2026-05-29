@@ -15,6 +15,8 @@ const createBodySchema = {
   name: { type: 'string', required: true, minLength: 1, maxLength: 200 },
   description: { type: 'string', maxLength: 1000 },
   leaderId: { type: 'string' },
+  instructions: { type: 'string', maxLength: 10000 },
+  triggerRules: { type: 'object' },
   members: { type: 'array' },
 };
 
@@ -22,6 +24,8 @@ const updateBodySchema = {
   name: { type: 'string', minLength: 1, maxLength: 200 },
   description: { type: 'string', maxLength: 1000 },
   leaderId: { type: 'string' },
+  instructions: { type: 'string', maxLength: 10000 },
+  triggerRules: { type: 'object' },
   status: { type: 'string', enum: ['idle', 'running', 'error'] },
 };
 
@@ -205,7 +209,7 @@ squads.post('/:id/start', async (c) => {
   if (!squad) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: 'Squad not found' } }, 404);
 
   repo.update(id, { status: 'running' });
-  return c.json({ ok: true, data: { squadId: id, status: 'running', memberCount: squad.members.length } });
+  return c.json({ ok: true, data: { squadId: id, status: 'running', instructions: squad.instructions || null, memberCount: squad.members.length } });
 });
 
 /**

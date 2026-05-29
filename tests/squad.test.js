@@ -17,6 +17,14 @@ describe('Squad Implementation', () => {
     assert.ok(v12.up.includes('PRIMARY KEY (squad_id, agent_id)'));
   });
 
+  it('migration v19 adds instructions column to squads', () => {
+    const { migrations } = require('../src/main/db/schema');
+    const v19 = migrations.find(m => m.version === 19);
+    assert.ok(v19, 'Migration v19 exists');
+    assert.strictEqual(v19.name, 'add_squad_instructions');
+    assert.ok(v19.up.includes('ALTER TABLE squads ADD COLUMN instructions TEXT'));
+  });
+
   it('SquadRepository has all required methods', () => {
     const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
     const required = ['create', 'getById', 'getSquadWithMembers', 'update', 'delete',
@@ -25,6 +33,13 @@ describe('Squad Implementation', () => {
     for (const m of required) {
       assert.ok(code.includes(m), `Method ${m} present in SquadRepository`);
     }
+  });
+
+  it('SquadRepository maps instructions field', () => {
+    const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
+    assert.ok(code.includes('instructions'), 'instructions in repository');
+    assert.ok(code.includes('row.instructions'), 'maps instructions from DB row');
+    assert.ok(code.includes('squad.instructions'), 'maps instructions to DB params');
   });
 
   it('squad controller has all required methods', () => {
@@ -99,5 +114,68 @@ describe('Squad Implementation', () => {
     const code = fs.readFileSync('./src/main/api/app.js', 'utf8');
     assert.ok(code.includes("require('./routes/squads')"), 'imports squads routes');
     assert.ok(code.includes("app.route('/api/squads', squads)"), 'mounts /api/squads');
+  });
+
+  it('migration v22 adds trigger_rules column to squads', () => {
+    const { migrations } = require('../src/main/db/schema');
+    const v22 = migrations.find(m => m.version === 22);
+    assert.ok(v22, 'Migration v22 exists');
+    assert.strictEqual(v22.name, 'add_squad_trigger_rules');
+    assert.ok(v22.up.includes('ALTER TABLE squads ADD COLUMN trigger_rules'));
+  });
+
+  it('SquadRepository maps triggerRules field', () => {
+    const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
+    assert.ok(code.includes('DEFAULT_TRIGGER_RULES'), 'DEFAULT_TRIGGER_RULES defined');
+    assert.ok(code.includes('triggerRules'), 'triggerRules in repository');
+    assert.ok(code.includes('row.trigger_rules'), 'maps trigger_rules from DB row');
+    assert.ok(code.includes('JSON.stringify(squad.triggerRules)'), 'serializes triggerRules to JSON');
+  });
+
+  it('squad controller has trigger rule methods', () => {
+    const code = fs.readFileSync('./src/main/ipc/controllers/squad.controller.js', 'utf8');
+    assert.ok(code.includes('async evaluateTriggerRule('), 'evaluateTriggerRule method');
+    assert.ok(code.includes('async applyTriggerRule('), 'applyTriggerRule method');
+  });
+
+  it('ipc/index.js registers trigger rule channels', () => {
+    const code = fs.readFileSync('./src/main/ipc/index.js', 'utf8');
+    assert.ok(code.includes("squads:evaluateTriggerRule"), 'evaluateTriggerRule channel');
+    assert.ok(code.includes("squads:applyTriggerRule"), 'applyTriggerRule channel');
+  });
+
+  it('preload exposes trigger rule bridge methods', () => {
+    const code = fs.readFileSync('./src/main/preload.js', 'utf8');
+    assert.ok(code.includes('evaluateTriggerRule'), 'evaluateTriggerRule in preload');
+    assert.ok(code.includes('applyTriggerRule'), 'applyTriggerRule in preload');
+  });
+
+  it('task orchestrator resolves leader for squad tasks', () => {
+    const code = fs.readFileSync('./src/main/task-orchestrator.js', 'utf8');
+    assert.ok(code.includes("m.role === 'leader'"), 'finds leader by role');
+    assert.ok(code.includes('_squadRoster'), 'injects squad roster');
+    assert.ok(code.includes('_squadInstructions'), 'injects squad instructions');
+    assert.ok(code.includes("role: 'leader'"), 'emits role in squad-resolved event');
+  });
+
+  it('agent runtime injects roster env vars', () => {
+    const code = fs.readFileSync('./src/main/agent-runtime.js', 'utf8');
+    assert.ok(code.includes('AGENT_ROSTER'), 'AGENT_ROSTER env injection');
+    assert.ok(code.includes('AGENT_ROLE'), 'AGENT_ROLE env injection');
+    assert.ok(code.includes("env.AGENT_ROLE = 'leader'"), 'sets role to leader');
+  });
+
+  it('socket server returns role and roster in handshake', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-server.js', 'utf8');
+    assert.ok(code.includes('state.role = role'), 'stores role in state');
+    assert.ok(code.includes("role === 'leader'"), 'checks leader role for roster');
+    assert.ok(code.includes('response.roster = roster'), 'includes roster in response');
+  });
+
+  it('socket client stores role and roster from handshake', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-client.js', 'utf8');
+    assert.ok(code.includes('this._role'), 'stores role');
+    assert.ok(code.includes('this._roster'), 'stores roster');
+    assert.ok(code.includes('delegate('), 'delegate method for leader');
   });
 });

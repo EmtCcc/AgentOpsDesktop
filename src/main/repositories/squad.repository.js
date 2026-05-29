@@ -2,6 +2,12 @@
 
 const { randomUUID } = require('crypto');
 
+const DEFAULT_TRIGGER_RULES = {
+  on_member_complete: 'continue',
+  on_error: 'fail-fast',
+  on_all_complete: 'idle',
+};
+
 /**
  * Repository for Squad (team grouping) persistence.
  * Manages squads and squad_members tables.
@@ -15,12 +21,12 @@ class SquadRepository {
   _prepareStatements() {
     this._stmts = {
       insertSquad: this.db.prepare(`
-        INSERT INTO squads (id, name, description, leader_id, status, created_at, updated_at)
-        VALUES (@id, @name, @description, @leaderId, @status, @createdAt, @updatedAt)
+        INSERT INTO squads (id, name, description, leader_id, instructions, trigger_rules, status, created_at, updated_at)
+        VALUES (@id, @name, @description, @leaderId, @instructions, @triggerRules, @status, @createdAt, @updatedAt)
       `),
       updateSquad: this.db.prepare(`
         UPDATE squads SET name = @name, description = @description, leader_id = @leaderId,
-          status = @status, updated_at = @updatedAt
+          instructions = @instructions, trigger_rules = @triggerRules, status = @status, updated_at = @updatedAt
         WHERE id = @id
       `),
       deleteSquad: this.db.prepare('DELETE FROM squads WHERE id = @id'),
@@ -53,11 +59,17 @@ class SquadRepository {
 
   _toRecord(row) {
     if (!row) return null;
+    let triggerRules = DEFAULT_TRIGGER_RULES;
+    if (row.trigger_rules) {
+      try { triggerRules = { ...DEFAULT_TRIGGER_RULES, ...JSON.parse(row.trigger_rules) }; } catch { /* keep defaults */ }
+    }
     return {
       id: row.id,
       name: row.name,
       description: row.description || null,
       leaderId: row.leader_id || null,
+      instructions: row.instructions || null,
+      triggerRules,
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -71,6 +83,8 @@ class SquadRepository {
       name: squad.name,
       description: squad.description || null,
       leaderId: squad.leaderId || null,
+      instructions: squad.instructions || null,
+      triggerRules: squad.triggerRules ? JSON.stringify(squad.triggerRules) : '{}',
       status: squad.status || 'idle',
       createdAt: squad.createdAt || now,
       updatedAt: now,
@@ -170,4 +184,4 @@ class SquadRepository {
   }
 }
 
-module.exports = { SquadRepository };
+module.exports = { SquadRepository, DEFAULT_TRIGGER_RULES };

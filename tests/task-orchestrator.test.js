@@ -76,6 +76,20 @@ function createMockRepo() {
       return record;
     },
     listEdgesByDag(dagId) { return [...edges.values()].filter((e) => e.dagId === dagId); },
+    getUpstreamOutputs(taskId) {
+      // Find edges where this task is the target
+      const incomingEdges = [...edges.values()].filter((e) => e.toTaskId === taskId);
+      return incomingEdges
+        .map((e) => {
+          const srcTask = tasks.get(e.fromTaskId);
+          return {
+            taskId: e.fromTaskId,
+            output: srcTask?.output_json || null,
+            dataKey: e.data_key || e.dataKey || null,
+          };
+        })
+        .filter((o) => o.output != null);
+    },
 
     createDagTx(def) {
       const dagId = def.id || genId();
@@ -450,6 +464,137 @@ describe('TaskOrchestrator', () => {
 
       await orch.startDag(dag.id);
       expect(events).toHaveLength(1);
+    });
+  });
+
+  describe('Squad leader-only spawn', () => {
+    function createMockSquadRepo(members, instructions) {
+      return {
+        getById: (id) => ({ id, name: 'test-squad', leaderId: members[0]?.agentId, instructions }),
+        getSquadWithMembers: (id) => ({
+          id, name: 'test-squad', leaderId: members[0]?.agentId, instructions,
+          members,
+        }),
+        listMembers: () => members,
+      };
+    }
+
+    it('should spawn only the leader, not a random member', async () => {
+      const members = [
+        { squadId: 'sq1', agentId: 'leader-1', role: 'leader' },
+        { squadId: 'sq1', agentId: 'member-1', role: 'member' },
+        { squadId: 'sq1', agentId: 'member-2', role: 'member' },
+      ];
+      const squadRepo = createMockSquadRepo(members, 'Do the thing');
+      orch = new TaskOrchestrator({ repo, runtime, squadRepo });
+
+      orch.createDag({
+        name: 'test',
+        tasks: [{ title: 'SquadTask', squadId: 'sq1' }],
+      });
+      const dag = [...repo.dags.values()][0];
+
+      await orch.startDag(dag.id);
+      await new Promise((r) => setTimeout(r, 10));
+
+      // Only one agent should be spawned
+      expect(runtime._spawned).toHaveLength(1);
+      // It must be the leader
+      const task = repo.listTasksByDag(dag.id)[0];
+      expect(task.agentId).toBe('leader-1');
+    });
+
+    it('should inject roster and instructions into spawn env', async () => {
+      const members = [
+        { squadId: 'sq1', agentId: 'leader-1', role: 'leader' },
+        { squadId: 'sq1', agentId: 'member-1', role: 'member' },
+      ];
+      const squadRepo = createMockSquadRepo(members, 'Build the widget');
+      orch = new TaskOrchestrator({ repo, runtime, squadRepo });
+
+      orch.createDag({
+        name: 'test',
+        tasks: [{ title: 'SquadTask', squadId: 'sq1' }],
+      });
+      const dag = [...repo.dags.values()][0];
+
+      await orch.startDag(dag.id);
+      await new Promise((r) => setTimeout(r, 10));
+
+      const spawned = runtime._spawned[0];
+      expect(spawned.config.env.AGENT_ROSTER).toBeDefined();
+      const roster = JSON.parse(spawned.config.env.AGENT_ROSTER);
+      expect(roster).toHaveLength(2);
+      expect(roster[0]).toEqual({ agentId: 'leader-1', role: 'leader' });
+      expect(roster[1]).toEqual({ agentId: 'member-1', role: 'member' });
+      expect(spawned.config.env.AGENT_ROLE).toBe('leader');
+      expect(spawned.config.env.AGENT_SQUAD_INSTRUCTIONS).toBe('Build the widget');
+      expect(spawned.config.squadId).toBe('sq1');
+      expect(spawned.config.instructions).toBe('Build the widget');
+    });
+
+    it('should fall back to first member if no leader role found', async () => {
+      const members = [
+        { squadId: 'sq1', agentId: 'alpha', role: 'member' },
+        { squadId: 'sq1', agentId: 'beta', role: 'member' },
+      ];
+      const squadRepo = createMockSquadRepo(members);
+      orch = new TaskOrchestrator({ repo, runtime, squadRepo });
+
+      orch.createDag({
+        name: 'test',
+        tasks: [{ title: 'SquadTask', squadId: 'sq1' }],
+      });
+      const dag = [...repo.dags.values()][0];
+
+      await orch.startDag(dag.id);
+      await new Promise((r) => setTimeout(r, 10));
+
+      const task = repo.listTasksByDag(dag.id)[0];
+      expect(task.agentId).toBe('alpha'); // first member as fallback
+    });
+
+    it('should fail task if squad has no members', async () => {
+      const squadRepo = createMockSquadRepo([]);
+      orch = new TaskOrchestrator({ repo, runtime, squadRepo });
+
+      orch.createDag({
+        name: 'test',
+        tasks: [{ title: 'SquadTask', squadId: 'sq1' }],
+      });
+      const dag = [...repo.dags.values()][0];
+
+      await orch.startDag(dag.id);
+      await new Promise((r) => setTimeout(r, 10));
+
+      const task = repo.listTasksByDag(dag.id)[0];
+      expect(task.status).toBe('failed');
+      expect(task.errorMessage).toContain('no members');
+    });
+
+    it('should emit task:squad-resolved with role=leader', async () => {
+      const members = [
+        { squadId: 'sq1', agentId: 'leader-1', role: 'leader' },
+      ];
+      const squadRepo = createMockSquadRepo(members);
+      orch = new TaskOrchestrator({ repo, runtime, squadRepo });
+
+      orch.createDag({
+        name: 'test',
+        tasks: [{ title: 'SquadTask', squadId: 'sq1' }],
+      });
+      const dag = [...repo.dags.values()][0];
+
+      const events = [];
+      orch.on('task:squad-resolved', (data) => events.push(data));
+
+      await orch.startDag(dag.id);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(events).toHaveLength(1);
+      expect(events[0].agentId).toBe('leader-1');
+      expect(events[0].role).toBe('leader');
+      expect(events[0].squadId).toBe('sq1');
     });
   });
 });

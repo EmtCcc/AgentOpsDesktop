@@ -3,6 +3,7 @@ const { randomUUID } = require('crypto');
 const { EventEmitter } = require('events');
 const path = require('path');
 const fs = require('fs');
+const { parseTokenUsage } = require('./token-parser');
 
 const AGENT_STATUS = {
   IDLE: 'idle',
@@ -13,10 +14,11 @@ const AGENT_STATUS = {
 };
 
 class AgentRuntime extends EventEmitter {
-  constructor({ skillRepo } = {}) {
+  constructor({ skillRepo, busSocketPath } = {}) {
     super();
     this.agents = new Map(); // agentId -> { process, config, status, logs }
     this._skillRepo = skillRepo || null;
+    this._busSocketPath = busSocketPath || null;
   }
 
   /**
@@ -100,6 +102,26 @@ class AgentRuntime extends EventEmitter {
     const skills = this._loadSkills(skillTags.length > 0 ? skillTags : undefined);
     if (skills.length > 0) {
       env.AGENT_SKILLS = JSON.stringify(skills);
+    }
+
+    // Inject squad instructions into agent environment
+    if (config.instructions) {
+      env.AGENT_INSTRUCTIONS = config.instructions;
+    }
+
+    // Inject squad roster for leader delegation
+    if (config.roster) {
+      env.AGENT_ROSTER = JSON.stringify(config.roster);
+      env.AGENT_ROLE = 'leader';
+    }
+
+    // Inject MessageBus socket connection details
+    if (this._busSocketPath) {
+      env.AGENT_BUS_SOCKET = this._busSocketPath;
+      env.AGENT_ID = agentId;
+      if (config.squadId) {
+        env.AGENT_SQUAD_ID = config.squadId;
+      }
     }
 
     let proc;
@@ -190,7 +212,15 @@ class AgentRuntime extends EventEmitter {
         exitCode: code,
         exitSignal: signal,
       });
-      this.emit('exit', { agentId, code, signal, output: agent.output });
+
+      // Parse token usage from stdout
+      const usage = parseTokenUsage(agent.stdoutBuffer);
+      if (usage) {
+        agent.usage = usage;
+        this.emit('usage', { agentId, ...usage });
+      }
+
+      this.emit('exit', { agentId, code, signal, output: agent.output, usage: agent.usage || null });
     });
 
     return { agentId, status: agent.status };
@@ -226,6 +256,29 @@ class AgentRuntime extends EventEmitter {
     });
 
     return { agentId, status: AGENT_STATUS.STOPPED };
+  }
+
+  /**
+   * Send input data to a running agent's stdin.
+   * @param {string} agentId
+   * @param {string|Buffer} data
+   * @returns {Promise<void>}
+   */
+  async sendInput(agentId, data) {
+    const agent = this.agents.get(agentId);
+    if (!agent) throw new Error(`Agent not found: ${agentId}`);
+    if (!agent.process || agent.process.killed) {
+      throw new Error(`Agent process not running: ${agentId}`);
+    }
+    if (!agent.process.stdin || agent.process.stdin.destroyed) {
+      throw new Error(`stdin not available for agent: ${agentId}`);
+    }
+    return new Promise((resolve, reject) => {
+      agent.process.stdin.write(data, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 
   /**

@@ -55,12 +55,14 @@ class TaskOrchestrator extends EventEmitter {
    * @param {import('./repositories/orchestrator.repository').OrchestratorRepository} opts.repo
    * @param {import('./agent-runtime').AgentRuntime} opts.runtime
    */
-  constructor({ repo, runtime, costGuard, skillRepo }) {
+  constructor({ repo, runtime, costGuard, skillRepo, workspaceManager, squadRepo }) {
     super();
     this.repo = repo;
     this.runtime = runtime;
     this.costGuard = costGuard || null;
     this.skillRepo = skillRepo || null;
+    this.workspaceManager = workspaceManager || null;
+    this.squadRepo = squadRepo || null;
 
     // In-memory execution state per active DAG
     this._dags = new Map(); // dagId -> DagContext
@@ -68,13 +70,23 @@ class TaskOrchestrator extends EventEmitter {
     this._dagLocks = new Map(); // dagId -> Promise
     // Reverse lookup: agentRuntimeId -> { dagId, taskId }
     this._agentTaskMap = new Map();
+    // Task workspace mapping: taskId -> workspaceId
+    this._taskWorkspaces = new Map();
 
     // Bind runtime event handlers
     if (this.runtime) {
       this._onAgentExit = this._onAgentExit.bind(this);
       this._onAgentStatusChange = this._onAgentStatusChange.bind(this);
+      this._onAgentUsage = this._onAgentUsage.bind(this);
       this.runtime.on('exit', this._onAgentExit);
       this.runtime.on('status-change', this._onAgentStatusChange);
+      this.runtime.on('usage', this._onAgentUsage);
+    }
+
+    // Bind cost guard hard-stop handler (budget pause-on-overage)
+    this._onBudgetHardStop = this._onBudgetHardStop.bind(this);
+    if (this.costGuard && this.costGuard.emitter) {
+      this.costGuard.emitter.on('budget:hard-stop', this._onBudgetHardStop);
     }
   }
 
@@ -362,6 +374,16 @@ class TaskOrchestrator extends EventEmitter {
         });
         this.emit('task:cancelled', { dagId, taskId: task.id });
       }
+      // Schedule GC for any task workspaces
+      const wsId = this._taskWorkspaces.get(task.id);
+      if (wsId && this.workspaceManager) {
+        try {
+          this.workspaceManager.scheduleGc(wsId);
+          this._taskWorkspaces.delete(task.id);
+        } catch (err) {
+          logger.warn('orchestrator.cancel-workspace-gc-failed', { taskId: task.id, workspaceId: wsId, error: err.message });
+        }
+      }
     }
 
     this.repo.updateDag(dagId, { status: DAG_STATUS.CANCELLED, completedAt: Date.now() });
@@ -490,6 +512,28 @@ class TaskOrchestrator extends EventEmitter {
       return;
     }
 
+    // Resolve squad assignment: if task has squadId but no agentId, spawn leader only
+    if (task.squadId && !task.agentId && this.squadRepo) {
+      try {
+        const squad = this.squadRepo.getSquadWithMembers(task.squadId);
+        if (!squad || !squad.members || squad.members.length === 0) {
+          await this._completeTask(dagId, taskId, TASK_STATUS.FAILED, null, `Squad ${task.squadId} has no members`);
+          return;
+        }
+        // Find the leader; fall back to first member if no explicit leader
+        const leader = squad.members.find((m) => m.role === 'leader') || squad.members[0];
+        this.repo.updateTask(taskId, { agentId: leader.agentId });
+        task.agentId = leader.agentId;
+        // Stash roster + instructions for injection at spawn time
+        task._squadRoster = squad.members.map((m) => ({ agentId: m.agentId, role: m.role }));
+        task._squadInstructions = squad.instructions || null;
+        this.emit('task:squad-resolved', { dagId, taskId, squadId: task.squadId, agentId: leader.agentId, role: 'leader' });
+        logger.info('orchestrator.squad-leader-resolved', { dagId, taskId, squadId: task.squadId, agentId: leader.agentId });
+      } catch (err) {
+        logger.warn('orchestrator.squad-resolve-failed', { dagId, taskId, squadId: task.squadId, error: err.message });
+      }
+    }
+
     // Agent task — check budget before spawning
     if (this.costGuard) {
       const agentId = task.agentId || (task.agentConfig && task.agentConfig.agentId);
@@ -513,6 +557,26 @@ class TaskOrchestrator extends EventEmitter {
     try {
       const config = task.agentConfig || {};
 
+      // Create per-task workspace if workspace manager is available
+      let taskCwd = config.cwd || process.cwd();
+      if (this.workspaceManager) {
+        try {
+          const ws = this.workspaceManager.createForTask({
+            taskId,
+            agentId: task.agentId || (config.agentId) || 'default',
+            projectRoot: config.projectRoot || null,
+            injectFiles: config.injectFiles || null,
+            name: `task-${taskId.slice(0, 8)}`,
+          });
+          taskCwd = ws.rootPath;
+          this._taskWorkspaces.set(taskId, ws.id);
+          this.emit('task:workspace-created', { dagId, taskId, workspaceId: ws.id });
+          logger.info('orchestrator.task-workspace-created', { dagId, taskId, workspaceId: ws.id });
+        } catch (err) {
+          logger.warn('orchestrator.task-workspace-create-failed', { dagId, taskId, error: err.message });
+        }
+      }
+
       // Gather upstream outputs for handoff context injection
       const upstreamOutputs = this.repo.getUpstreamOutputs(taskId);
       const agentEnv = { ...(config.env || {}) };
@@ -526,14 +590,26 @@ class TaskOrchestrator extends EventEmitter {
         agentEnv.TASK_INPUT = JSON.stringify(taskInput);
       }
 
+      // Inject squad context for leader delegation
+      if (task._squadRoster) {
+        agentEnv.AGENT_ROSTER = JSON.stringify(task._squadRoster);
+        agentEnv.AGENT_ROLE = 'leader';
+      }
+      if (task._squadInstructions) {
+        agentEnv.AGENT_SQUAD_INSTRUCTIONS = task._squadInstructions;
+      }
+
       const result = this.runtime.spawnAgent({
         execPath: config.execPath,
         args: config.args || [],
-        cwd: config.cwd || process.cwd(),
+        cwd: taskCwd,
         env: agentEnv,
         label: config.label || task.title,
         resourceLimits: config.resourceLimits,
         recovery: config.recovery,
+        squadId: task.squadId || undefined,
+        instructions: task._squadInstructions || config.instructions,
+        roster: task._squadRoster || undefined,
       });
 
       ctx.taskAgentMap.set(taskId, result.agentId);
@@ -565,6 +641,18 @@ class TaskOrchestrator extends EventEmitter {
       if (agentRuntimeId) {
         this._agentTaskMap.delete(agentRuntimeId);
         ctx.taskAgentMap.delete(taskId);
+      }
+    }
+
+    // Schedule GC for task workspace
+    const workspaceId = this._taskWorkspaces.get(taskId);
+    if (workspaceId && this.workspaceManager) {
+      try {
+        this.workspaceManager.scheduleGc(workspaceId);
+        this._taskWorkspaces.delete(taskId);
+        logger.info('orchestrator.task-workspace-gc-scheduled', { dagId, taskId, workspaceId });
+      } catch (err) {
+        logger.warn('orchestrator.task-workspace-gc-failed', { dagId, taskId, workspaceId, error: err.message });
       }
     }
 
@@ -708,6 +796,104 @@ class TaskOrchestrator extends EventEmitter {
     });
   }
 
+  _onAgentUsage(data) {
+    const { agentId, inputTokens, outputTokens, model, provider, costUsd } = data;
+    const mapping = this._agentTaskMap.get(agentId);
+    if (!mapping) return;
+
+    const { taskId } = mapping;
+
+    // Log via cost guard if available
+    if (this.costGuard && (inputTokens > 0 || outputTokens > 0)) {
+      try {
+        // Resolve the DB agent_id from the task's agent_id field
+        const task = this.repo.getTaskById(taskId);
+        const dbAgentId = task?.agentId || agentId;
+
+        const result = this.costGuard.logAndEnforce({
+          agentId: dbAgentId,
+          taskId,
+          inputTokens,
+          outputTokens,
+          model,
+          provider,
+          costUsd,
+        });
+
+        // Hard cutoff: if cost guard returned stopped/paused, kill agent inline
+        // as a safety net alongside the event-based path
+        if (result.action === 'stopped' || result.action === 'paused') {
+          this._killAgentForBudget(agentId, taskId, mapping.dagId, result.action, result.budget);
+        }
+
+        logger.info('orchestrator.usage-logged', { agentId: dbAgentId, taskId, inputTokens, outputTokens, model, costUsd });
+      } catch (err) {
+        logger.warn('orchestrator.usage-log-failed', { agentId, taskId, error: err.message });
+      }
+    }
+
+    this.emit('usage:tracked', { agentId, taskId, inputTokens, outputTokens, model, provider, costUsd });
+  }
+
+  /**
+   * Handle budget hard-stop events from CostGuard.
+   * Finds all runtime agents for the budget-exceeded DB agent and kills them.
+   */
+  _onBudgetHardStop(data) {
+    const { agentId: dbAgentId, action, budget, pct, reason } = data;
+
+    // Find all runtime agents mapped to this DB agent
+    for (const [runtimeAgentId, mapping] of this._agentTaskMap) {
+      const task = this.repo.getTaskById(mapping.taskId);
+      if (task && (task.agentId === dbAgentId || runtimeAgentId === dbAgentId)) {
+        this._killAgentForBudget(runtimeAgentId, mapping.taskId, mapping.dagId, action, budget);
+      }
+    }
+  }
+
+  /**
+   * Kill an agent process due to budget overage and fail the associated task.
+   */
+  _killAgentForBudget(runtimeAgentId, taskId, dagId, action, budget) {
+    const pct = budget && budget.monthlyLimit > 0
+      ? ((budget.currentSpend / budget.monthlyLimit) * 100).toFixed(1)
+      : '?';
+    const reason = action === 'stopped'
+      ? `Budget hard cutoff: spend ${pct}% exceeded stop threshold (${budget?.stopPct}%)`
+      : `Budget pause: spend ${pct}% exceeded pause threshold (${budget?.pausePct}%)`;
+
+    logger.warn('orchestrator.budget-hard-stop', {
+      agentId: runtimeAgentId, taskId, dagId, action, pct, reason,
+    });
+
+    // Kill the agent process immediately
+    try {
+      if (this.runtime && this.runtime.getAgent(runtimeAgentId)) {
+        this.runtime.stopAgent(runtimeAgentId);
+      }
+    } catch (err) {
+      logger.warn('orchestrator.budget-kill-failed', { agentId: runtimeAgentId, error: err.message });
+    }
+
+    // Pause the DAG and fail the task
+    if (dagId) {
+      try {
+        const dag = this.repo.getDagById(dagId);
+        if (dag && dag.status === DAG_STATUS.RUNNING) {
+          this.pauseDag(dagId).catch(() => {});
+        }
+      } catch { /* dag may already be terminal */ }
+    }
+
+    this._completeTask(dagId, taskId, TASK_STATUS.FAILED, null, reason).catch((err) => {
+      logger.error('orchestrator.budget-task-fail-failed', { dagId, taskId, error: err.message });
+    });
+
+    this.emit('task:budget-killed', {
+      dagId, taskId, agentId: runtimeAgentId, action, pct, reason,
+    });
+  }
+
   // ── Progress events ──
 
   _emitProgress(dagId) {
@@ -777,6 +963,12 @@ class TaskOrchestrator extends EventEmitter {
     if (this.runtime) {
       this.runtime.removeListener('exit', this._onAgentExit);
       this.runtime.removeListener('status-change', this._onAgentStatusChange);
+      this.runtime.removeListener('usage', this._onAgentUsage);
+    }
+
+    // Unbind cost guard listener
+    if (this.costGuard && this.costGuard.emitter) {
+      this.costGuard.emitter.removeListener('budget:hard-stop', this._onBudgetHardStop);
     }
   }
 }

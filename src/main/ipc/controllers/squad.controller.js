@@ -1,6 +1,7 @@
 'use strict';
 
 const { IpcError } = require('../errors');
+const { DEFAULT_TRIGGER_RULES } = require('../../repositories/squad.repository');
 
 let squadRepo = null;
 let agentRepo = null;
@@ -133,7 +134,12 @@ const squadController = {
     }
 
     squadRepo.update(squadId, { status: 'running' });
-    return { squadId, status: 'running', agents: results };
+    return {
+      squadId,
+      status: 'running',
+      instructions: squad.instructions || null,
+      agents: results,
+    };
   },
 
   async batchStop(event, { squadId }) {
@@ -184,6 +190,52 @@ const squadController = {
       agents: agentStatuses,
     };
   },
+
+  // ── Trigger rule engine ──
+
+  /**
+   * Evaluate a trigger rule for a squad event.
+   * @param {string} squadId
+   * @param {'member_complete'|'error'|'all_complete'} event
+   * @returns {{ action: string, rule: string }}
+   */
+  async evaluateTriggerRule(event, { squadId, agentId } = {}) {
+    if (!squadRepo) throw IpcError.internal('Squad repository not initialized');
+    const squad = squadRepo.getById(squadId);
+    if (!squad) throw IpcError.notFound('Squad', squadId);
+
+    const rules = squad.triggerRules || DEFAULT_TRIGGER_RULES;
+    const ruleMap = {
+      member_complete: rules.on_member_complete,
+      error: rules.on_error,
+      all_complete: rules.on_all_complete,
+    };
+    const action = ruleMap[event] || 'continue';
+    return { action, event, squadId, agentId };
+  },
+
+  /**
+   * Apply a trigger rule: evaluate + execute side effects.
+   * Returns the action taken.
+   */
+  async applyTriggerRule(event, { squadId, agentId } = {}) {
+    const result = await this.evaluateTriggerRule(event, { squadId, agentId });
+    const { action } = result;
+
+    if (action === 'pause') {
+      squadRepo.update(squadId, { status: 'idle' });
+      result.newStatus = 'idle';
+    } else if (action === 'fail-fast' && event === 'error') {
+      squadRepo.update(squadId, { status: 'error' });
+      result.newStatus = 'error';
+    } else if (action === 'archive' && event === 'all_complete') {
+      squadRepo.update(squadId, { status: 'idle' });
+      result.newStatus = 'idle';
+    }
+    // 'continue', 'notify', 'idle' — no side effect on squad status
+
+    return result;
+  },
 };
 
 squadController.schemas = {
@@ -199,6 +251,8 @@ squadController.schemas = {
     name: { type: 'string', required: true, minLength: 1, maxLength: 200 },
     description: { type: 'string', maxLength: 1000 },
     leaderId: { type: 'string' },
+    instructions: { type: 'string', maxLength: 10000 },
+    triggerRules: { type: 'object' },
     members: { type: 'array' },
   },
   update: {
@@ -208,12 +262,13 @@ squadController.schemas = {
       required: true,
       validate: (v) => {
         if (!v || typeof v !== 'object') return 'updates must be an object';
-        const allowed = ['name', 'description', 'leaderId', 'status'];
+        const allowed = ['name', 'description', 'leaderId', 'instructions', 'triggerRules', 'status'];
         const keys = Object.keys(v);
         if (keys.length === 0) return 'updates must not be empty';
         const invalid = keys.filter((k) => !allowed.includes(k));
         if (invalid.length > 0) return `invalid fields: ${invalid.join(', ')}`;
         if (v.name !== undefined && (typeof v.name !== 'string' || v.name.length === 0)) return 'name must be a non-empty string';
+        if (v.triggerRules !== undefined && typeof v.triggerRules !== 'object') return 'triggerRules must be an object';
         return true;
       },
     },
@@ -241,6 +296,16 @@ squadController.schemas = {
   },
   getAggregatedStatus: {
     squadId: { type: 'string', required: true },
+  },
+  evaluateTriggerRule: {
+    event: { type: 'string', required: true, enum: ['member_complete', 'error', 'all_complete'] },
+    squadId: { type: 'string', required: true },
+    agentId: { type: 'string' },
+  },
+  applyTriggerRule: {
+    event: { type: 'string', required: true, enum: ['member_complete', 'error', 'all_complete'] },
+    squadId: { type: 'string', required: true },
+    agentId: { type: 'string' },
   },
 };
 
