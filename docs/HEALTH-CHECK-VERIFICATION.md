@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-520 / CMPAAA-521 / CMPAAA-522 / CMPAAA-523 / CMPAAA-527
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-502 / CMPAAA-503 / CMPAAA-505 / CMPAAA-512 / CMPAAA-516 / CMPAAA-520 / CMPAAA-521 / CMPAAA-522 / CMPAAA-523 / CMPAAA-526 / CMPAAA-527
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -358,6 +358,26 @@ All 24 API smoke checks passed.
 ### Verification Summary
 
 CMPAAA-523: API health endpoint verified. GET /health responds correctly with full status payload. 42 unit tests and 24 smoke checks all green. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready. No code changes required — re-verification only.
+
+## CMPAAA-526 Verification (2026-05-29)
+
+**Status:** done
+**Verified:** 2026-05-29T19:46:12+08:00
+
+### Test Results
+
+```
+✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
+✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
+
+Test Files  2 passed (2)
+Tests       42 passed (42)
+Duration    316ms
+```
+
+### Verification Summary
+
+CMPAAA-526: API health endpoint verified. GET /health responds correctly with full status payload. 42 unit tests all green. Monitoring infrastructure (30s health loop, uptime tracking, alert thresholds, DB connectivity) is operational and production-ready. No code changes required — re-verification only.
 
 ## CMPAAA-527 Verification (2026-05-29)
 
