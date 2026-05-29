@@ -1,5 +1,5 @@
 {
-  "id": "CMPAAA-595",
+  "id": "CMPAAA-654",
   "title": "[Bug P1] 三个适配器 execute() 方法缺失超时机制，CLI 挂起可永久阻塞调用方",
   "description": "## 问题\n\nclaude-code.adapter.js, codex.adapter.js, gemini-cli.adapter.js 的 `execute()` 方法均无超时处理。如果 CLI 进程挂起，返回的 Promise 永不 resolve/reject。\n\n## 对比\n\n`spawn()` 方法都有 `this.timeoutMs` + `setTimeout` + `proc.kill('SIGTERM')` 超时机制，但 `execute()` 完全缺失。\n\n## 修复方案\n\n在各 adapter 的 `execute()` 中添加超时：\n\n```js\nconst timer = setTimeout(() => {\n  try { proc.kill('SIGTERM'); } catch {}\n  reject(new Error(`execute() timed out after ${this.timeoutMs}ms`));\n}, this.timeoutMs);\ntimer.unref();\nproc.on('close', (code) => { clearTimeout(timer); /* resolve */ });\nproc.on('error', (err) => { clearTimeout(timer); reject(err); });\n```\n\n## 影响\n\n- 严重性: P1 — 生产环境中 CLI 挂起将导致整个 agent 管线阻塞\n- 范围: 三个 adapter 文件",
   "priority": "critical",

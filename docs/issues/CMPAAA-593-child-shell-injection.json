@@ -1,5 +1,5 @@
 {
-  "id": "CMPAAA-597",
+  "id": "CMPAAA-656",
   "title": "[安全 P2] shell: true 命令注入风险 + tarball 解析命令注入",
   "description": "## 问题 1: spawn shell: true\n\n`generic-cli.adapter.js:47,109` 和 `gemini-cli.adapter.js:53,113` 使用 `spawn(cmd, args, { shell: true })`。如果 execPath 或 task.description 包含 shell 元字符（`;`, `|`, `` ` ``, `$(...)`），可导致命令注入。\n\n## 问题 2: execSync 模板注入\n\n`adapter-registry-service.js:488`:\n```js\nexecSync(`tar -xzf \"${tmpFile}\" -C \"${destDir}\" --strip-components=1`)\n```\ndestDir 由包名拼接，若包名含 `\"` 或 `$()` 可逃逸引号。\n\n## 修复\n\n1. 移除 `shell: true`，用 `which` 预验证路径\n2. 用 `execFileSync('tar', [...args])` 替代 `execSync(template)`",
   "priority": "high",
