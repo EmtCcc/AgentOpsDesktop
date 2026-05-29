@@ -175,3 +175,12 @@ All 24 API smoke checks passed.
 - `tests/health.test.js` — unit tests
 - `tests/health-endpoint.test.js` — endpoint tests
 - `tests/integration/http-api.integration.test.js` — integration tests
+
+## CMPAAA-516 Final Disposition
+
+**Status:** done
+**Verified:** 2026-05-29T18:36:24+08:00
+**Test run:** 3 suites, 72 tests, 290ms, all green
+**Commit:** 7e8af87
+
+No remaining work. Health check infrastructure is production-ready.
