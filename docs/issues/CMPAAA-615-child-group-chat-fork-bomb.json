@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-617",
+  "title": "[严重] group-chat-engine.js spawn 无并发限制，存在 fork bomb 风险",
+  "description": "## 问题\n\n`group-chat-engine.js:328` 的 `_getAgentResponse` 方法直接调用 `spawn()` 创建子进程，无任何并发控制机制。\n\n如果多个 session 同时运行（尤其是 round-robin 策略下每 500ms 一轮），可能同时 fork 大量子进程，导致：\n1. 系统资源耗尽（PID/fd/memory）\n2. Electron 主进程卡死\n3. 无背压机制\n\n## 修复\n\n增加进程并发限制（信号量模式）：\n```js\n// 建议最大并发子进程数\nconst MAX_CONCURRENT_AGENTS = 5;\n\n// 在 GroupChatEngine 构造函数中初始化\nthis._semaphore = new Semaphore(MAX_CONCURRENT_AGENTS);\n\n// _getAgentResponse 中使用\nasync _getAgentResponse(agent, prompt, state) {\n  await this._semaphore.acquire();\n  try {\n    // ... spawn logic ...\n  } finally {\n    this._semaphore.release();\n  }\n}\n```",
+  "priority": "high",
+  "status": "todo",
+  "labels": ["bug", "resource-management", "P1"],
+  "parentIssueId": "CMPAAA-615",
+  "source": "code-review"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-618",
+  "title": "[中等] agent-runtime.js 与 agent-engine.js 代码重复率 > 60%",
+  "description": "## 问题\n\n`agent-runtime.js` 和 `agent-engine.js` 存在大量重复代码：\n- `_loadSkills` — 完全相同\n- `spawnAgent` — 核心逻辑相同（env 注入、spawn 配置）\n- `sendInput` — 完全相同\n- `getAgent` — 几乎相同\n- `listAgents` — 完全相同\n- `getLogs` — 完全相同\n- `removeAgent` — 几乎相同\n\n差异点仅在于：\n- `agent-engine.js` 增加了状态机、资源监控、crash recovery\n- `agent-runtime.js` 增加了 `__AGENT_OUTPUT__` marker 解析和 `healthCheck`\n\n## 建议\n\n方案 A: 合并为一个类，通过配置开关启用高级功能\n方案 B: 提取 `AgentProcessManager` 基类，engine 和 runtime 分别继承扩展",
+  "priority": "medium",
+  "status": "todo",
+  "labels": ["refactor", "duplication", "P2"],
+  "parentIssueId": "CMPAAA-615",
+  "source": "code-review"
+}

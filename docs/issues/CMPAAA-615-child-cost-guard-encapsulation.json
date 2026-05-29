@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-616",
+  "title": "[严重] cost-guard.js 直接访问 repo 内部 _stmts 字段破坏封装",
+  "description": "## 问题\n\n`cost-guard.js:47` 直接访问 `this.costRepo._stmts.updateBudgetStatus.run(...)`，绕过 repository 公开 API。\n\n```js\n// cost-guard.js:47\nthis.costRepo._stmts.updateBudgetStatus.run({ id: budget.id, status: 'stopped', updatedAt: new Date().toISOString() });\n```\n\n`_stmts` 是 `CostRepository` 的内部实现细节（prepared statements），不应被外部直接访问。这会导致：\n1. 内部重构时 cost-guard 静默破坏\n2. 无法通过 mock repo 进行单元测试\n3. 违反最小知识原则\n\n## 修复\n\n在 `CostRepository` 中新增公开方法：\n```js\nupdateBudgetStatus(id, status) {\n  this._stmts.updateBudgetStatus.run({ id, status, updatedAt: new Date().toISOString() });\n}\n```\n\ncost-guard 改为调用 `this.costRepo.updateBudgetStatus(budget.id, 'stopped')`。",
+  "priority": "high",
+  "status": "todo",
+  "labels": ["bug", "encapsulation", "P1"],
+  "parentIssueId": "CMPAAA-615",
+  "source": "code-review"
+}

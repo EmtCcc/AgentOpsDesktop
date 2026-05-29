@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-620",
+  "title": "[中等] group-chat-engine.js 每轮全量加载聊天历史，长时间 session 内存持续增长",
+  "description": "## 问题\n\n`group-chat-engine.js:267` 每轮 turn 都调用 `this.chatRepo.listMessages(sessionId)` 加载全部历史消息，然后 map 为字符串传入 prompt。\n\n对于 maxTurns=50 的 session，最终轮次需要处理 50+ 条消息的完整历史。\n\n## 修复\n\n限制上下文窗口：\n```js\nconst MAX_CONTEXT_MESSAGES = 20;\n\nconst messages = this.chatRepo.listMessages(sessionId);\nconst recentMessages = messages.slice(-MAX_CONTEXT_MESSAGES);\nconst history = recentMessages.map((m) => { /* ... */ });\n```",
+  "priority": "medium",
+  "status": "todo",
+  "labels": ["performance", "memory", "P2"],
+  "parentIssueId": "CMPAAA-615",
+  "source": "code-review"
+}

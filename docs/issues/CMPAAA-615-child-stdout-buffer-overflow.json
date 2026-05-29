@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-619",
+  "title": "[中等] agent-runtime.js stdoutBuffer 无大小限制，长时间运行 agent 存在内存泄漏",
+  "description": "## 问题\n\n`agent-runtime.js:160` 中 `agent.stdoutBuffer += chunk` 无限累积，无截断机制。\n\n对于长时间运行的 agent（如持续输出日志的守护进程），buffer 可能增长到数百 MB。\n\n## 修复\n\n增加 buffer 大小上限：\n```js\nconst MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB\n\nproc.stdout.on('data', (data) => {\n  const chunk = data.toString();\n  agent.logs.push({ type: 'stdout', data: chunk, timestamp: Date.now() });\n  this.emit('log', { agentId, type: 'stdout', data: chunk });\n\n  agent.stdoutBuffer += chunk;\n  // 限制 buffer 大小\n  if (agent.stdoutBuffer.length > MAX_BUFFER_SIZE) {\n    agent.stdoutBuffer = agent.stdoutBuffer.slice(-MAX_BUFFER_SIZE);\n  }\n  // ... marker 检测逻辑\n});\n```",
+  "priority": "medium",
+  "status": "todo",
+  "labels": ["bug", "memory-leak", "P2"],
+  "parentIssueId": "CMPAAA-615",
+  "source": "code-review"
+}
