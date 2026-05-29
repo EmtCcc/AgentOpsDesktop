@@ -3,6 +3,18 @@ import { createRoot } from 'react-dom/client';
 
 // ── Icons ──
 
+export const IconEdit = () => (
+  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
+export const IconX = () => (
+  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 export const IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -174,6 +186,137 @@ export function CreateChatModal({ isOpen, onClose, onSave, agents }) {
   );
 }
 
+// ── Edit Session Modal ──
+
+export function EditSessionModal({ isOpen, onClose, onSave, session }) {
+  const [title, setTitle] = useState('');
+  const [strategyType, setStrategyType] = useState('round-robin');
+  const [saving, setSaving] = useState(false);
+  const modalRef = useFocusTrap(isOpen, onClose);
+
+  useEffect(() => {
+    if (session) {
+      setTitle(session.title || '');
+      setStrategyType(session.strategyType || 'round-robin');
+    }
+  }, [session]);
+
+  const handleSave = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      await onSave({ id: session.id, title: title.trim(), strategyType });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={modalRef}
+      style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, alignItems: 'center', justifyContent: 'center' }}
+      role="dialog" aria-modal="true" aria-labelledby="edit-session-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
+    >
+      <div className="card" style={{ width: 440, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div className="card__header">
+          <h3 className="card__title" id="edit-session-title">Edit Session</h3>
+        </div>
+        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div>
+            <label htmlFor="edit-chat-title" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Chat Title</label>
+            <input type="text" id="edit-chat-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Chat title" style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label htmlFor="edit-chat-strategy" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Turn Strategy</label>
+            <select id="edit-chat-strategy" value={strategyType} onChange={(e) => setStrategyType(e.target.value)} style={{ width: '100%' }}>
+              <option value="round-robin">Round Robin</option>
+              <option value="human-assign">Human Assign</option>
+            </select>
+          </div>
+        </div>
+        <div className="card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={handleSave} disabled={!title.trim() || saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Participant Modal ──
+
+export function AddParticipantModal({ isOpen, onClose, onSave, agents, existingParticipantIds }) {
+  const [selectedAgent, setSelectedAgent] = useState('');
+  const [role, setRole] = useState('expert');
+  const [saving, setSaving] = useState(false);
+  const modalRef = useFocusTrap(isOpen, onClose);
+
+  const availableAgents = agents.filter((a) => !existingParticipantIds.includes(a.id));
+
+  const handleSave = async () => {
+    if (!selectedAgent) return;
+    setSaving(true);
+    try {
+      await onSave({ agentId: selectedAgent, role });
+      setSelectedAgent('');
+      setRole('expert');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={modalRef}
+      style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, alignItems: 'center', justifyContent: 'center' }}
+      role="dialog" aria-modal="true" aria-labelledby="add-participant-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="card" style={{ width: 400, maxWidth: '90vw' }}>
+        <div className="card__header">
+          <h3 className="card__title" id="add-participant-title">Add Participant</h3>
+        </div>
+        <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div>
+            <label htmlFor="add-participant-agent" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Agent</label>
+            <select id="add-participant-agent" value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} style={{ width: '100%' }}>
+              <option value="">Select an agent...</option>
+              {availableAgents.map((a) => (
+                <option key={a.id} value={a.id}>{a.name} ({a.agent_type})</option>
+              ))}
+            </select>
+            {availableAgents.length === 0 && (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)', marginTop: 4 }}>All agents are already participants</div>
+            )}
+          </div>
+          <div>
+            <label htmlFor="add-participant-role" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Role</label>
+            <select id="add-participant-role" value={role} onChange={(e) => setRole(e.target.value)} style={{ width: '100%' }}>
+              <option value="expert">Expert</option>
+              <option value="manager">Manager</option>
+              <option value="observer">Observer</option>
+            </select>
+          </div>
+        </div>
+        <div className="card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={handleSave} disabled={!selectedAgent || saving}>
+            {saving ? 'Adding...' : 'Add'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Message Bubble ──
 
 export function MessageBubble({ message, agentName, isStreaming }) {
@@ -215,14 +358,19 @@ export function MessageBubble({ message, agentName, isStreaming }) {
 
 // ── Participant List Panel ──
 
-export function ParticipantPanel({ participants, agentMap, engineState }) {
+export function ParticipantPanel({ participants, agentMap, engineState, strategyType, onAddParticipant, onRemoveParticipant, onStrategyChange }) {
   const statusColors = { speaking: 'var(--color-success)', listening: 'var(--color-primary)', idle: 'var(--color-text-tertiary)' };
   const statusLabels = { speaking: 'Speaking', listening: 'Listening', idle: 'Idle' };
 
   return (
     <div style={{ width: 220, borderLeft: '1px solid var(--color-border)', padding: 'var(--space-3)', overflowY: 'auto' }}>
-      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-        <IconUsers /> Participants ({participants.length})
+      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+          <IconUsers /> Participants ({participants.length})
+        </span>
+        {onAddParticipant && (
+          <button className="btn btn--ghost btn--sm" onClick={onAddParticipant} title="Add participant" style={{ padding: '2px 4px' }}><IconPlus /></button>
+        )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {participants.map((p) => {
@@ -238,12 +386,41 @@ export function ParticipantPanel({ participants, agentMap, engineState }) {
                   {p.role} &middot; {statusLabels[p.status] || p.status}
                 </div>
               </div>
+              {onRemoveParticipant && (
+                <button
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => onRemoveParticipant(p.agentId)}
+                  title="Remove participant"
+                  style={{ padding: '2px 4px', opacity: 0.6 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; }}
+                >
+                  <IconX />
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Strategy section */}
+      {onStrategyChange && (
+        <div style={{ marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Strategy</div>
+          <select
+            value={strategyType || 'round-robin'}
+            onChange={(e) => onStrategyChange(e.target.value)}
+            style={{ width: '100%', fontSize: 'var(--text-xs)', padding: '4px 8px' }}
+          >
+            <option value="round-robin">Round Robin</option>
+            <option value="human-assign">Human Assign</option>
+          </select>
+        </div>
+      )}
+
+      {/* Engine state */}
       {engineState && (
-        <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-2)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
+        <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
           <div>Turn: {engineState.turnCount}/{engineState.maxTurns}</div>
           <div>Speaker index: {engineState.turnIndex}</div>
         </div>
@@ -263,6 +440,8 @@ export function GroupChatPage() {
   const [engineState, setEngineState] = useState(null);
   const [inputValue, setInputValue] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
   const [streamingAgent, setStreamingAgent] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
@@ -418,6 +597,31 @@ export function GroupChatPage() {
     const content = inputValue.trim();
     setInputValue('');
     await window.agentOps.chat.sendMessage(selectedSession, content);
+  };
+
+  const handleEditSession = async ({ id, title, strategyType }) => {
+    await window.agentOps.chat.update(id, { title, strategyType });
+    setShowEditModal(false);
+    await loadSessions();
+    if (selectedSession === id) await loadSessionDetails(id);
+  };
+
+  const handleAddParticipant = async ({ agentId, role }) => {
+    await window.agentOps.chat.addParticipant(selectedSession, agentId, role);
+    setShowAddParticipantModal(false);
+    await loadSessionDetails(selectedSession);
+  };
+
+  const handleRemoveParticipant = async (agentId) => {
+    if (!confirm('Remove this participant from the chat?')) return;
+    await window.agentOps.chat.removeParticipant(selectedSession, agentId);
+    await loadSessionDetails(selectedSession);
+  };
+
+  const handleStrategyChange = async (strategyType) => {
+    if (!selectedSession) return;
+    await window.agentOps.chat.update(selectedSession, { strategyType });
+    await loadSessionDetails(selectedSession);
   };
 
   const handleKeyDown = (e) => {

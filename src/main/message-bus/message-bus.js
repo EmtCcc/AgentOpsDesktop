@@ -8,6 +8,10 @@ const { randomUUID } = require('node:crypto');
  */
 
 /**
+ * @typedef {'critical'|'high'|'normal'|'low'} MessagePriority
+ */
+
+/**
  * @typedef {Object} Message
  * @property {string} id
  * @property {MessageType} type
@@ -18,6 +22,7 @@ const { randomUUID } = require('node:crypto');
  * @property {string} senderId
  * @property {number} timestamp
  * @property {number} [ttl]
+ * @property {MessagePriority} [priority]
  */
 
 /**
@@ -29,6 +34,10 @@ const { randomUUID } = require('node:crypto');
  */
 
 const VALID_TYPES = new Set(['request', 'response', 'event', 'heartbeat']);
+const VALID_PRIORITIES = new Set(['critical', 'high', 'normal', 'low']);
+/** Numeric weight for priority ordering — higher number = delivered first */
+const PRIORITY_ORDER = { critical: 4, high: 3, normal: 2, low: 1 };
+const DEFAULT_PRIORITY = 'normal';
 const WILDCARD = '*';
 const MULTI_WILDCARD = '**';
 const MAX_TOPIC_LEN = 256;
@@ -117,6 +126,8 @@ class MessageBus extends EventEmitter {
     this._assertOpen();
     this._validateTopic(topic);
     if (!VALID_TYPES.has(type)) throw new Error(`Invalid message type: ${type}`);
+    const priority = meta.priority ?? DEFAULT_PRIORITY;
+    if (!VALID_PRIORITIES.has(priority)) throw new Error(`Invalid priority: ${priority}`);
 
     const msg = {
       id: randomUUID(),
@@ -128,6 +139,7 @@ class MessageBus extends EventEmitter {
       senderId: meta.senderId ?? 'system',
       timestamp: Date.now(),
       ttl: meta.ttl,
+      priority,
     };
 
     // Persist if available (fire-and-forget for events, await for requests)
@@ -320,11 +332,8 @@ class MessageBus extends EventEmitter {
           if (subscriberId) {
             const q = this._queues.get(subscriberId);
             if (q && q.length > 0) {
-              // Slow consumer: queue the message
-              if (q.length < this._maxQueueSize) {
-                q.push(msg);
-              }
-              // else: drop (back-pressure)
+              // Slow consumer: queue with priority ordering
+              this._enqueueByPriority(q, msg);
               continue;
             }
           }
@@ -335,8 +344,8 @@ class MessageBus extends EventEmitter {
             // If handler throws, start queuing for this subscriber
             if (subscriberId) {
               const q = this._queues.get(subscriberId);
-              if (q && q.length < this._maxQueueSize) {
-                q.push(msg);
+              if (q) {
+                this._enqueueByPriority(q, msg);
               }
             }
           }
@@ -376,6 +385,33 @@ class MessageBus extends EventEmitter {
       mi++;
     }
     return si === subParts.length && mi === msgParts.length;
+  }
+
+  /**
+   * Insert a message into a queue maintaining priority order (highest first).
+   * When the queue is full, drops the lowest-priority message if the new one is higher.
+   * @param {Message[]} q
+   * @param {Message} msg
+   */
+  _enqueueByPriority(q, msg) {
+    const msgWeight = PRIORITY_ORDER[msg.priority] ?? PRIORITY_ORDER[DEFAULT_PRIORITY];
+
+    if (q.length >= this._maxQueueSize) {
+      // Queue full: compare with the lowest-priority message (tail)
+      const tailWeight = PRIORITY_ORDER[q[q.length - 1].priority] ?? PRIORITY_ORDER[DEFAULT_PRIORITY];
+      if (msgWeight <= tailWeight) return; // drop new message
+      q.pop(); // evict lowest
+    }
+
+    // Binary-ish insert: find first position with strictly lower priority
+    let lo = 0, hi = q.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      const midWeight = PRIORITY_ORDER[q[mid].priority] ?? PRIORITY_ORDER[DEFAULT_PRIORITY];
+      if (midWeight >= msgWeight) lo = mid + 1;
+      else hi = mid;
+    }
+    q.splice(lo, 0, msg);
   }
 
   _validateTopic(topic) {
