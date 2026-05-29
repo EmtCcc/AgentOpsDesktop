@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — MessageBus Priority</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+  <style>
+    .priority-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .compose-area { padding: 16px; border: 1px solid var(--color-border, #333); border-radius: 8px; }
+    .queue-area { padding: 16px; border: 1px solid var(--color-border, #333); border-radius: 8px; }
+    .msg-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
+    .msg-item--critical { background: #3d0a0a; border-left: 3px solid #f44; }
+    .msg-item--high { background: #3d2a0a; border-left: 3px solid #fbbf24; }
+    .msg-item--normal { background: var(--color-bg-tertiary, #252525); border-left: 3px solid var(--color-primary, #60a5fa); }
+    .msg-item--low { background: var(--color-bg-secondary, #1a1a1a); border-left: 3px solid #666; }
+    .msg-item__priority { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; min-width: 50px; }
+    .msg-item__priority--critical { color: #f44; }
+    .msg-item__priority--high { color: #fbbf24; }
+    .msg-item__priority--normal { color: #60a5fa; }
+    .msg-item__priority--low { color: #666; }
+    .msg-item__topic { color: var(--color-text-secondary, #999); font-family: monospace; font-size: 0.8rem; }
+    .msg-item__payload { flex: 1; }
+    .msg-item__badge { font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; }
+    .msg-item__badge--dropped { background: #3d0a0a; color: #f44; }
+    .msg-item__badge--delivered { background: #0a3d0a; color: #4ade80; }
+    .msg-item__badge--queued { background: #3d2a0a; color: #fbbf24; }
+    .priority-legend { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .priority-legend__item { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; }
+    .priority-legend__dot { width: 10px; height: 10px; border-radius: 2px; }
+    .queue-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .queue-stat { text-align: center; padding: 10px; border-radius: 6px; background: var(--color-bg-secondary, #1a1a1a); }
+    .queue-stat__count { font-size: 1.5rem; font-weight: 700; }
+    .queue-stat__label { font-size: 0.7rem; color: var(--color-text-secondary, #999); text-transform: uppercase; }
+    .queue-stat--critical .queue-stat__count { color: #f44; }
+    .queue-stat--high .queue-stat__count { color: #fbbf24; }
+    .queue-stat--normal .queue-stat__count { color: #60a5fa; }
+    .queue-stat--low .queue-stat__count { color: #666; }
+    .max-queue-info { font-size: 0.8rem; color: var(--color-text-secondary, #999); margin-bottom: 12px; }
+    @media (max-width: 768px) { .priority-panel { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="6" y="14" width="12" height="8" rx="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div><div class="header__title">AgentOps</div><div class="header__subtitle">Desktop</div></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">System</div>
+        <a class="sidebar__item sidebar__item--active" data-page="messagebus">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span class="sidebar__label">MessageBus Priority</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">MessageBus Priority</h1>
+          <p class="page-header__desc">Priority queue management and message delivery</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--secondary" id="btn-clear">Clear Queue</button>
+          <button class="btn btn--primary" id="btn-dispatch">Dispatch All</button>
+        </div>
+      </div>
+
+      <div class="priority-legend">
+        <span class="priority-legend__item"><span class="priority-legend__dot" style="background:#f44;"></span> Critical (4)</span>
+        <span class="priority-legend__item"><span class="priority-legend__dot" style="background:#fbbf24;"></span> High (3)</span>
+        <span class="priority-legend__item"><span class="priority-legend__dot" style="background:#60a5fa;"></span> Normal (2)</span>
+        <span class="priority-legend__item"><span class="priority-legend__dot" style="background:#666;"></span> Low (1)</span>
+      </div>
+
+      <div class="queue-stats" id="queue-stats">
+        <div class="queue-stat queue-stat--critical"><div class="queue-stat__count" id="stat-critical">0</div><div class="queue-stat__label">Critical</div></div>
+        <div class="queue-stat queue-stat--high"><div class="queue-stat__count" id="stat-high">0</div><div class="queue-stat__label">High</div></div>
+        <div class="queue-stat queue-stat--normal"><div class="queue-stat__count" id="stat-normal">0</div><div class="queue-stat__label">Normal</div></div>
+        <div class="queue-stat queue-stat--low"><div class="queue-stat__count" id="stat-low">0</div><div class="queue-stat__label">Low</div></div>
+      </div>
+
+      <div class="priority-panel">
+        <div class="compose-area">
+          <h3 style="margin-bottom:12px;">Publish Message</h3>
+          <div class="form-group">
+            <label for="msg-topic">Topic</label>
+            <input type="text" id="msg-topic" placeholder="e.g. agent.status.update" value="agent.status.update" />
+          </div>
+          <div class="form-group">
+            <label for="msg-type">Type</label>
+            <select id="msg-type">
+              <option value="event">event</option>
+              <option value="command">command</option>
+              <option value="response">response</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="msg-priority">Priority</label>
+            <select id="msg-priority">
+              <option value="normal">Normal</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="msg-payload">Payload</label>
+            <input type="text" id="msg-payload" placeholder="Message content" value="Agent status changed" />
+          </div>
+          <button class="btn btn--primary" id="btn-publish" style="width:100%;">Publish</button>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn--ghost btn--sm" id="btn-burst" style="flex:1;">Burst Mixed</button>
+            <button class="btn btn--ghost btn--sm" id="btn-fill-queue" style="flex:1;">Fill Queue</button>
+          </div>
+        </div>
+
+        <div class="queue-area">
+          <h3 style="margin-bottom:4px;">Priority Queue</h3>
+          <div class="max-queue-info">Max queue size: <strong id="max-queue-size">10</strong> messages</div>
+          <div id="queue-display"></div>
+          <div id="delivery-log" style="margin-top:12px;">
+            <h4 style="margin-bottom:8px;font-size:0.85rem;">Delivery Order</h4>
+            <div id="delivery-order" style="font-family:monospace;font-size:0.8rem;color:var(--color-text-secondary,#999);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Validation info -->
+      <div style="margin-top:16px;padding:12px;background:var(--color-bg-secondary,#1a1a1a);border-radius:8px;font-size:0.85rem;">
+        <strong>Valid priorities:</strong> critical, high, normal, low &nbsp;|&nbsp;
+        <strong>Default:</strong> normal &nbsp;|&nbsp;
+        <strong>Invalid priorities are rejected.</strong>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left"><div class="footer__status"><span class="footer__dot footer__dot--running"></span><span>System ready</span></div></div>
+      <div class="footer__right"><span>v0.1.0</span></div>
+    </footer>
+  </div>
+
+  <script>
+    const MAX_QUEUE = 10;
+    const PRIORITY_ORDER = { critical: 4, high: 3, normal: 2, low: 1 };
+    let queue = [];
+    let deliveryOrder = [];
+    let msgCounter = 0;
+
+    function updateStats() {
+      const counts = { critical: 0, high: 0, normal: 0, low: 0 };
+      queue.forEach(m => counts[m.priority]++);
+      document.getElementById('stat-critical').textContent = counts.critical;
+      document.getElementById('stat-high').textContent = counts.high;
+      document.getElementById('stat-normal').textContent = counts.normal;
+      document.getElementById('stat-low').textContent = counts.low;
+    }
+
+    function renderQueue() {
+      const display = document.getElementById('queue-display');
+      display.innerHTML = '';
+      if (queue.length === 0) {
+        display.innerHTML = '<div style="color:var(--color-text-secondary,#999);font-size:0.85rem;padding:12px;">Queue empty</div>';
+        return;
+      }
+      queue.forEach((msg, i) => {
+        const el = document.createElement('div');
+        el.className = `msg-item msg-item--${msg.priority}`;
+        el.innerHTML = `
+          <span class="msg-item__priority msg-item__priority--${msg.priority}">${msg.priority}</span>
+          <span class="msg-item__topic">${msg.topic}</span>
+          <span class="msg-item__payload">${msg.payload}</span>
+          ${msg.dropped ? '<span class="msg-item__badge msg-item__badge--dropped">DROPPED</span>' : ''}
+        `;
+        display.appendChild(el);
+      });
+      updateStats();
+    }
+
+    function enqueueByPriority(msg) {
+      const msgWeight = PRIORITY_ORDER[msg.priority] ?? 2;
+      if (queue.length >= MAX_QUEUE) {
+        const tailWeight = PRIORITY_ORDER[queue[queue.length - 1].priority] ?? 2;
+        if (msgWeight <= tailWeight) {
+          msg.dropped = true;
+          renderQueue();
+          return false; // dropped
+        }
+        queue.pop(); // evict lowest
+      }
+      // Insert maintaining priority order (highest first)
+      let lo = 0, hi = queue.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        const midWeight = PRIORITY_ORDER[queue[mid].priority] ?? 2;
+        if (midWeight >= msgWeight) lo = mid + 1;
+        else hi = mid;
+      }
+      queue.splice(lo, 0, msg);
+      renderQueue();
+      return true;
+    }
+
+    function publishMessage(topic, type, payload, priority) {
+      if (!PRIORITY_ORDER.hasOwnProperty(priority)) {
+        return { success: false, reason: 'invalid priority' };
+      }
+      const msg = { id: ++msgCounter, topic, type, payload, priority, dropped: false };
+      const accepted = enqueueByPriority(msg);
+      return { success: accepted, msg };
+    }
+
+    // Publish button
+    document.getElementById('btn-publish').addEventListener('click', () => {
+      const topic = document.getElementById('msg-topic').value || 'default.topic';
+      const type = document.getElementById('msg-type').value;
+      const priority = document.getElementById('msg-priority').value;
+      const payload = document.getElementById('msg-payload').value || 'empty';
+      publishMessage(topic, type, payload, priority);
+    });
+
+    // Burst mixed priorities
+    document.getElementById('btn-burst').addEventListener('click', () => {
+      const msgs = [
+        { topic: 'agent.error', type: 'event', payload: 'Critical error!', priority: 'critical' },
+        { topic: 'task.complete', type: 'event', payload: 'Task finished', priority: 'normal' },
+        { topic: 'agent.status', type: 'event', payload: 'Low priority update', priority: 'low' },
+        { topic: 'agent.alert', type: 'event', payload: 'High priority alert', priority: 'high' },
+        { topic: 'log.info', type: 'event', payload: 'Info log entry', priority: 'normal' },
+      ];
+      msgs.forEach(m => publishMessage(m.topic, m.type, m.payload, m.priority));
+    });
+
+    // Fill queue to capacity
+    document.getElementById('btn-fill-queue').addEventListener('click', () => {
+      for (let i = 0; i < MAX_QUEUE; i++) {
+        const priority = ['low', 'normal', 'high', 'critical'][i % 4];
+        publishMessage('test.topic', 'event', `Fill msg ${i + 1}`, priority);
+      }
+    });
+
+    // Dispatch all (deliver in priority order)
+    document.getElementById('btn-dispatch').addEventListener('click', () => {
+      deliveryOrder = [];
+      while (queue.length > 0) {
+        const msg = queue.shift();
+        deliveryOrder.push(`${msg.priority}: ${msg.payload}`);
+      }
+      renderQueue();
+      document.getElementById('delivery-order').innerHTML = deliveryOrder
+        .map((d, i) => `<div>${i + 1}. ${d}</div>`)
+        .join('');
+    });
+
+    // Clear
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      queue = [];
+      deliveryOrder = [];
+      renderQueue();
+      document.getElementById('delivery-order').innerHTML = '';
+    });
+
+    renderQueue();
+  </script>
+</body>
+</html>

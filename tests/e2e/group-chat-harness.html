@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Group Chat</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+  <style>
+    .chat-session { border: 1px solid var(--color-border, #333); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .chat-session__title { font-size: 1.1rem; font-weight: 600; }
+    .chat-session__status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+    .chat-session__status--active { background: var(--color-success-bg, #0a3d0a); color: var(--color-success, #4ade80); }
+    .chat-session__status--idle { background: var(--color-neutral-bg, #333); color: var(--color-text-secondary, #999); }
+    .chat-messages { max-height: 300px; overflow-y: auto; padding: 12px; background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; margin-top: 8px; }
+    .chat-message { padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; }
+    .chat-message--system { color: var(--color-text-secondary, #999); font-style: italic; font-size: 0.85rem; }
+    .chat-message--human { background: var(--color-primary-bg, #1a2a4a); }
+    .chat-message--agent { background: var(--color-bg-tertiary, #252525); }
+    .chat-message__author { font-weight: 600; font-size: 0.8rem; margin-bottom: 2px; }
+    .chat-message__content { font-size: 0.9rem; }
+    .chat-participants { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chat-participant { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; background: var(--color-bg-tertiary, #252525); font-size: 0.8rem; }
+    .chat-participant__dot { width: 8px; height: 8px; border-radius: 50%; }
+    .chat-participant__dot--speaking { background: var(--color-success, #4ade80); }
+    .chat-participant__dot--listening { background: var(--color-text-secondary, #999); }
+    .chat-participant__dot--idle { background: var(--color-text-secondary, #999); }
+    .chat-input-area { display: flex; gap: 8px; margin-top: 12px; }
+    .chat-input-area input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--color-border, #333); background: var(--color-bg-secondary, #1a1a1a); color: var(--color-text, #fff); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }
+    .modal-overlay.visible { display: flex; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="6" y="14" width="12" height="8" rx="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div>
+            <div class="header__title">AgentOps</div>
+            <div class="header__subtitle">Desktop</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Workspace</div>
+        <a class="sidebar__item sidebar__item--active" data-page="group-chat">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <span class="sidebar__label">Group Chat</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Group Chat</h1>
+          <p class="page-header__desc">Multi-agent group conversations</p>
+        </div>
+        <button class="btn btn--primary" id="btn-create-chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Chat
+        </button>
+      </div>
+
+      <!-- Session List -->
+      <div id="session-list">
+        <div class="chat-session card" data-session-id="session-1">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="chat-session__title">Architecture Review</span>
+            <span class="chat-session__status chat-session__status--active" data-status="active">Active</span>
+          </div>
+          <div class="chat-participants" data-testid="participants">
+            <span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--speaking"></span> Claude Code</span>
+            <span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--listening"></span> Codex Agent</span>
+            <span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--idle"></span> Gemini CLI</span>
+          </div>
+          <div class="chat-messages" data-testid="messages">
+            <div class="chat-message chat-message--system"><div class="chat-message__content">群聊 "Architecture Review" 已创建，3 位 Agent 参与。</div></div>
+            <div class="chat-message chat-message--agent"><div class="chat-message__author">Claude Code</div><div class="chat-message__content">I suggest we use a hexagonal architecture for the new service.</div></div>
+            <div class="chat-message chat-message--agent"><div class="chat-message__author">Codex Agent</div><div class="chat-message__content">Agreed, but we should also consider the event-driven approach for the messaging layer.</div></div>
+            <div class="chat-message chat-message--human"><div class="chat-message__author">Human</div><div class="chat-message__content">What about the database layer?</div></div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" id="chat-input-1" placeholder="Type a message..." data-testid="chat-input" />
+            <button class="btn btn--primary btn--sm" id="btn-send-1" data-action="send">Send</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn--ghost btn--sm" data-action="pause">Pause</button>
+            <button class="btn btn--ghost btn--sm" data-action="stop">Stop</button>
+          </div>
+        </div>
+
+        <div class="chat-session card" data-session-id="session-2">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="chat-session__title">Bug Triage</span>
+            <span class="chat-session__status chat-session__status--idle" data-status="idle">Idle</span>
+          </div>
+          <div class="chat-participants">
+            <span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--idle"></span> Claude Code</span>
+            <span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--idle"></span> Codex Agent</span>
+          </div>
+          <div class="chat-messages">
+            <div class="chat-message chat-message--system"><div class="chat-message__content">群聊 "Bug Triage" 已创建，2 位 Agent 参与。</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn--ghost btn--sm" data-action="start">Start</button>
+            <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Chat Modal -->
+      <div class="modal-overlay" id="create-chat-modal">
+        <div class="modal" role="dialog" aria-label="Create Group Chat">
+          <div class="modal__header">
+            <h2 class="modal__title">Create Group Chat</h2>
+            <button class="modal__close" id="modal-close-btn" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal__body">
+            <div class="form-group">
+              <label for="chat-title">Title</label>
+              <input type="text" id="chat-title" placeholder="Chat title" required />
+              <span class="form-error" id="title-error" style="display:none;color:var(--color-danger,#f44);font-size:0.8rem;">Title is required</span>
+            </div>
+            <div class="form-group">
+              <label>Participants (min 2)</label>
+              <div id="participant-checkboxes">
+                <label><input type="checkbox" name="agent" value="agent-1" checked /> Claude Code</label>
+                <label><input type="checkbox" name="agent" value="agent-2" checked /> Codex Agent</label>
+                <label><input type="checkbox" name="agent" value="agent-3" /> Gemini CLI</label>
+              </div>
+              <span class="form-error" id="participants-error" style="display:none;color:var(--color-danger,#f44);font-size:0.8rem;">At least 2 participants required</span>
+            </div>
+            <div class="form-group">
+              <label for="turn-strategy">Turn Strategy</label>
+              <select id="turn-strategy">
+                <option value="round-robin">Round Robin</option>
+                <option value="human-assign">Human Assign</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" id="modal-cancel-btn">Cancel</button>
+            <button class="btn btn--primary" id="modal-create-btn">Create</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running"></span>
+          <span>System ready</span>
+        </div>
+      </div>
+      <div class="footer__right"><span>v0.1.0</span></div>
+    </footer>
+  </div>
+
+  <script>
+    // Modal logic
+    const modal = document.getElementById('create-chat-modal');
+    document.getElementById('btn-create-chat').addEventListener('click', () => modal.classList.add('visible'));
+    document.getElementById('modal-close-btn').addEventListener('click', () => modal.classList.remove('visible'));
+    document.getElementById('modal-cancel-btn').addEventListener('click', () => modal.classList.remove('visible'));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('visible'); });
+
+    // Create chat validation + submission
+    document.getElementById('modal-create-btn').addEventListener('click', () => {
+      const title = document.getElementById('chat-title').value.trim();
+      const checked = document.querySelectorAll('#participant-checkboxes input:checked');
+      const titleErr = document.getElementById('title-error');
+      const partErr = document.getElementById('participants-error');
+      let valid = true;
+      titleErr.style.display = 'none';
+      partErr.style.display = 'none';
+      if (!title) { titleErr.style.display = 'block'; valid = false; }
+      if (checked.length < 2) { partErr.style.display = 'block'; valid = false; }
+      if (!valid) return;
+      // Simulate creation
+      const sessionList = document.getElementById('session-list');
+      const names = Array.from(checked).map(cb => cb.parentElement.textContent.trim());
+      const newSession = document.createElement('div');
+      newSession.className = 'chat-session card';
+      newSession.setAttribute('data-session-id', 'session-new');
+      newSession.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="chat-session__title">${title}</span>
+          <span class="chat-session__status chat-session__status--active" data-status="active">Active</span>
+        </div>
+        <div class="chat-participants">${names.map(n => `<span class="chat-participant"><span class="chat-participant__dot chat-participant__dot--idle"></span> ${n}</span>`).join('')}</div>
+        <div class="chat-messages"><div class="chat-message chat-message--system"><div class="chat-message__content">群聊 "${title}" 已创建，${names.length} 位 Agent 参与。</div></div></div>
+        <div class="chat-input-area"><input type="text" placeholder="Type a message..." data-testid="chat-input" /><button class="btn btn--primary btn--sm" data-action="send">Send</button></div>
+      `;
+      sessionList.appendChild(newSession);
+      modal.classList.remove('visible');
+      document.getElementById('chat-title').value = '';
+    });
+
+    // Send message
+    document.addEventListener('click', (e) => {
+      if (e.target.dataset.action === 'send') {
+        const input = e.target.previousElementSibling;
+        const text = input.value.trim();
+        if (!text) return;
+        const messages = e.target.closest('.chat-session').querySelector('.chat-messages');
+        const msg = document.createElement('div');
+        msg.className = 'chat-message chat-message--human';
+        msg.innerHTML = `<div class="chat-message__author">Human</div><div class="chat-message__content">${text}</div>`;
+        messages.appendChild(msg);
+        input.value = '';
+        messages.scrollTop = messages.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>

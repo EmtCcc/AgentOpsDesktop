@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Workspace Security</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+  <style>
+    .security-panel { padding: 20px; }
+    .security-test { border: 1px solid var(--color-border, #333); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .security-test__name { font-weight: 600; margin-bottom: 8px; }
+    .security-test__status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+    .security-test__status--pass { background: #0a3d0a; color: #4ade80; }
+    .security-test__status--fail { background: #3d0a0a; color: #f44; }
+    .security-test__status--pending { background: #333; color: #999; }
+    .security-test__detail { font-size: 0.85rem; color: var(--color-text-secondary, #999); margin-top: 4px; }
+    .path-input { display: flex; gap: 8px; margin-bottom: 16px; }
+    .path-input input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--color-border, #333); background: var(--color-bg-secondary, #1a1a1a); color: var(--color-text, #fff); font-family: monospace; font-size: 0.9rem; }
+    .sandbox-info { background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .sandbox-info__label { font-size: 0.8rem; color: var(--color-text-secondary, #999); text-transform: uppercase; letter-spacing: 0.05em; }
+    .sandbox-info__value { font-family: monospace; font-size: 0.9rem; margin-top: 4px; }
+    .file-tree { font-family: monospace; font-size: 0.85rem; padding: 12px; background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; }
+    .file-tree__item { padding: 4px 0; display: flex; align-items: center; gap: 8px; }
+    .file-tree__icon { width: 16px; text-align: center; }
+    .file-tree__icon--dir { color: var(--color-primary, #60a5fa); }
+    .file-tree__icon--file { color: var(--color-text-secondary, #999); }
+    .file-tree__icon--symlink { color: var(--color-warning, #fbbf24); }
+    .file-tree__icon--blocked { color: var(--color-danger, #f44); }
+    .audit-log { max-height: 200px; overflow-y: auto; padding: 12px; background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; font-family: monospace; font-size: 0.8rem; margin-top: 12px; }
+    .audit-log__entry { padding: 2px 0; }
+    .audit-log__entry--deny { color: var(--color-danger, #f44); }
+    .audit-log__entry--allow { color: var(--color-success, #4ade80); }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="6" y="14" width="12" height="8" rx="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div><div class="header__title">AgentOps</div><div class="header__subtitle">Desktop</div></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Security</div>
+        <a class="sidebar__item sidebar__item--active" data-page="workspace-security">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          <span class="sidebar__label">Workspace Security</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Workspace Security</h1>
+          <p class="page-header__desc">Path sandboxing and symlink escape detection</p>
+        </div>
+        <button class="btn btn--primary" id="btn-run-all">Run All Tests</button>
+      </div>
+
+      <div class="sandbox-info">
+        <div class="sandbox-info__label">Workspace Root</div>
+        <div class="sandbox-info__value" id="workspace-root">/home/user/.agentops/workspaces/ws-abc123</div>
+      </div>
+
+      <!-- File Tree View -->
+      <h3 style="margin-bottom:8px;">Workspace Contents</h3>
+      <div class="file-tree" id="file-tree">
+        <div class="file-tree__item" data-file="src/"><span class="file-tree__icon file-tree__icon--dir">&#128193;</span> src/</div>
+        <div class="file-tree__item" data-file="src/main.js" style="padding-left:24px;"><span class="file-tree__icon file-tree__icon--file">&#128196;</span> main.js</div>
+        <div class="file-tree__item" data-file="src/config.json" style="padding-left:24px;"><span class="file-tree__icon file-tree__icon--file">&#128196;</span> config.json</div>
+        <div class="file-tree__item" data-file="data.txt"><span class="file-tree__icon file-tree__icon--file">&#128196;</span> data.txt</div>
+        <div class="file-tree__item" data-file="safe-link" data-type="symlink"><span class="file-tree__icon file-tree__icon--symlink">&#128279;</span> safe-link -> src/main.js</div>
+        <div class="file-tree__item" data-file="evil-link" data-type="symlink-blocked"><span class="file-tree__icon file-tree__icon--blocked">&#128683;</span> evil-link -> /etc/passwd</div>
+        <div class="file-tree__item" data-file="escape-link" data-type="symlink-blocked"><span class="file-tree__icon file-tree__icon--blocked">&#128683;</span> escape-link -> ../../.ssh/id_rsa</div>
+      </div>
+
+      <!-- Path Validation Input -->
+      <h3 style="margin:16px 0 8px;">Manual Path Test</h3>
+      <div class="path-input">
+        <input type="text" id="test-path" placeholder="Enter relative path to test (e.g. src/main.js or ../etc/passwd)" />
+        <button class="btn btn--primary btn--sm" id="btn-test-path">Validate</button>
+      </div>
+      <div id="path-result" style="display:none;padding:8px 12px;border-radius:6px;font-size:0.9rem;margin-bottom:16px;"></div>
+
+      <!-- Security Tests -->
+      <h3 style="margin:16px 0 8px;">Automated Security Tests</h3>
+      <div id="security-tests">
+        <div class="security-test" data-test="path-containment">
+          <div class="security-test__name">Path Containment Check</div>
+          <div class="security-test__detail">Verifies that relative paths cannot escape the workspace root via ../ traversal</div>
+          <span class="security-test__status security-test__status--pending" data-result="pending">Pending</span>
+        </div>
+        <div class="security-test" data-test="symlink-escape">
+          <div class="security-test__name">Symlink Escape Detection</div>
+          <div class="security-test__detail">Verifies that symlinks pointing outside the workspace are blocked</div>
+          <span class="security-test__status security-test__status--pending" data-result="pending">Pending</span>
+        </div>
+        <div class="security-test" data-test="symlink-safe">
+          <div class="security-test__name">Safe Symlink Allowed</div>
+          <div class="security-test__detail">Verifies that symlinks pointing within the workspace are allowed</div>
+          <span class="security-test__status security-test__status--pending" data-result="pending">Pending</span>
+        </div>
+        <div class="security-test" data-test="nonexistent-write">
+          <div class="security-test__name">Nonexistent File Write Path</div>
+          <div class="security-test__detail">Verifies that paths to nonexistent files are allowed for write operations</div>
+          <span class="security-test__status security-test__status--pending" data-result="pending">Pending</span>
+        </div>
+        <div class="security-test" data-test="null-byte">
+          <div class="security-test__name">Null Byte Injection</div>
+          <div class="security-test__detail">Verifies that null bytes in paths are rejected</div>
+          <span class="security-test__status security-test__status--pending" data-result="pending">Pending</span>
+        </div>
+      </div>
+
+      <!-- Audit Log -->
+      <h3 style="margin:16px 0 8px;">Audit Log</h3>
+      <div class="audit-log" id="audit-log"></div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left"><div class="footer__status"><span class="footer__dot footer__dot--running"></span><span>System ready</span></div></div>
+      <div class="footer__right"><span>v0.1.0</span></div>
+    </footer>
+  </div>
+
+  <script>
+    const WORKSPACE_ROOT = '/home/user/.agentops/workspaces/ws-abc123';
+    const auditLog = document.getElementById('audit-log');
+
+    function addAuditEntry(path, allowed, reason) {
+      const entry = document.createElement('div');
+      entry.className = `audit-log__entry audit-log__entry--${allowed ? 'allow' : 'deny'}`;
+      entry.textContent = `[${allowed ? 'ALLOW' : 'DENY'}] ${path} — ${reason}`;
+      auditLog.appendChild(entry);
+      auditLog.scrollTop = auditLog.scrollHeight;
+    }
+
+    function setTestResult(testName, passed) {
+      const el = document.querySelector(`[data-test="${testName}"] [data-result]`);
+      if (!el) return;
+      el.className = `security-test__status security-test__status--${passed ? 'pass' : 'fail'}`;
+      el.setAttribute('data-result', passed ? 'pass' : 'fail');
+      el.textContent = passed ? 'Pass' : 'Fail';
+    }
+
+    // Simulated path validation
+    function validatePath(relPath) {
+      if (!relPath || typeof relPath !== 'string') return { allowed: true, reason: 'empty path resolves to root' };
+      if (relPath.includes('\0')) return { allowed: false, reason: 'null byte injection detected' };
+
+      // Resolve against workspace root
+      const parts = relPath.split('/').filter(Boolean);
+      const resolved = [];
+      for (const part of parts) {
+        if (part === '.') continue;
+        if (part === '..') {
+          resolved.pop();
+          if (resolved.length === 0) return { allowed: false, reason: 'path escape via ../ traversal' };
+        } else {
+          resolved.push(part);
+        }
+      }
+
+      // Simulated symlink checks
+      const symlinks = {
+        'safe-link': { target: 'src/main.js', inside: true },
+        'evil-link': { target: '/etc/passwd', inside: false },
+        'escape-link': { target: '../../.ssh/id_rsa', inside: false },
+      };
+
+      const finalParts = resolved;
+      const lastPart = finalParts[finalParts.length - 1];
+      if (symlinks[lastPart]) {
+        const link = symlinks[lastPart];
+        if (!link.inside) return { allowed: false, reason: `symlink escape: "${lastPart}" points to "${link.target}" outside workspace` };
+        return { allowed: true, reason: `symlink "${lastPart}" resolves within workspace to "${link.target}"` };
+      }
+
+      return { allowed: true, reason: 'path within workspace boundary' };
+    }
+
+    // Manual path test
+    document.getElementById('btn-test-path').addEventListener('click', () => {
+      const input = document.getElementById('test-path').value;
+      const result = validatePath(input);
+      const resultEl = document.getElementById('path-result');
+      resultEl.style.display = 'block';
+      resultEl.style.background = result.allowed ? '#0a3d0a' : '#3d0a0a';
+      resultEl.style.color = result.allowed ? '#4ade80' : '#f44';
+      resultEl.textContent = result.allowed ? `ALLOWED: ${result.reason}` : `DENIED: ${result.reason}`;
+      addAuditEntry(input || '(root)', result.allowed, result.reason);
+    });
+
+    // Run all tests
+    document.getElementById('btn-run-all').addEventListener('click', () => {
+      auditLog.innerHTML = '';
+
+      // 1. Path containment
+      const r1 = validatePath('../../../etc/passwd');
+      setTestResult('path-containment', !r1.allowed);
+      addAuditEntry('../../../etc/passwd', r1.allowed, r1.reason);
+
+      // 2. Symlink escape
+      const r2 = validatePath('evil-link');
+      setTestResult('symlink-escape', !r2.allowed);
+      addAuditEntry('evil-link', r2.allowed, r2.reason);
+
+      // 3. Safe symlink
+      const r3 = validatePath('safe-link');
+      setTestResult('symlink-safe', r3.allowed);
+      addAuditEntry('safe-link', r3.allowed, r3.reason);
+
+      // 4. Nonexistent write path
+      const r4 = validatePath('new-file.txt');
+      setTestResult('nonexistent-write', r4.allowed);
+      addAuditEntry('new-file.txt', r4.allowed, r4.reason);
+
+      // 5. Null byte injection
+      const r5 = validatePath('src/main.js\0.txt');
+      setTestResult('null-byte', !r5.allowed);
+      addAuditEntry('src/main.js\\0.txt', r5.allowed, r5.reason);
+    });
+  </script>
+</body>
+</html>

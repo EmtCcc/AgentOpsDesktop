@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Squad Load Balancing</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+  <style>
+    .agent-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .agent-card { border: 1px solid var(--color-border, #333); border-radius: 8px; padding: 14px; }
+    .agent-card__name { font-weight: 600; font-size: 0.95rem; }
+    .agent-card__role { font-size: 0.8rem; color: var(--color-text-secondary, #999); }
+    .agent-card__workload { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+    .workload-bar { flex: 1; height: 6px; background: var(--color-bg-tertiary, #252525); border-radius: 3px; overflow: hidden; }
+    .workload-bar__fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .workload-bar__fill--low { background: var(--color-success, #4ade80); }
+    .workload-bar__fill--medium { background: var(--color-warning, #fbbf24); }
+    .workload-bar__fill--high { background: var(--color-danger, #f44); }
+    .workload-count { font-size: 0.8rem; font-family: monospace; min-width: 40px; text-align: right; }
+    .agent-card__status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .agent-card__status--idle { background: var(--color-success, #4ade80); }
+    .agent-card__status--busy { background: var(--color-warning, #fbbf24); }
+    .agent-card__status--overloaded { background: var(--color-danger, #f44); }
+    .task-queue { margin-bottom: 20px; }
+    .task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--color-border, #333); border-radius: 6px; margin-bottom: 6px; }
+    .task-item__name { font-size: 0.9rem; }
+    .task-item__role { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: var(--color-primary-bg, #1a2a4a); color: var(--color-primary, #60a5fa); }
+    .task-item__assignee { font-size: 0.8rem; color: var(--color-text-secondary, #999); }
+    .task-item__assignee--assigned { color: var(--color-success, #4ade80); }
+    .distribution-chart { display: flex; align-items: flex-end; gap: 12px; height: 120px; padding: 12px; background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; margin-bottom: 16px; }
+    .distribution-bar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .distribution-bar__column { width: 40px; background: var(--color-primary, #60a5fa); border-radius: 4px 4px 0 0; transition: height 0.3s; }
+    .distribution-bar__label { font-size: 0.7rem; color: var(--color-text-secondary, #999); }
+    .distribution-bar__count { font-size: 0.75rem; font-weight: 600; }
+    .strategy-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .strategy-selector .btn--active { background: var(--color-primary, #60a5fa); color: #fff; }
+    .overload-info { background: var(--color-bg-secondary, #1a1a1a); border-radius: 8px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem; }
+    .overload-info__threshold { color: var(--color-warning, #fbbf24); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="6" y="14" width="12" height="8" rx="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div><div class="header__title">AgentOps</div><div class="header__subtitle">Desktop</div></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Workspace</div>
+        <a class="sidebar__item sidebar__item--active" data-page="loadbalance">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span>
+          <span class="sidebar__label">Load Balancing</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Squad Load Balancing</h1>
+          <p class="page-header__desc">Task distribution across agent pool</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--secondary" id="btn-reset">Reset</button>
+          <button class="btn btn--primary" id="btn-assign-all">Auto-Assign All</button>
+        </div>
+      </div>
+
+      <div class="overload-info">
+        Overload threshold: <span class="overload-info__threshold" id="threshold">3</span> active tasks per agent. Agents exceeding this are skipped during assignment.
+      </div>
+
+      <div class="strategy-selector">
+        <button class="btn btn--ghost btn--sm btn--active" data-strategy="lowest-workload">Lowest Workload</button>
+        <button class="btn btn--ghost btn--sm" data-strategy="round-robin">Round Robin</button>
+        <button class="btn btn--ghost btn--sm" data-strategy="role-first">Role First</button>
+      </div>
+
+      <h3 style="margin-bottom:8px;">Agent Pool</h3>
+      <div class="agent-pool" id="agent-pool">
+        <div class="agent-card" data-agent-id="agent-1" data-role="engineer" data-workload="0">
+          <div><span class="agent-card__status agent-card__status--idle"></span><span class="agent-card__name">Claude Code</span></div>
+          <div class="agent-card__role">engineer</div>
+          <div class="agent-card__workload"><div class="workload-bar"><div class="workload-bar__fill workload-bar__fill--low" style="width:0%"></div></div><span class="workload-count">0/3</span></div>
+        </div>
+        <div class="agent-card" data-agent-id="agent-2" data-role="engineer" data-workload="1">
+          <div><span class="agent-card__status agent-card__status--idle"></span><span class="agent-card__name">Codex Agent</span></div>
+          <div class="agent-card__role">engineer</div>
+          <div class="agent-card__workload"><div class="workload-bar"><div class="workload-bar__fill workload-bar__fill--low" style="width:33%"></div></div><span class="workload-count">1/3</span></div>
+        </div>
+        <div class="agent-card" data-agent-id="agent-3" data-role="designer" data-workload="2">
+          <div><span class="agent-card__status agent-card__status--busy"></span><span class="agent-card__name">Gemini CLI</span></div>
+          <div class="agent-card__role">designer</div>
+          <div class="agent-card__workload"><div class="workload-bar"><div class="workload-bar__fill workload-bar__fill--medium" style="width:66%"></div></div><span class="workload-count">2/3</span></div>
+        </div>
+        <div class="agent-card" data-agent-id="agent-4" data-role="engineer" data-workload="3">
+          <div><span class="agent-card__status agent-card__status--overloaded"></span><span class="agent-card__name">Opencode</span></div>
+          <div class="agent-card__role">engineer</div>
+          <div class="agent-card__workload"><div class="workload-bar"><div class="workload-bar__fill workload-bar__fill--high" style="width:100%"></div></div><span class="workload-count">3/3</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:8px;">Distribution</h3>
+      <div class="distribution-chart" id="distribution-chart">
+        <div class="distribution-bar"><div class="distribution-bar__column" id="dist-agent-1" style="height:0px"></div><div class="distribution-bar__count" id="dist-count-1">0</div><div class="distribution-bar__label">Claude</div></div>
+        <div class="distribution-bar"><div class="distribution-bar__column" id="dist-agent-2" style="height:0px"></div><div class="distribution-bar__count" id="dist-count-2">0</div><div class="distribution-bar__label">Codex</div></div>
+        <div class="distribution-bar"><div class="distribution-bar__column" id="dist-agent-3" style="height:0px"></div><div class="distribution-bar__count" id="dist-count-3">0</div><div class="distribution-bar__label">Gemini</div></div>
+        <div class="distribution-bar"><div class="distribution-bar__column" id="dist-agent-4" style="height:0px"></div><div class="distribution-bar__count" id="dist-count-4">0</div><div class="distribution-bar__label">Opencode</div></div>
+      </div>
+
+      <h3 style="margin-bottom:8px;">Task Queue</h3>
+      <div class="task-queue" id="task-queue">
+        <div class="task-item" data-task-id="task-1" data-role="engineer"><span class="task-item__name">Implement auth API</span><span class="task-item__role">engineer</span><span class="task-item__assignee">Unassigned</span></div>
+        <div class="task-item" data-task-id="task-2" data-role="engineer"><span class="task-item__name">Write unit tests</span><span class="task-item__role">engineer</span><span class="task-item__assignee">Unassigned</span></div>
+        <div class="task-item" data-task-id="task-3" data-role="designer"><span class="task-item__name">Design settings page</span><span class="task-item__role">designer</span><span class="task-item__assignee">Unassigned</span></div>
+        <div class="task-item" data-task-id="task-4" data-role="engineer"><span class="task-item__name">Fix pagination bug</span><span class="task-item__role">engineer</span><span class="task-item__assignee">Unassigned</span></div>
+        <div class="task-item" data-task-id="task-5" data-role="engineer"><span class="task-item__name">Add rate limiting</span><span class="task-item__role">engineer</span><span class="task-item__assignee">Unassigned</span></div>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left"><div class="footer__status"><span class="footer__dot footer__dot--running"></span><span>System ready</span></div></div>
+      <div class="footer__right"><span>v0.1.0</span></div>
+    </footer>
+  </div>
+
+  <script>
+    const THRESHOLD = 3;
+    let strategy = 'lowest-workload';
+    const distCounts = { 'agent-1': 0, 'agent-2': 0, 'agent-3': 0, 'agent-4': 0 };
+
+    function getAgents() {
+      return Array.from(document.querySelectorAll('.agent-card')).map(card => ({
+        id: card.dataset.agentId,
+        role: card.dataset.role,
+        workload: parseInt(card.dataset.workload),
+      }));
+    }
+
+    function getUnassignedTasks() {
+      return Array.from(document.querySelectorAll('.task-item')).filter(t => {
+        const assignee = t.querySelector('.task-item__assignee');
+        return assignee && assignee.textContent === 'Unassigned';
+      }).map(t => ({
+        id: t.dataset.taskId,
+        role: t.dataset.role,
+        el: t,
+      }));
+    }
+
+    function updateAgentCard(agentId, newWorkload) {
+      const card = document.querySelector(`[data-agent-id="${agentId}"]`);
+      if (!card) return;
+      card.dataset.workload = newWorkload;
+      const pct = Math.min(100, (newWorkload / THRESHOLD) * 100);
+      const bar = card.querySelector('.workload-bar__fill');
+      bar.style.width = pct + '%';
+      bar.className = 'workload-bar__fill ' + (newWorkload >= THRESHOLD ? 'workload-bar__fill--high' : newWorkload >= 2 ? 'workload-bar__fill--medium' : 'workload-bar__fill--low');
+      card.querySelector('.workload-count').textContent = `${newWorkload}/${THRESHOLD}`;
+      const dot = card.querySelector('.agent-card__status');
+      dot.className = 'agent-card__status ' + (newWorkload >= THRESHOLD ? 'agent-card__status--overloaded' : newWorkload > 0 ? 'agent-card__status--busy' : 'agent-card__status--idle');
+    }
+
+    function updateDistribution(agentId) {
+      distCounts[agentId]++;
+      const idx = Object.keys(distCounts).indexOf(agentId) + 1;
+      document.getElementById(`dist-agent-${idx}`).style.height = (distCounts[agentId] * 15) + 'px';
+      document.getElementById(`dist-count-${idx}`).textContent = distCounts[agentId];
+    }
+
+    function assignTask(task, agent) {
+      const assignee = task.el.querySelector('.task-item__assignee');
+      const agentCard = document.querySelector(`[data-agent-id="${agent.id}"]`);
+      const agentName = agentCard.querySelector('.agent-card__name').textContent;
+      assignee.textContent = `Assigned: ${agentName}`;
+      assignee.classList.add('task-item__assignee--assigned');
+      agent.workload++;
+      updateAgentCard(agent.id, agent.workload);
+      updateDistribution(agent.id);
+    }
+
+    function selectAgent(task, agents) {
+      const candidates = strategy === 'role-first'
+        ? agents.filter(a => a.role === task.role && a.workload < THRESHOLD)
+        : agents.filter(a => a.workload < THRESHOLD);
+      if (candidates.length === 0) return null;
+      if (strategy === 'round-robin') {
+        return candidates[(parseInt(task.id.split('-')[1]) - 1) % candidates.length];
+      }
+      return candidates.sort((a, b) => a.workload - b.workload)[0];
+    }
+
+    // Strategy selector
+    document.querySelectorAll('[data-strategy]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-strategy]').forEach(b => b.classList.remove('btn--active'));
+        btn.classList.add('btn--active');
+        strategy = btn.dataset.strategy;
+      });
+    });
+
+    // Auto-assign
+    document.getElementById('btn-assign-all').addEventListener('click', () => {
+      const agents = getAgents();
+      const tasks = getUnassignedTasks();
+      for (const task of tasks) {
+        const agent = selectAgent(task, agents);
+        if (agent) assignTask(task, agent);
+      }
+    });
+
+    // Reset
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      Object.keys(distCounts).forEach(k => distCounts[k] = 0);
+      ['agent-1', 'agent-2', 'agent-3', 'agent-4'].forEach((id, i) => {
+        const initial = [0, 1, 2, 3][i];
+        updateAgentCard(id, initial);
+        distCounts[id] = 0;
+        const idx = i + 1;
+        document.getElementById(`dist-agent-${idx}`).style.height = '0px';
+        document.getElementById(`dist-count-${idx}`).textContent = '0';
+      });
+      document.querySelectorAll('.task-item').forEach(t => {
+        const assignee = t.querySelector('.task-item__assignee');
+        assignee.textContent = 'Unassigned';
+        assignee.classList.remove('task-item__assignee--assigned');
+      });
+    });
+  </script>
+</body>
+</html>
