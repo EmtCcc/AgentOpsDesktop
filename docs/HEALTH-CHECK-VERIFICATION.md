@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-476 (re-verification of CMPAAA-473)
+**Issue:** CMPAAA-478 (re-verification of CMPAAA-476)
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -43,7 +43,7 @@
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
 
-## Test Results (2026-05-29 — CMPAAA-476 re-verification)
+## Test Results (2026-05-29 — CMPAAA-478 re-verification)
 
 ```
 ✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
