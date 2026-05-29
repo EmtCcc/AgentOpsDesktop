@@ -43,7 +43,7 @@
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
 
-## Test Results (2026-05-29 — CMPAAA-500 re-verification)
+## Test Results (2026-05-29 — CMPAAA-501 final verification)
 
 ```
 ✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
@@ -51,10 +51,10 @@
 
 Test Files  2 passed (2)
 Tests       42 passed (42)
-Duration    221ms
+Duration    305ms
 ```
 
-### Smoke Test (2026-05-29 — CMPAAA-500 re-verification)
+### Smoke Test (2026-05-29 — CMPAAA-501 final verification)
 
 ```
 ✓ Returns HTTP 200
@@ -70,7 +70,7 @@ Duration    221ms
 ✓ Alerts array, status/alerts consistency
 ✓ Uptime stats: uptimePercent (0-100), breakdown, transitions
 
-All API smoke checks passed.
+All 24 API smoke checks passed.
 ```
 
 ## Monitoring Infrastructure
