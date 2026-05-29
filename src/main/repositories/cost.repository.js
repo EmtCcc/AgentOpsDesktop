@@ -66,6 +66,60 @@ class CostRepository {
       totalSpend: this.db.prepare(`
         SELECT COALESCE(SUM(cost_usd), 0) as total FROM agent_usage_logs WHERE created_at >= @since
       `),
+
+      // Per-model aggregation
+      sumSpendByModel: this.db.prepare(`
+        SELECT model, COALESCE(SUM(cost_usd), 0) as total_cost,
+               COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+               COALESCE(SUM(output_tokens), 0) as total_output_tokens,
+               COALESCE(SUM(total_tokens), 0) as total_tokens,
+               COUNT(*) as request_count
+        FROM agent_usage_logs
+        WHERE created_at >= @since
+        GROUP BY model
+        ORDER BY total_cost DESC
+      `),
+
+      // Per-task cost breakdown
+      sumSpendByTask: this.db.prepare(`
+        SELECT u.task_id, t.title as task_title, a.name as agent_name,
+               COALESCE(SUM(u.cost_usd), 0) as total_cost,
+               COALESCE(SUM(u.total_tokens), 0) as total_tokens,
+               COUNT(*) as request_count
+        FROM agent_usage_logs u
+        LEFT JOIN tasks t ON u.task_id = t.id
+        LEFT JOIN agents a ON u.agent_id = a.id
+        WHERE u.created_at >= @since AND u.task_id IS NOT NULL
+        GROUP BY u.task_id
+        ORDER BY total_cost DESC
+        LIMIT @limit
+      `),
+
+      // Per-agent token breakdown
+      sumTokensByAgent: this.db.prepare(`
+        SELECT u.agent_id, a.name as agent_name,
+               COALESCE(SUM(u.input_tokens), 0) as total_input_tokens,
+               COALESCE(SUM(u.output_tokens), 0) as total_output_tokens,
+               COALESCE(SUM(u.total_tokens), 0) as total_tokens,
+               COALESCE(SUM(u.cost_usd), 0) as total_cost,
+               COUNT(*) as request_count
+        FROM agent_usage_logs u
+        LEFT JOIN agents a ON u.agent_id = a.id
+        WHERE u.created_at >= @since
+        GROUP BY u.agent_id
+        ORDER BY total_cost DESC
+      `),
+
+      // Daily trends across all agents
+      sumSpendByPeriodAll: this.db.prepare(`
+        SELECT date(created_at) as day, COALESCE(SUM(cost_usd), 0) as total_cost,
+               COALESCE(SUM(total_tokens), 0) as total_tokens,
+               COUNT(*) as request_count
+        FROM agent_usage_logs
+        WHERE created_at >= @since AND created_at <= @until
+        GROUP BY date(created_at)
+        ORDER BY day
+      `),
     };
   }
 
@@ -234,6 +288,33 @@ class CostRepository {
   getTotalSpend(since) {
     const row = this._stmts.totalSpend.get({ since: since || this._monthStart() });
     return row ? row.total : 0;
+  }
+
+  getSpendByModel(since) {
+    return this._stmts.sumSpendByModel.all({ since: since || this._monthStart() });
+  }
+
+  getSpendByTask(since, limit = 25) {
+    return this._stmts.sumSpendByTask.all({ since: since || this._monthStart(), limit });
+  }
+
+  getTokensByAgent(since) {
+    return this._stmts.sumTokensByAgent.all({ since: since || this._monthStart() }).map((r) => ({
+      agentId: r.agent_id,
+      agentName: r.agent_name,
+      totalInputTokens: r.total_input_tokens,
+      totalOutputTokens: r.total_output_tokens,
+      totalTokens: r.total_tokens,
+      totalCost: r.total_cost,
+      requestCount: r.request_count,
+    }));
+  }
+
+  getSpendByPeriodAll(since, until) {
+    return this._stmts.sumSpendByPeriodAll.all({
+      since: since || this._monthStart(),
+      until: until || new Date().toISOString(),
+    });
   }
 
   // ── Period Management ──

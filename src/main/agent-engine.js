@@ -5,6 +5,7 @@ const { randomUUID } = require('crypto');
 const { EventEmitter } = require('events');
 const path = require('path');
 const _fs = require('fs');
+const { parseTokenUsage } = require('./token-parser');
 
 /**
  * Agent lifecycle states.
@@ -219,6 +220,11 @@ class AgentEngine extends EventEmitter {
       env.AGENT_SKILLS = JSON.stringify(skills);
     }
 
+    // Inject squad instructions into agent environment
+    if (config.instructions) {
+      env.AGENT_INSTRUCTIONS = config.instructions;
+    }
+
     let proc;
     try {
       proc = this._spawn(config.execPath, args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], shell: false });
@@ -266,7 +272,15 @@ class AgentEngine extends EventEmitter {
       const targetStatus = code === 0 ? AGENT_STATUS.TERMINATED : AGENT_STATUS.ERRORED;
       try { this._transition(agentId, targetStatus); } catch { /* already terminal */ }
 
-      this.emit('exit', { agentId, code, signal });
+      // Parse token usage from collected stdout logs
+      const stdoutStr = agent.logs.filter(l => l.type === 'stdout').map(l => l.data).join('');
+      const usage = parseTokenUsage(stdoutStr);
+      if (usage) {
+        agent.usage = usage;
+        this.emit('usage', { agentId, ...usage });
+      }
+
+      this.emit('exit', { agentId, code, signal, usage: agent.usage || null });
       this._handleUnexpectedExit(agentId, code);
     });
   }
@@ -409,6 +423,29 @@ class AgentEngine extends EventEmitter {
     if (agent._recoveryTimer) clearTimeout(agent._recoveryTimer);
     this.agents.delete(agentId);
     return true;
+  }
+
+  /**
+   * Send input data to a running agent's stdin.
+   * @param {string} agentId
+   * @param {string|Buffer} data
+   * @returns {Promise<void>}
+   */
+  async sendInput(agentId, data) {
+    const agent = this.agents.get(agentId);
+    if (!agent) throw new Error(`Agent not found: ${agentId}`);
+    if (!agent.process || agent.process.killed) {
+      throw new Error(`Agent process not running: ${agentId}`);
+    }
+    if (!agent.process.stdin || agent.process.stdin.destroyed) {
+      throw new Error(`stdin not available for agent: ${agentId}`);
+    }
+    return new Promise((resolve, reject) => {
+      agent.process.stdin.write(data, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 
   getValidTransitions(agentId) {

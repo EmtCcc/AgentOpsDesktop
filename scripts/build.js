@@ -90,6 +90,8 @@ const rendererConfig = {
   target: 'es2022',
   format: 'iife',
   sourcemap: true,
+  jsx: 'automatic',
+  jsxImportSource: 'react',
 };
 
 async function build() {

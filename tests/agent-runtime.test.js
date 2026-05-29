@@ -7,6 +7,9 @@ function createMockProc() {
   proc.killed = false;
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
+  proc.stdin = new EventEmitter();
+  proc.stdin.destroyed = false;
+  proc.stdin.write = vi.fn((data, cb) => { if (cb) cb(null); return true; });
   proc.kill = vi.fn(() => {
     proc.killed = true;
     return true;
@@ -248,6 +251,36 @@ describe('AgentRuntime', () => {
     it('throws if agent is still running', () => {
       const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/sleep' });
       expect(() => runtime.removeAgent(agentId)).toThrow('Cannot remove running agent');
+    });
+  });
+
+  describe('sendInput', () => {
+    it('writes data to agent stdin', async () => {
+      const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
+      await runtime.sendInput(agentId, 'hello agent\n');
+      expect(mockProc.stdin.write).toHaveBeenCalledWith('hello agent\n', expect.any(Function));
+    });
+
+    it('throws if agent not found', async () => {
+      await expect(runtime.sendInput('nonexistent', 'data')).rejects.toThrow('Agent not found');
+    });
+
+    it('throws if agent process not running', async () => {
+      const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
+      mockProc.killed = true;
+      await expect(runtime.sendInput(agentId, 'data')).rejects.toThrow('Agent process not running');
+    });
+
+    it('throws if stdin is destroyed', async () => {
+      const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
+      mockProc.stdin.destroyed = true;
+      await expect(runtime.sendInput(agentId, 'data')).rejects.toThrow('stdin not available');
+    });
+
+    it('propagates write errors', async () => {
+      const { agentId } = runtime.spawnAgent({ execPath: '/usr/bin/echo' });
+      mockProc.stdin.write = vi.fn((data, cb) => { cb(new Error('write failed')); return true; });
+      await expect(runtime.sendInput(agentId, 'data')).rejects.toThrow('write failed');
     });
   });
 

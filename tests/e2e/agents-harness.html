@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Agents</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div>
+            <div class="header__title">AgentOps</div>
+            <div class="header__subtitle">Desktop</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Overview</div>
+        <a class="sidebar__item" data-page="dashboard">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </div>
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Operations</div>
+        <a class="sidebar__item sidebar__item--active" data-page="agents">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg></span>
+          <span class="sidebar__label">Agents</span>
+          <span class="sidebar__item-badge">3</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Agents</h1>
+          <p class="page-header__desc">Manage your AI agent fleet</p>
+        </div>
+        <button class="btn btn--primary" id="btn-add-agent">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Agent
+        </button>
+      </div>
+
+      <div class="agent-list" id="agent-list">
+        <div class="agent-card card" data-agent-id="agent-1">
+          <div class="agent-card__header">
+            <span class="status-dot status-dot--running" data-status="running"></span>
+            <span class="agent-card__name">Claude Code</span>
+            <span class="agent-card__type badge badge--info">Claude Code</span>
+          </div>
+          <div class="agent-card__meta">
+            <span class="agent-card__status badge badge--success">Running</span>
+          </div>
+          <div class="agent-card__actions">
+            <button class="btn btn--sm btn--secondary" data-action="health-check">Health Check</button>
+            <button class="btn btn--sm btn--danger" data-action="delete">Delete</button>
+          </div>
+        </div>
+
+        <div class="agent-card card" data-agent-id="agent-2">
+          <div class="agent-card__header">
+            <span class="status-dot status-dot--idle" data-status="idle"></span>
+            <span class="agent-card__name">Codex Agent</span>
+            <span class="agent-card__type badge badge--info">Codex</span>
+          </div>
+          <div class="agent-card__meta">
+            <span class="agent-card__status badge badge--neutral">Idle</span>
+          </div>
+          <div class="agent-card__actions">
+            <button class="btn btn--sm btn--secondary" data-action="health-check">Health Check</button>
+            <button class="btn btn--sm btn--danger" data-action="delete">Delete</button>
+          </div>
+        </div>
+
+        <div class="agent-card card" data-agent-id="agent-3">
+          <div class="agent-card__header">
+            <span class="status-dot status-dot--error" data-status="error"></span>
+            <span class="agent-card__name">Gemini CLI</span>
+            <span class="agent-card__type badge badge--info">Gemini CLI</span>
+          </div>
+          <div class="agent-card__meta">
+            <span class="agent-card__status badge badge--danger">Error</span>
+          </div>
+          <div class="agent-card__actions">
+            <button class="btn btn--sm btn--secondary" data-action="health-check">Health Check</button>
+            <button class="btn btn--sm btn--danger" data-action="delete">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Agent Modal -->
+      <div class="modal-overlay" id="modal-overlay" style="display:none;">
+        <div class="modal" role="dialog" aria-label="Add Agent">
+          <div class="modal__header">
+            <h2 class="modal__title">Add Agent</h2>
+            <button class="modal__close" id="modal-cancel" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal__body">
+            <div class="form-group">
+              <label for="agent-name">Name</label>
+              <input type="text" id="agent-name" placeholder="My Agent" />
+            </div>
+            <div class="form-group">
+              <label for="agent-type">Type</label>
+              <select id="agent-type">
+                <option value="claude-code">Claude Code</option>
+                <option value="codex">Codex</option>
+                <option value="gemini-cli">Gemini CLI</option>
+                <option value="opencode">OpenCode</option>
+                <option value="cursor">Cursor</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="agent-path">Executable Path</label>
+              <input type="text" id="agent-path" placeholder="/usr/local/bin/agent" />
+            </div>
+            <div class="form-group">
+              <label for="agent-cwd">Working Directory</label>
+              <input type="text" id="agent-cwd" placeholder="/home/user/project" />
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" id="modal-cancel-btn">Cancel</button>
+            <button class="btn btn--primary" id="modal-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running"></span>
+          <span>System ready</span>
+        </div>
+        <div class="footer__divider"></div>
+        <span>3 agents</span>
+      </div>
+      <div class="footer__right">
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Minimal modal toggle
+    const overlay = document.getElementById('modal-overlay');
+    document.getElementById('btn-add-agent').addEventListener('click', () => {
+      overlay.style.display = 'flex';
+    });
+    document.getElementById('modal-cancel').addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+    document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.style.display = 'none';
+    });
+  </script>
+</body>
+</html>

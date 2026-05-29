@@ -2,6 +2,7 @@
 
 const { spawn } = require('child_process');
 const { AgentAdapter } = require('../adapter-registry');
+const { PlainTextParser } = require('../parsers');
 
 /**
  * Generic CLI adapter — reference implementation.
@@ -15,6 +16,9 @@ const { AgentAdapter } = require('../adapter-registry');
  *   timeoutMs — optional kill-after timeout (default: 300000 = 5min)
  */
 class GenericCliAdapter extends AgentAdapter {
+  /** @type {number} monotonic counter for unique instance IDs */
+  static _seq = 0;
+
   constructor(config = {}) {
     super(config);
     this.name = config.name || 'generic-cli';
@@ -30,7 +34,7 @@ class GenericCliAdapter extends AgentAdapter {
   async spawn(params = {}) {
     if (!this.execPath) throw new Error('execPath is required');
 
-    const instanceId = params.instanceId || `${this.type}-${Date.now()}`;
+    const instanceId = params.instanceId || `${this.type}-${Date.now()}-${++GenericCliAdapter._seq}`;
     const args = params.args || this.defaultArgs;
     const cwd = params.cwd || this.defaultCwd;
     const env = { ...process.env, ...this.defaultEnv, ...(params.env || {}) };
@@ -117,6 +121,39 @@ class GenericCliAdapter extends AgentAdapter {
         reject(err);
       });
     });
+  }
+
+  async sendInput(instanceId, data) {
+    const proc = this.instances.get(instanceId);
+    if (!proc) throw new Error(`Instance not found: ${instanceId}`);
+    if (!proc.stdin || proc.stdin.destroyed) {
+      throw new Error(`stdin not available for instance: ${instanceId}`);
+    }
+    return new Promise((resolve, reject) => {
+      proc.stdin.write(data, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  readStream(instanceId, stream = 'stdout') {
+    const proc = this.instances.get(instanceId);
+    if (!proc) throw new Error(`Instance not found: ${instanceId}`);
+    const s = proc[stream];
+    if (!s) throw new Error(`${stream} not available for instance: ${instanceId}`);
+    return s;
+  }
+
+  async resumeSession(instanceId) {
+    const proc = this.instances.get(instanceId);
+    if (!proc) return { alive: false };
+    if (proc.killed || proc.exitCode !== null) return { alive: false };
+    return { alive: true, pid: proc.pid };
+  }
+
+  getOutputParser() {
+    return new PlainTextParser();
   }
 }
 

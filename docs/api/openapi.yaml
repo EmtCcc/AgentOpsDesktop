@@ -1,0 +1,1927 @@
+openapi: "3.0.3"
+info:
+  title: AgentOps Desktop HTTP API
+  description: |
+    HTTP REST API for AgentOps Desktop — manage AI agents, goals, tasks, schedules, squads, cost budgets, adapters, and skills.
+
+    **Base URL:** `http://localhost:3967`
+    **Authentication:** Bearer token via `POST /auth/login`. Include as `Authorization: Bearer <token>` on all `/api/*` routes.
+    **Default port:** 3967 (configurable via `PORT` env var)
+  version: "0.2.0"
+  contact:
+    name: AgentOps Team
+  license:
+    name: UNLICENSED
+servers:
+  - url: "http://localhost:3967"
+    description: Local HTTP API server
+tags:
+  - name: Auth
+    description: Session management — login, logout, token rotation
+  - name: Health
+    description: System health check and monitoring
+  - name: Agents
+    description: Agent configuration CRUD
+  - name: Goals
+    description: Goal management
+  - name: Tasks
+    description: Task management and handoffs
+  - name: Logs
+    description: Log entry management
+  - name: Stats
+    description: Dashboard statistics
+  - name: Settings
+    description: Application settings
+  - name: Schedules
+    description: Cron-based task scheduling
+  - name: Squads
+    description: Agent grouping for batch operations
+  - name: Cost
+    description: Budget management and usage tracking
+  - name: Adapters
+    description: Adapter configuration management
+  - name: Adapter Registry
+    description: Adapter package management
+  - name: Skills
+    description: Skill management
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Session token from POST /auth/login
+  schemas:
+    Error:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: NOT_FOUND
+            message:
+              type: string
+              example: Resource not found
+            status:
+              type: integer
+              example: 404
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "agent-1"
+        name:
+          type: string
+          example: "claude-dev"
+        type:
+          type: string
+          enum: [autonomous, supervised, manual]
+          example: autonomous
+        status:
+          type: string
+          enum: [idle, running, paused, error]
+          example: idle
+        command:
+          type: string
+          nullable: true
+        execPath:
+          type: string
+          nullable: true
+          example: /usr/local/bin/claude
+        cwd:
+          type: string
+          nullable: true
+          example: /project
+        createdAt:
+          type: integer
+          example: 1716900000000
+        updatedAt:
+          type: integer
+          example: 1716900000000
+    Goal:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "goal-1"
+        title:
+          type: string
+          example: Ship MVP
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, completed, archived]
+          example: active
+        taskIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "task-1"
+        title:
+          type: string
+          example: Implement auth
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, assigned, running, done, failed, blocked]
+          example: pending
+        goalId:
+          type: string
+          nullable: true
+        assigneeAgentId:
+          type: string
+          nullable: true
+        dependsOn:
+          type: object
+          nullable: true
+        output:
+          type: object
+          nullable: true
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+          nullable: true
+        taskId:
+          type: string
+          nullable: true
+        message:
+          type: string
+        level:
+          type: string
+          enum: [debug, info, warn, error]
+        stream:
+          type: string
+          enum: [stdout, stderr]
+        timestamp:
+          type: integer
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cronExpr:
+          type: string
+          example: "0 9 * * *"
+        goalId:
+          type: string
+          nullable: true
+        agentId:
+          type: string
+          nullable: true
+        taskTemplate:
+          type: object
+          nullable: true
+        maxExecutions:
+          type: integer
+          nullable: true
+        enabled:
+          type: boolean
+        nextRunAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    Squad:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        leaderId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [idle, running, error]
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              agentId:
+                type: string
+              role:
+                type: string
+                enum: [member, leader]
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+        monthlyLimit:
+          type: number
+        currency:
+          type: string
+          example: USD
+        warnPct:
+          type: number
+        pausePct:
+          type: number
+        stopPct:
+          type: number
+        currentSpend:
+          type: number
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    Adapter:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          example: claude
+        name:
+          type: string
+        classPath:
+          type: string
+          nullable: true
+        config:
+          type: object
+          nullable: true
+        enabled:
+          type: boolean
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+    Skill:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+        tags:
+          type: object
+          nullable: true
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+paths:
+  # ── Health ──
+  /health:
+    get:
+      summary: System health check
+      operationId: healthCheck
+      tags: [Health]
+      responses:
+        "200":
+          description: OK or degraded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded, unhealthy]
+                  ts:
+                    type: string
+                    format: date-time
+                  uptimeMs:
+                    type: integer
+                  memory:
+                    type: object
+                  system:
+                    type: object
+                  ipc:
+                    type: object
+                  renderer:
+                    type: object
+                  app:
+                    type: object
+                  db:
+                    type: object
+                  alerts:
+                    type: array
+                  uptime:
+                    type: object
+        "503":
+          description: Unhealthy
+
+  # ── Auth ──
+  /auth/login:
+    post:
+      summary: Create session
+      operationId: authLogin
+      tags: [Auth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  default: operator
+      responses:
+        "200":
+          description: Token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      role:
+                        type: string
+                      expiresAt:
+                        type: integer
+
+  /auth/logout:
+    post:
+      summary: Destroy session
+      operationId: authLogout
+      tags: [Auth]
+      responses:
+        "200":
+          description: Session destroyed
+
+  /auth/status:
+    get:
+      summary: Check session validity
+      operationId: authStatus
+      tags: [Auth]
+      responses:
+        "200":
+          description: Session info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+  /auth/rotate:
+    post:
+      summary: Rotate session token
+      operationId: authRotate
+      tags: [Auth]
+      responses:
+        "200":
+          description: New token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      role:
+                        type: string
+                      expiresAt:
+                        type: integer
+
+  # ── Agents ──
+  /api/agents:
+    get:
+      summary: List agents
+      operationId: agentsList
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [idle, running, paused, error] }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [name, status, createdAt, updatedAt] }
+        - name: sortOrder
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        "200":
+          description: Agent list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Agent" }
+    post:
+      summary: Create agent
+      operationId: agentsCreate
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                type: { type: string, enum: [autonomous, supervised, manual] }
+                command: { type: string, maxLength: 1000 }
+                execPath: { type: string, maxLength: 1000 }
+                cwd: { type: string, maxLength: 500 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Agent" }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/agents/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get agent
+      operationId: agentsGet
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Agent" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Update agent
+      operationId: agentsUpdate
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                type: { type: string, enum: [autonomous, supervised, manual] }
+                status: { type: string, enum: [idle, running, paused, error] }
+                command: { type: string }
+                execPath: { type: string }
+                cwd: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Agent" }
+        "404":
+          description: Not found
+    delete:
+      summary: Delete agent
+      operationId: agentsDelete
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  # ── Goals ──
+  /api/goals:
+    get:
+      summary: List goals
+      operationId: goalsList
+      tags: [Goals]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: status, in: query, schema: { type: string, enum: [active, completed, archived] } }
+        - { name: sortBy, in: query, schema: { type: string, enum: [title, status, createdAt, updatedAt] } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses:
+        "200":
+          description: Goal list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Goal" }
+    post:
+      summary: Create goal
+      operationId: goalsCreate
+      tags: [Goals]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 500 }
+                description: { type: string, maxLength: 5000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Goal" }
+
+  /api/goals/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get goal
+      operationId: goalsGet
+      tags: [Goals]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Goal
+        "404":
+          description: Not found
+    patch:
+      summary: Update goal
+      operationId: goalsUpdate
+      tags: [Goals]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                status: { type: string, enum: [active, completed, archived] }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete goal
+      operationId: goalsDelete
+      tags: [Goals]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  # ── Tasks ──
+  /api/tasks:
+    get:
+      summary: List tasks
+      operationId: tasksList
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, assigned, running, done, failed, blocked] } }
+        - { name: goalId, in: query, schema: { type: string } }
+        - { name: sortBy, in: query, schema: { type: string, enum: [createdAt, updatedAt, title, status] } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses:
+        "200":
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Task" }
+    post:
+      summary: Create task
+      operationId: tasksCreate
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 500 }
+                description: { type: string, maxLength: 5000 }
+                goalId: { type: string }
+                assigneeAgentId: { type: string }
+                dependsOn: { type: object }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Task" }
+
+  /api/tasks/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get task
+      operationId: tasksGet
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Task
+        "404":
+          description: Not found
+    patch:
+      summary: Update task
+      operationId: tasksUpdate
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                status: { type: string, enum: [pending, assigned, running, done, failed, blocked] }
+                goalId: { type: string }
+                assigneeAgentId: { type: string }
+                output: { type: object }
+                dependsOn: { type: object }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete task
+      operationId: tasksDelete
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /api/tasks/{id}/upstream:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get upstream task outputs
+      operationId: tasksUpstream
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Upstream outputs
+        "404":
+          description: Task not found
+
+  /api/tasks/{id}/handoffs:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: List task handoffs
+      operationId: tasksHandoffs
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Handoffs (outgoing + incoming)
+        "404":
+          description: Task not found
+
+  # ── Logs ──
+  /api/logs:
+    get:
+      summary: List log entries
+      operationId: logsList
+      tags: [Logs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: agentId, in: query, schema: { type: string } }
+        - { name: taskId, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/LogEntry" }
+    post:
+      summary: Append log entry
+      operationId: logsAppend
+      tags: [Logs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                agentId: { type: string }
+                taskId: { type: string }
+                message: { type: string }
+                level: { type: string, enum: [debug, info, warn, error] }
+                stream: { type: string, enum: [stdout, stderr] }
+      responses:
+        "201":
+          description: Created
+
+  # ── Stats ──
+  /api/stats/summary:
+    get:
+      summary: Dashboard statistics
+      operationId: statsSummary
+      tags: [Stats]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Aggregate stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      agents:
+                        type: object
+                        properties:
+                          total: { type: integer }
+                          running: { type: integer }
+                          idle: { type: integer }
+                          error: { type: integer }
+                      tasks:
+                        type: object
+                        properties:
+                          total: { type: integer }
+                          pending: { type: integer }
+                          running: { type: integer }
+                          done: { type: integer }
+                          failed: { type: integer }
+                      goals:
+                        type: object
+                        properties:
+                          total: { type: integer }
+                          active: { type: integer }
+                          completed: { type: integer }
+
+  # ── Settings ──
+  /api/settings:
+    get:
+      summary: Get all settings
+      operationId: settingsGet
+      tags: [Settings]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Settings
+    patch:
+      summary: Update settings
+      operationId: settingsUpdate
+      tags: [Settings]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [settings]
+              properties:
+                settings: { type: object }
+      responses:
+        "200":
+          description: Updated settings
+
+  # ── Schedules ──
+  /api/schedules:
+    get:
+      summary: List schedules
+      operationId: schedulesList
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200":
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Schedule" }
+                  total: { type: integer }
+    post:
+      summary: Create schedule
+      operationId: schedulesCreate
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, cronExpr]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                cronExpr: { type: string, minLength: 1 }
+                goalId: { type: string }
+                agentId: { type: string }
+                taskTemplate: { type: object }
+                maxExecutions: { type: integer }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data: { $ref: "#/components/schemas/Schedule" }
+
+  /api/schedules/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get schedule
+      operationId: schedulesGet
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Schedule
+        "404":
+          description: Not found
+    patch:
+      summary: Update schedule
+      operationId: schedulesUpdate
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                cronExpr: { type: string }
+                goalId: { type: string }
+                agentId: { type: string }
+                taskTemplate: { type: object }
+                maxExecutions: { type: integer }
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete schedule
+      operationId: schedulesDelete
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /api/schedules/{id}/pause:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Pause schedule
+      operationId: schedulesPause
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Paused
+        "404":
+          description: Not found
+
+  /api/schedules/{id}/resume:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Resume schedule
+      operationId: schedulesResume
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Resumed
+        "404":
+          description: Not found
+
+  /api/schedules/{id}/logs:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get schedule trigger logs
+      operationId: schedulesLogs
+      tags: [Schedules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200":
+          description: Trigger logs
+        "404":
+          description: Not found
+
+  # ── Squads ──
+  /api/squads:
+    get:
+      summary: List squads
+      operationId: squadsList
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: status, in: query, schema: { type: string, enum: [idle, running, error] } }
+      responses:
+        "200":
+          description: Squad list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Squad" }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      offset: { type: integer }
+                      limit: { type: integer }
+    post:
+      summary: Create squad
+      operationId: squadsCreate
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                description: { type: string, maxLength: 1000 }
+                leaderId: { type: string }
+                members:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: object
+                        properties:
+                          agentId: { type: string }
+                          role: { type: string, enum: [member, leader] }
+      responses:
+        "201":
+          description: Created
+        "404":
+          description: Not found
+
+  /api/squads/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get squad
+      operationId: squadsGet
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Squad
+        "404":
+          description: Not found
+    patch:
+      summary: Update squad
+      operationId: squadsUpdate
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                leaderId: { type: string }
+                status: { type: string, enum: [idle, running, error] }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete squad
+      operationId: squadsDelete
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /api/squads/{id}/members:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Add squad member
+      operationId: squadsAddMember
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId]
+              properties:
+                agentId: { type: string }
+                role: { type: string, enum: [member, leader] }
+      responses:
+        "201":
+          description: Member added
+        "404":
+          description: Squad not found
+
+  /api/squads/{id}/members/{agentId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: agentId, in: path, required: true, schema: { type: string } }
+    delete:
+      summary: Remove squad member
+      operationId: squadsRemoveMember
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Member removed
+        "404":
+          description: Member not found
+
+  /api/squads/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get squad status
+      operationId: squadsStatus
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Aggregated squad status
+        "404":
+          description: Not found
+
+  /api/squads/{id}/start:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Start squad
+      operationId: squadsStart
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Squad started
+        "404":
+          description: Not found
+
+  /api/squads/{id}/stop:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Stop squad
+      operationId: squadsStop
+      tags: [Squads]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Squad stopped
+        "404":
+          description: Not found
+
+  # ── Cost ──
+  /api/cost/budgets:
+    get:
+      summary: List budgets
+      operationId: costBudgetsList
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Budget list
+    post:
+      summary: Create budget
+      operationId: costBudgetsCreate
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, monthlyLimit]
+              properties:
+                agentId: { type: string }
+                monthlyLimit: { type: number }
+                currency: { type: string }
+                warnPct: { type: number }
+                pausePct: { type: number }
+                stopPct: { type: number }
+      responses:
+        "201":
+          description: Created
+        "409":
+          description: Budget already exists for agent
+
+  /api/cost/budgets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get budget
+      operationId: costBudgetsGet
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Budget
+        "404":
+          description: Not found
+    patch:
+      summary: Update budget
+      operationId: costBudgetsUpdate
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                monthlyLimit: { type: number }
+                currency: { type: string }
+                warnPct: { type: number }
+                pausePct: { type: number }
+                stopPct: { type: number }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete budget
+      operationId: costBudgetsDelete
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /api/cost/budgets/{id}/reset:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Reset monthly budget
+      operationId: costBudgetsReset
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Reset
+        "404":
+          description: Not found
+
+  /api/cost/budgets/agent/{agentId}:
+    parameters:
+      - { name: agentId, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get budget by agent
+      operationId: costBudgetsByAgent
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Budget
+        "404":
+          description: Not found
+
+  /api/cost/usage:
+    get:
+      summary: List usage records
+      operationId: costUsageList
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: agentId, in: query, schema: { type: string } }
+        - { name: taskId, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200":
+          description: Usage records
+        "422":
+          description: agentId or taskId required
+    post:
+      summary: Log usage
+      operationId: costUsageLog
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId]
+              properties:
+                agentId: { type: string }
+                taskId: { type: string }
+                inputTokens: { type: number }
+                outputTokens: { type: number }
+                costUsd: { type: number }
+                model: { type: string }
+                provider: { type: string }
+      responses:
+        "201":
+          description: Usage logged
+
+  /api/cost/reports:
+    get:
+      summary: Cost reports
+      operationId: costReports
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: agentId, in: query, schema: { type: string } }
+        - { name: goalId, in: query, schema: { type: string } }
+        - { name: since, in: query, schema: { type: string } }
+        - { name: until, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Cost report
+
+  /api/cost/reports/agent/{agentId}/period:
+    parameters:
+      - { name: agentId, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Spend by period for agent
+      operationId: costReportsAgentPeriod
+      tags: [Cost]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: since, in: query, schema: { type: string } }
+        - { name: until, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Spend by period
+
+  # ── Adapters ──
+  /api/adapters:
+    get:
+      summary: List adapters
+      operationId: adaptersList
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: enabled, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Adapter list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Adapter" }
+                  total: { type: integer }
+    post:
+      summary: Create adapter
+      operationId: adaptersCreate
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, minLength: 1, maxLength: 100 }
+                name: { type: string, maxLength: 200 }
+                classPath: { type: string }
+                config: { type: object }
+                enabled: { type: boolean }
+      responses:
+        "201":
+          description: Created
+        "409":
+          description: Adapter type already exists
+
+  /api/adapters/loaded:
+    get:
+      summary: List loaded adapters
+      operationId: adaptersLoaded
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Loaded adapters
+
+  /api/adapters/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get adapter
+      operationId: adaptersGet
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Adapter
+        "404":
+          description: Not found
+    patch:
+      summary: Update adapter
+      operationId: adaptersUpdate
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                classPath: { type: string }
+                config: { type: object }
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete adapter
+      operationId: adaptersDelete
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /api/adapters/{id}/load:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Load adapter into registry
+      operationId: adaptersLoad
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Loaded
+        "404":
+          description: Not found
+        "422":
+          description: Load error
+
+  /api/adapters/{id}/unload:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Unload adapter from registry
+      operationId: adaptersUnload
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Unloaded
+        "404":
+          description: Not found
+
+  /api/adapters/{id}/health-check:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Adapter health check
+      operationId: adaptersHealthCheck
+      tags: [Adapters]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Health result
+        "404":
+          description: Not found
+
+  # ── Adapter Registry ──
+  /api/adapter-registry/search:
+    get:
+      summary: Search adapters
+      operationId: adapterRegistrySearch
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1 } }
+        - { name: remote, in: query, schema: { type: boolean } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200":
+          description: Search results
+
+  /api/adapter-registry/installed:
+    get:
+      summary: List installed packages
+      operationId: adapterRegistryInstalled
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: source, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Installed packages
+
+  /api/adapter-registry/featured:
+    get:
+      summary: Featured adapters
+      operationId: adapterRegistryFeatured
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Featured adapters
+
+  /api/adapter-registry/updates:
+    get:
+      summary: Check for updates
+      operationId: adapterRegistryUpdates
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Available updates
+
+  /api/adapter-registry/scan:
+    get:
+      summary: Scan local adapters
+      operationId: adapterRegistryScan
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Discovered adapters
+
+  /api/adapter-registry/package/{name}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get package details
+      operationId: adapterRegistryPackage
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Package details
+        "404":
+          description: Not found
+
+  /api/adapter-registry/install:
+    post:
+      summary: Install from remote
+      operationId: adapterRegistryInstall
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                version: { type: string }
+                autoLoad: { type: boolean }
+      responses:
+        "201":
+          description: Installed
+        "422":
+          description: Install error
+
+  /api/adapter-registry/install-file:
+    post:
+      summary: Install from local file
+      operationId: adapterRegistryInstallFile
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filePath]
+              properties:
+                filePath: { type: string }
+                name: { type: string }
+                autoLoad: { type: boolean }
+      responses:
+        "201":
+          description: Installed
+        "422":
+          description: Install error
+
+  /api/adapter-registry/register-local:
+    post:
+      summary: Register local adapter
+      operationId: adapterRegistryRegisterLocal
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [discovered]
+              properties:
+                discovered: { type: object }
+      responses:
+        "201":
+          description: Registered
+        "422":
+          description: Registration error
+
+  /api/adapter-registry/uninstall:
+    post:
+      summary: Uninstall adapter
+      operationId: adapterRegistryUninstall
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                removeFiles: { type: boolean }
+      responses:
+        "200":
+          description: Uninstalled
+        "422":
+          description: Uninstall error
+
+  /api/adapter-registry/update:
+    post:
+      summary: Update adapter
+      operationId: adapterRegistryUpdate
+      tags: [Adapter Registry]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                version: { type: string }
+      responses:
+        "200":
+          description: Updated
+        "422":
+          description: Update error
+
+  # ── Skills ──
+  /api/skills:
+    get:
+      summary: List skills
+      operationId: skillsList
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: tags, in: query, schema: { type: string, description: "Comma-separated tags" } }
+        - { name: search, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Skill list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Skill" }
+    post:
+      summary: Create skill
+      operationId: skillsCreate
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, content]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                description: { type: string, maxLength: 2000 }
+                content: { type: string, minLength: 1 }
+                tags: { type: object }
+      responses:
+        "201":
+          description: Created
+        "409":
+          description: Skill name already exists
+
+  /api/skills/tags:
+    get:
+      summary: List all tags
+      operationId: skillsTags
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Tag list
+
+  /api/skills/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Get skill
+      operationId: skillsGet
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Skill
+        "404":
+          description: Not found
+    patch:
+      summary: Update skill
+      operationId: skillsUpdate
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                content: { type: string }
+                tags: { type: object }
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      summary: Delete skill
+      operationId: skillsDelete
+      tags: [Skills]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+        "404":
+          description: Not found

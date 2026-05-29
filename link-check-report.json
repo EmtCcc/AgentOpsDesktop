@@ -54,8 +54,39 @@
     "unreachable": true
   },
   "redirects": {
-    "total": 0,
-    "ok": 0,
+    "total": 37,
+    "ok": 37,
     "broken": []
+  },
+  "spaRoutes": {
+    "total": 11,
+    "ok": 6,
+    "broken": [
+      {
+        "path": "/agents/:agentId",
+        "component": "AgentDetailPage",
+        "issue": "component file not found"
+      },
+      {
+        "path": "/tasks/:taskId",
+        "component": "TaskDetailPage",
+        "issue": "component file not found"
+      },
+      {
+        "path": "/settings/agents",
+        "component": "AgentSettingsPage",
+        "issue": "component file not found"
+      },
+      {
+        "path": "/settings/governance",
+        "component": "GovernanceSettingsPage",
+        "issue": "component file not found"
+      },
+      {
+        "path": "/workflows/:workflowId",
+        "component": "WorkflowDetailPage",
+        "issue": "component file not found"
+      }
+    ]
   }
 }

@@ -6,10 +6,10 @@ const { randomUUID } = require('crypto');
  * Repository for skill CRUD operations against SQLite.
  *
  * DB schema:
- *   skills(id, name, description, content, tags, created_at, updated_at)
+ *   skills(id, name, description, content, tags, version, allowed_tools, hooks, created_at, updated_at)
  *   skill_tags(skill_id, tag)
  *
- * API fields: id, name, description, content, tags[], createdAt, updatedAt
+ * API fields: id, name, description, content, tags[], version, allowedTools, hooks, createdAt, updatedAt
  */
 class SkillRepository {
   constructor(db) {
@@ -20,13 +20,14 @@ class SkillRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO skills (id, name, description, content, tags, created_at, updated_at)
-        VALUES (@id, @name, @description, @content, @tags, @createdAt, @updatedAt)
+        INSERT INTO skills (id, name, description, content, tags, version, allowed_tools, hooks, created_at, updated_at)
+        VALUES (@id, @name, @description, @content, @tags, @version, @allowedTools, @hooks, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE skills
         SET name = @name, description = @description, content = @content,
-            tags = @tags, updated_at = @updatedAt
+            tags = @tags, version = @version, allowed_tools = @allowedTools,
+            hooks = @hooks, updated_at = @updatedAt
         WHERE id = @id
       `),
       delete: this.db.prepare('DELETE FROM skills WHERE id = @id'),
@@ -62,6 +63,9 @@ class SkillRepository {
       description: row.description || null,
       content: row.content,
       tags: row.tags ? JSON.parse(row.tags) : [],
+      version: row.version || null,
+      allowedTools: row.allowed_tools ? JSON.parse(row.allowed_tools) : [],
+      hooks: row.hooks ? JSON.parse(row.hooks) : {},
       createdAt: new Date(row.created_at).getTime(),
       updatedAt: new Date(row.updated_at).getTime(),
     };
@@ -75,6 +79,9 @@ class SkillRepository {
       description: skill.description || null,
       content: skill.content,
       tags: JSON.stringify(skill.tags || []),
+      version: skill.version || null,
+      allowedTools: JSON.stringify(skill.allowedTools || []),
+      hooks: JSON.stringify(skill.hooks || {}),
       createdAt: skill.createdAt ? new Date(skill.createdAt).toISOString() : now,
       updatedAt: now,
     };

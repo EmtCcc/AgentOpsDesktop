@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Logs</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div>
+            <div class="header__title">AgentOps</div>
+            <div class="header__subtitle">Desktop</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Overview</div>
+        <a class="sidebar__item" data-page="dashboard">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </div>
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Operations</div>
+        <a class="sidebar__item sidebar__item--active" data-page="logs">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
+          <span class="sidebar__label">Logs</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Logs</h1>
+          <p class="page-header__desc">Real-time agent log viewer</p>
+        </div>
+      </div>
+
+      <div class="logs-toolbar">
+        <input type="search" id="logs-search" class="logs-search" placeholder="Search logs..." aria-label="Search logs" />
+        <select id="logs-filter-agent" class="logs-filter" aria-label="Filter by agent">
+          <option value="">All agents</option>
+          <option value="agent-1">Claude Code</option>
+          <option value="agent-2">Codex Agent</option>
+          <option value="agent-3">Gemini CLI</option>
+        </select>
+        <select id="logs-filter-level" class="logs-filter" aria-label="Filter by level">
+          <option value="">All levels</option>
+          <option value="debug">Debug</option>
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="error">Error</option>
+        </select>
+        <button class="btn btn--sm btn--secondary" id="btn-logs-refresh" aria-label="Refresh logs">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn--sm btn--danger" id="btn-logs-clear" aria-label="Clear logs">Clear</button>
+      </div>
+
+      <div class="log-viewer" id="log-viewer" role="log" aria-label="Agent logs" aria-live="polite">
+        <div class="log-entry" data-level="info" data-agent="agent-1">
+          <span class="log-entry__time">01:00:00</span>
+          <span class="log-entry__level badge badge--info">INFO</span>
+          <span class="log-entry__agent">Claude Code</span>
+          <span class="log-entry__message">Task "Design schema" completed successfully</span>
+        </div>
+        <div class="log-entry" data-level="info" data-agent="agent-2">
+          <span class="log-entry__time">01:00:05</span>
+          <span class="log-entry__level badge badge--info">INFO</span>
+          <span class="log-entry__agent">Codex Agent</span>
+          <span class="log-entry__message">Task "Implement CRUD" started</span>
+        </div>
+        <div class="log-entry" data-level="warning" data-agent="agent-3">
+          <span class="log-entry__time">01:00:10</span>
+          <span class="log-entry__level badge badge--warning">WARN</span>
+          <span class="log-entry__agent">Gemini CLI</span>
+          <span class="log-entry__message">Connection timeout — retrying (attempt 2/3)</span>
+        </div>
+        <div class="log-entry" data-level="error" data-agent="agent-3">
+          <span class="log-entry__time">01:00:15</span>
+          <span class="log-entry__level badge badge--danger">ERROR</span>
+          <span class="log-entry__agent">Gemini CLI</span>
+          <span class="log-entry__message">Failed to connect after 3 retries</span>
+        </div>
+        <div class="log-entry" data-level="debug" data-agent="agent-1">
+          <span class="log-entry__time">01:00:20</span>
+          <span class="log-entry__level badge badge--neutral">DEBUG</span>
+          <span class="log-entry__agent">Claude Code</span>
+          <span class="log-entry__message">Heartbeat OK — 128MB heap used</span>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running"></span>
+          <span>System ready</span>
+        </div>
+      </div>
+      <div class="footer__right">
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

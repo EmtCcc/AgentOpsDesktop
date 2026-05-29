@@ -1,0 +1,38 @@
+Benchmarking is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ RUN  v2.1.9 /Users/cc_1/Documents/AgentOpsDesktop
+
+ ✓ tests/benchmarks/perf.bench.js > Agent Spawn Latency 1950ms
+     name                                             hz     min      max    mean     p75     p99    p995    p999      rme  samples
+   · spawnAgent orchestration (mock process)  209,721.19  0.0022  14.5888  0.0048  0.0029  0.0063  0.0081  0.0376  ±14.85%   104861
+   · healthCheck (valid path)                 375,323.80  0.0023   0.4860  0.0027  0.0027  0.0037  0.0041  0.0060   ±0.36%   187662   fastest
+   · healthCheck (PATH lookup)                  1,005.29  0.8945   2.7360  0.9947  1.0045  1.3239  1.6348  2.7360   ±0.95%      503   slowest
+ ✓ tests/benchmarks/perf.bench.js > Log Stream Throughput 1682ms
+     name                               hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · append 1000 log entries      4,508.90  0.1993  1.0519  0.2218  0.2263  0.2367  0.7383  0.9385  ±0.93%     2255
+   · append single entry      3,904,838.91  0.0001  1.0600  0.0003  0.0003  0.0003  0.0004  0.0006  ±1.48%  1952420   fastest
+ ✓ tests/benchmarks/perf.bench.js > Monitor Health Check 1235ms
+     name                                     hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · getHealth() snapshot             124,101.22  0.0066  0.5943  0.0081  0.0081  0.0144  0.0186  0.0308  ±0.35%    62051
+   · recordIpcCall + getHealth cycle  126,262.65  0.0064  0.6337  0.0079  0.0080  0.0127  0.0152  0.0267  ±0.39%    63132   fastest
+ ✓ tests/benchmarks/perf.bench.js > Agent Engine 1209ms
+     name                                       hz     min      max    mean     p75     p99    p995    p999     rme  samples
+   · spawnAgent + getAgent (mock spawn)  14,752.43  0.0558  11.3076  0.0678  0.0628  0.0978  0.1641  0.5252  ±5.37%     7377   fastest
+   · listAgents (10 agents)               1,505.25  0.6124   4.0808  0.6643  0.6416  0.7699  3.8167  4.0808  ±3.29%      754
+
+ BENCH  Summary
+
+  healthCheck (valid path) - tests/benchmarks/perf.bench.js > Agent Spawn Latency
+    1.79x faster than spawnAgent orchestration (mock process)
+    373.35x faster than healthCheck (PATH lookup)
+
+  append single entry - tests/benchmarks/perf.bench.js > Log Stream Throughput
+    866.03x faster than append 1000 log entries
+
+  recordIpcCall + getHealth cycle - tests/benchmarks/perf.bench.js > Monitor Health Check
+    1.02x faster than getHealth() snapshot
+
+  spawnAgent + getAgent (mock spawn) - tests/benchmarks/perf.bench.js > Agent Engine
+    9.80x faster than listAgents (10 agents)
+

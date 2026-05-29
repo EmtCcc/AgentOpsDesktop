@@ -132,6 +132,7 @@ goalController.schemas = {
     offset: { type: 'number' },
     limit: { type: 'number' },
     status: { type: 'string', enum: ['active', 'completed', 'archived'] },
+    squadId: { type: 'string' },
     sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'title', 'status'] },
     sortOrder: { type: 'string', enum: ['asc', 'desc'] },
   },
@@ -141,6 +142,7 @@ goalController.schemas = {
   create: {
     title: { type: 'string', required: true, minLength: 1, maxLength: 500 },
     description: { type: 'string', maxLength: 5000 },
+    squadId: { type: 'string' },
   },
   update: {
     id: { type: 'string', required: true },
@@ -149,7 +151,7 @@ goalController.schemas = {
       required: true,
       validate: (v) => {
         if (!v || typeof v !== 'object') return 'updates must be an object';
-        const allowed = ['title', 'description', 'status'];
+        const allowed = ['title', 'description', 'status', 'squadId'];
         const keys = Object.keys(v);
         if (keys.length === 0) return 'updates must not be empty';
         const invalid = keys.filter((k) => !allowed.includes(k));

@@ -2,13 +2,31 @@
 
 Local-first desktop application for orchestrating multiple AI agents into a unified, manageable team.
 
-AgentOps Desktop connects CLI agents (Claude Code, Codex, Gemini CLI, OpenCode, and others) from a single Electron app. Define goals, decompose tasks, assign to agents, and monitor execution — all without leaving your desktop.
+AgentOps Desktop connects CLI agents (Claude Code, Codex, Gemini CLI, OpenCode, and others) from a single Electron app. Define goals, decompose tasks, assign to agents, and execute in parallel — all without leaving your desktop.
+
+**Tagline:** *Operational control for autonomous agents.*
 
 ## Status
 
-**Phase: Foundation (v0.1)** — The project is in early development. The Electron shell runs, IPC handlers are wired, and a basic renderer is in place. React UI, SQLite persistence, and agent runtime integration are planned but not yet implemented.
+**v0.1.0** — Initial public release. The app is functional with a full feature set covering agent management, task orchestration, squad coordination, cost control, scheduling, and a plugin system.
 
-See [ROADMAP.md](ROADMAP.md) for the full milestone plan.
+See [ROADMAP.md](ROADMAP.md) for the milestone plan and [CHANGELOG.md](CHANGELOG.md) for release history.
+
+## Features
+
+- **Agent registry** — Add, configure, and manage CLI agent connections with health checks
+- **Task orchestration** — DAG-based multi-agent parallel execution with dependency resolution
+- **Squad management** — Group agents into squads for coordinated workflows
+- **Cost control** — Budget management, spending limits, and cost tracking per agent/task
+- **Auto-scheduling** — Cron-based scheduling engine for recurring task execution
+- **Plugin system** — Custom agent adapter registry with a generic CLI adapter
+- **Skill reuse** — Share and reuse agent capabilities across tasks
+- **Message bus** — Inter-agent communication with persistence
+- **Shared workspace** — Common context store for agent collaboration
+- **RBAC** — Role-based access control (admin/operator/viewer)
+- **HTTP API** — Full REST API (Hono) alongside Electron IPC
+- **Auto-updater** — Seamless updates via electron-updater + GitHub Releases
+- **Health monitoring** — Metrics, alerting, and crash tracking
 
 ## Quick Start
 
@@ -30,9 +48,9 @@ npm start
 ### Development
 
 ```bash
-npm run dev     # Run with DevTools open
-npm run lint    # Lint source files
-npm test        # Run unit tests (Vitest)
+npm run dev       # Run with DevTools open
+npm run lint      # Lint source files
+npm test          # Run unit tests (Vitest)
 npm run test:e2e  # Run E2E tests (Playwright)
 ```
 
@@ -48,56 +66,86 @@ npm run build:dir    # Build unpacked directory
 ```
 AgentOpsDesktop/
 ├── src/
-│   ├── main/              # Electron main process
-│   │   ├── index.js       # App entry — window, IPC handlers, in-memory stores
-│   │   ├── preload.js     # contextBridge — exposes window.agentOps to renderer
-│   │   ├── agent-runtime.js  # CLI agent spawn/kill/log via child_process
-│   │   ├── store.js       # JSON file-based persistence (~/.agentops/data.json)
-│   │   ├── logger.js      # Structured JSONL logging
-│   │   ├── monitor.js     # Health metrics, alerting, crash tracking
-│   │   └── ipc/           # Scaffolding for structured IPC (not yet wired)
+│   ├── main/                    # Electron main process
+│   │   ├── index.js             # App entry — window, IPC, lifecycle
+│   │   ├── preload.js           # contextBridge — exposes window.agentOps
+│   │   ├── agent-engine.js      # Agent lifecycle engine
+│   │   ├── agent-runtime.js     # CLI agent spawn/kill via child_process
+│   │   ├── task-orchestrator.js # DAG-based multi-agent orchestration
+│   │   ├── workspace-manager.js # Shared workspace for agents
+│   │   ├── scheduler.js         # Cron-based auto-scheduling
+│   │   ├── cost-guard.js        # Budget management and cost tracking
+│   │   ├── adapter-registry.js  # Plugin system for custom adapters
+│   │   ├── monitor.js           # Health metrics, alerting, crash tracking
+│   │   ├── logger.js            # Structured JSONL logging
+│   │   ├── store.js             # JSON file-based persistence
+│   │   ├── db/                  # SQLite (better-sqlite3) with migrations
+│   │   │   ├── schema.js        # Full schema (v10, includes DAG tables)
+│   │   │   └── repositories/    # Agent, goal, task, log, settings repos
+│   │   ├── repositories/        # Extended repos (schedule, squad, cost, etc.)
+│   │   ├── ipc/                 # 16 IPC controllers + middleware (auth, RBAC)
+│   │   ├── api/                 # Hono REST API (13 route files)
+│   │   └── message-bus/         # Inter-agent messaging with persistence
 │   ├── renderer/
-│   │   └── index.html     # Renderer entry — placeholder welcome page
-│   └── shared/            # (planned) Shared types and constants
-├── assets/                # Icons and static assets
-├── docs/                  # Architecture, API, guides
+│   │   ├── app.js               # Main React application
+│   │   ├── pages/               # Agents, Tasks, Squads, Logs, Settings
+│   │   ├── styles/              # Design system CSS (tokens, components)
+│   │   └── index.html           # Renderer entry with CSP
+│   └── shared/
+│       └── types.js             # Shared type definitions
+├── skills/                      # Example skills (code-review, file-analyzer)
+├── docs/                        # Architecture, API, security, design docs
+├── docs-site/                   # VitePress documentation site
+├── designs/                     # Logo and design assets
 ├── tests/
-│   ├── unit/              # Vitest unit tests
-│   └── e2e/               # Playwright E2E tests
-└── scripts/               # (planned) Build and CI scripts
+│   ├── unit/                    # Vitest unit tests
+│   └── e2e/                     # Playwright E2E tests
+└── scripts/                     # Build and CI scripts
 ```
 
 ## Architecture
 
-The app follows a standard Electron main/renderer split:
+The app follows a standard Electron main/renderer split with a layered architecture:
 
-- **Main process** (`src/main/`) — owns all Node.js capabilities: IPC handlers, agent process management, file-based data store, logging, and health monitoring.
-- **Renderer** (`src/renderer/`) — the UI layer. Currently a static HTML placeholder; will become a React SPA.
-- **Preload** (`src/main/preload.js`) — bridges main and renderer via `contextBridge`, exposing a typed `window.agentOps` API.
+- **Main process** (`src/main/`) — Owns all Node.js capabilities: agent process management, SQLite database, IPC handlers, HTTP API, task orchestration, scheduling, and health monitoring.
+- **Renderer** (`src/renderer/`) — React SPA with pages for agents, tasks, squads, logs, and settings. Uses a custom design system with dark-mode-first aesthetic.
+- **Preload** (`src/main/preload.js`) — Bridges main and renderer via `contextBridge`, exposing a typed `window.agentOps` API.
+- **Database** — SQLite (better-sqlite3) with WAL mode, migration system, and repository pattern.
+- **HTTP API** — Hono-based REST API running alongside IPC for external integrations.
 
-Data currently lives in `~/.agentops/data.json` (JSON file store). The target architecture calls for SQLite with WAL mode — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 
 ## IPC API
 
-The renderer communicates with the main process through these channels via `window.agentOps`:
+The renderer communicates with the main process through these namespaces via `window.agentOps`:
 
-| Namespace   | Methods                                         |
-|-------------|------------------------------------------------|
-| `agents`    | `list`, `create`, `update`, `delete`, `healthCheck` |
-| `goals`     | `list`, `create`, `update`, `delete`           |
-| `tasks`     | `list`, `create`, `update`, `delete`           |
-| `logs`      | `list`, `append`, `onNew`                      |
-| `stats`     | `summary`                                      |
-| `monitor`   | `health`                                       |
+| Namespace      | Methods                                                    |
+|----------------|------------------------------------------------------------|
+| `agents`       | `list`, `create`, `update`, `delete`, `healthCheck`        |
+| `goals`        | `list`, `create`, `update`, `delete`                       |
+| `tasks`        | `list`, `create`, `update`, `delete`, `output`, `handoff`  |
+| `logs`         | `list`, `append`, `onNew`                                  |
+| `orchestrator` | `run`, `status`, `cancel`                                  |
+| `workspaces`   | `list`, `create`, `read`, `write`                          |
+| `schedules`    | `list`, `create`, `update`, `delete`                       |
+| `squads`       | `list`, `create`, `update`, `delete`                       |
+| `cost`         | `summary`, `limits`, `reset`                               |
+| `adapters`     | `list`, `register`, `remove`                               |
+| `skills`       | `list`, `register`, `invoke`                               |
+| `stats`        | `summary`                                                  |
+| `monitor`      | `health`                                                   |
 
 See [docs/API.md](docs/API.md) for full reference.
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — Setup and core workflow walkthrough
-- [Architecture](docs/ARCHITECTURE.md) — Target system design, data model, IPC protocol
-- [API Reference](docs/API.md) — IPC channels and Paperclip REST API
+- [Getting Started](docs-site/guide/getting-started.md) — Setup and core workflow walkthrough
+- [Architecture](docs-site/architecture/overview.md) — System design and data model
+- [API Reference](docs-site/api/reference.md) — IPC and REST API reference
+- [Adapter Guide](docs-site/adapters/guide.md) — Building custom agent adapters
+- [Skill Guide](docs-site/skills/guide.md) — Creating and sharing skills
 - [Contributing](CONTRIBUTING.md) — Setup, conventions, PR process
+- [Security](SECURITY.md) — Vulnerability reporting and security architecture
 - [Roadmap](ROADMAP.md) — Milestones and phase plan
 
 ## License

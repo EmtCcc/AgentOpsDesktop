@@ -27,8 +27,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
-      - name: Run unit tests
-        run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results/junit.xml
+      - name: Run unit tests with coverage
+        run: >-
+          npx vitest run --reporter=default --reporter=junit
+          --outputFile=test-results/junit.xml --coverage
+          --coverage.thresholds.statements=0
+          --coverage.thresholds.branches=0
+          --coverage.thresholds.functions=0
+          --coverage.thresholds.lines=0
       - name: API smoke test
         run: npm run test:smoke:api
       - name: Test summary
@@ -53,12 +59,45 @@ jobs:
             echo "## Test Results" >> $GITHUB_STEP_SUMMARY
             echo "No test results generated." >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Coverage summary
+        if: always()
+        run: |
+          TARGET=50
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const c = require('./coverage/coverage-summary.json').total;
+              const metrics = [
+                { name: 'Statements', pct: c.statements.pct },
+                { name: 'Branches',  pct: c.branches.pct },
+                { name: 'Functions', pct: c.functions.pct },
+                { name: 'Lines',     pct: c.lines.pct },
+              ];
+              const target = ${TARGET};
+              console.log('## Coverage (target: ' + target + '%)');
+              console.log('| Metric | Current | Target | Gap |');
+              console.log('|--------|---------|--------|-----|');
+              for (const m of metrics) {
+                const gap = (m.pct - target).toFixed(1);
+                const status = m.pct >= target ? '✅' : '⚠️';
+                console.log('| ' + m.name + ' | ' + m.pct.toFixed(1) + '% | ' + target + '% | ' + status + ' ' + gap + '% |');
+              }
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Coverage" >> $GITHUB_STEP_SUMMARY
+            echo "No coverage report generated." >> $GITHUB_STEP_SUMMARY
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: test-results/
           retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
 
   e2e:
     runs-on: ubuntu-latest

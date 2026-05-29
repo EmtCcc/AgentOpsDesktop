@@ -9,6 +9,10 @@ describe('AgentAdapter (base class)', () => {
     await expect(adapter.kill()).rejects.toThrow('not implemented');
     await expect(adapter.healthCheck()).rejects.toThrow('not implemented');
     await expect(adapter.execute()).rejects.toThrow('not implemented');
+    await expect(adapter.sendInput('id', 'data')).rejects.toThrow('not implemented');
+    await expect(adapter.resumeSession('id')).rejects.toThrow('not implemented');
+    expect(() => adapter.readStream('id')).toThrow('not implemented');
+    expect(adapter.getOutputParser()).toBeInstanceOf(require('../src/main/parsers/output-parser.js').OutputParser);
   });
 
   it('has default properties', () => {
@@ -135,5 +139,70 @@ describe('GenericCliAdapter', () => {
     const result = await adapter.execute({ title: 'test' });
     expect(result.exitCode).toBe(0);
     expect(result.output.trim()).toBe('hello');
+  });
+
+  it('sendInput writes to running process stdin', async () => {
+    const adapter = new GenericCliAdapter({ execPath: 'cat' });
+    const { instanceId } = await adapter.spawn();
+    await adapter.sendInput(instanceId, 'hello world\n');
+    // Give cat time to echo back
+    const result = await new Promise((resolve) => {
+      let out = '';
+      adapter.readStream(instanceId).on('data', (d) => {
+        out += d;
+        if (out.includes('hello world')) resolve(out);
+      });
+      setTimeout(() => resolve(out), 2000);
+    });
+    expect(result).toContain('hello world');
+    await adapter.kill(instanceId);
+  });
+
+  it('sendInput throws on nonexistent instance', async () => {
+    const adapter = new GenericCliAdapter({ execPath: 'cat' });
+    await expect(adapter.sendInput('nope', 'data')).rejects.toThrow('Instance not found');
+  });
+
+  it('readStream returns a readable stream', async () => {
+    const adapter = new GenericCliAdapter({ execPath: 'echo', args: ['streamed'] });
+    const { instanceId } = await adapter.spawn();
+    const stream = adapter.readStream(instanceId, 'stdout');
+    expect(stream).toBeDefined();
+    expect(typeof stream.on).toBe('function');
+    const data = await new Promise((resolve) => {
+      stream.on('data', (d) => resolve(d.toString()));
+      setTimeout(() => resolve(''), 2000);
+    });
+    expect(data).toContain('streamed');
+    await adapter.kill(instanceId);
+  });
+
+  it('readStream throws on nonexistent instance', () => {
+    const adapter = new GenericCliAdapter({ execPath: 'echo' });
+    expect(() => adapter.readStream('nope')).toThrow('Instance not found');
+  });
+
+  it('resumeSession returns alive for running instance', async () => {
+    const adapter = new GenericCliAdapter({ execPath: 'sleep', args: ['60'] });
+    const { instanceId } = await adapter.spawn();
+    const result = await adapter.resumeSession(instanceId);
+    expect(result.alive).toBe(true);
+    expect(result.pid).toBeGreaterThan(0);
+    await adapter.kill(instanceId);
+  });
+
+  it('resumeSession returns not alive for unknown instance', async () => {
+    const adapter = new GenericCliAdapter({ execPath: 'echo' });
+    const result = await adapter.resumeSession('nope');
+    expect(result.alive).toBe(false);
+  });
+
+  it('getOutputParser returns an OutputParser that parses output', () => {
+    const adapter = new GenericCliAdapter({ execPath: 'echo' });
+    const parser = adapter.getOutputParser();
+    expect(parser).toBeInstanceOf(require('../src/main/parsers/output-parser.js').OutputParser);
+    const msgs = parser.parse('line1\nline2\n\nline3\n');
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].text).toBe('line1\nline2\n\nline3\n');
   });
 });

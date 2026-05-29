@@ -9,6 +9,7 @@ const listQuerySchema = {
   offset: { type: 'number', min: 0 },
   limit: { type: 'number', min: 1, max: 100 },
   status: { type: 'string', enum: ['active', 'completed', 'archived'] },
+  squadId: { type: 'string' },
   sortBy: { type: 'string', enum: ['title', 'status', 'createdAt', 'updatedAt'] },
   sortOrder: { type: 'string', enum: ['asc', 'desc'] },
 };
@@ -16,12 +17,14 @@ const listQuerySchema = {
 const createBodySchema = {
   title: { type: 'string', required: true, minLength: 1, maxLength: 500 },
   description: { type: 'string', maxLength: 5000 },
+  squadId: { type: 'string' },
 };
 
 const updateBodySchema = {
   title: { type: 'string', minLength: 1, maxLength: 500 },
   description: { type: 'string', maxLength: 5000 },
   status: { type: 'string', enum: ['active', 'completed', 'archived'] },
+  squadId: { type: 'string' },
 };
 
 /**
@@ -29,11 +32,12 @@ const updateBodySchema = {
  */
 goals.get('/', validateRequest({ query: listQuerySchema }), async (c) => {
   const repo = c.get('repos').goals;
-  const { offset, limit, status, sortBy, sortOrder } = c.req.query();
+  const { offset, limit, status, squadId, sortBy, sortOrder } = c.req.query();
   const params = {
     offset: offset ? parseInt(offset, 10) : undefined,
     limit: limit ? parseInt(limit, 10) : undefined,
     status,
+    squadId,
     sortBy,
     sortOrder,
   };

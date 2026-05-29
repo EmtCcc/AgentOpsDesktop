@@ -209,6 +209,21 @@ function startHealthLoop(intervalMs = 30_000) {
       ipcCalls: health.ipc.calls,
       ipcErrors: health.ipc.errors,
     });
+
+    // Track performance metrics via telemetry
+    try {
+      const telemetry = require('./telemetry');
+      telemetry.track('health.tick', {
+        status,
+        heapUsedMB: Math.round(health.memory.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(health.memory.heapTotal / 1024 / 1024),
+        ipcCalls: health.ipc.calls,
+        ipcErrors: health.ipc.errors,
+        avgLatencyMs: health.ipc.avgLatencyMs,
+        uptimeMs: health.uptimeMs,
+        freeMemPct: Math.round((health.system.freeMem / health.system.totalMem) * 100),
+      });
+    } catch { /* telemetry not initialized yet */ }
   }, intervalMs);
   healthInterval.unref();
 }
@@ -226,12 +241,20 @@ function installGlobalHandlers() {
   process.on('uncaughtException', (err) => {
     metrics.app.uncaughtExceptions++;
     logger.fatal('uncaughtException', { err: { message: err.message, stack: err.stack, name: err.name } });
+    try {
+      const telemetry = require('./telemetry');
+      telemetry.track('error.uncaughtException', { name: err.name, message: err.message });
+    } catch { /* telemetry not initialized */ }
   });
 
   process.on('unhandledRejection', (reason) => {
     metrics.app.unhandledRejections++;
     const err = reason instanceof Error ? reason : new Error(String(reason));
     logger.error('unhandledRejection', { err: { message: err.message, stack: err.stack } });
+    try {
+      const telemetry = require('./telemetry');
+      telemetry.track('error.unhandledRejection', { message: err.message });
+    } catch { /* telemetry not initialized */ }
   });
 }
 

@@ -5,6 +5,11 @@ const logger = require('./logger');
 /**
  * Budget enforcement guard.
  * Checks agent budgets before task execution and applies pause/stop actions.
+ *
+ * Hard cutoff: when an agent's spend exceeds stopPct, CostGuard emits
+ * 'budget:hard-stop' which the TaskOrchestrator listens for to kill the
+ * agent process and pause the task. This is a system-level guarantee,
+ * distinct from Paperclip's soft policy-based approach.
  */
 class CostGuard {
   /**
@@ -14,6 +19,8 @@ class CostGuard {
   constructor(costRepo, emitter) {
     this.costRepo = costRepo;
     this.emitter = emitter;
+    // Track which agents have already been hard-stopped to avoid double-kill
+    this._hardStoppedAgents = new Set();
   }
 
   /**
@@ -48,6 +55,9 @@ class CostGuard {
   /**
    * Log usage and enforce budget thresholds.
    * Returns { logged: boolean, action: 'ok'|'warn'|'paused'|'stopped', budget? }
+   *
+   * When action is 'stopped' or 'paused', emits 'budget:hard-stop' so the
+   * orchestrator can kill the agent process immediately.
    */
   logAndEnforce(entry) {
     const result = this.costRepo.logUsage(entry);
@@ -73,6 +83,31 @@ class CostGuard {
           budget,
           pct: parseFloat(pct),
         });
+
+        // Hard cutoff: kill agent process when budget is exceeded
+        if (result.budgetAction === 'stopped' || result.budgetAction === 'paused') {
+          if (!this._hardStoppedAgents.has(entry.agentId)) {
+            this._hardStoppedAgents.add(entry.agentId);
+            const reason = result.budgetAction === 'stopped'
+              ? `Budget hard cutoff: spend at ${pct}% exceeded stop threshold (${budget.stopPct}%)`
+              : `Budget pause: spend at ${pct}% exceeded pause threshold (${budget.pausePct}%)`;
+
+            this.emitter.emit('budget:hard-stop', {
+              agentId: entry.agentId,
+              action: result.budgetAction,
+              budget,
+              pct: parseFloat(pct),
+              reason,
+            });
+
+            logger.warn('cost-guard.hard-stop', {
+              agentId: entry.agentId,
+              action: result.budgetAction,
+              pct,
+              reason,
+            });
+          }
+        }
       }
     }
 
@@ -81,6 +116,13 @@ class CostGuard {
       action: result.budgetAction || 'ok',
       budget: result.budget,
     };
+  }
+
+  /**
+   * Clear hard-stop tracking for an agent (e.g. after budget reset).
+   */
+  clearHardStop(agentId) {
+    this._hardStoppedAgents.delete(agentId);
   }
 
   /**

@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI", "SAST"]
     branches: [main]
     types:
       - completed
@@ -15,8 +15,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-gates:
+    runs-on: ubuntu-latest
+    outputs:
+      ci: ${{ steps.check.outputs.ci }}
+      sast: ${{ steps.check.outputs.sast }}
+    steps:
+      - name: Check workflow results
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.workflow_run.head_sha;
+
+            // Check CI workflow
+            const ciRuns = await github.rest.actions.listWorkflowRunsForRepo({
+              owner, repo, head_sha: sha, event: 'push'
+            });
+            const ciRun = ciRuns.data.workflow_runs.find(r => r.name === 'CI');
+            const ciSuccess = ciRun?.conclusion === 'success';
+            core.setOutput('ci', ciSuccess.toString());
+
+            // Check SAST workflow
+            const sastRun = ciRuns.data.workflow_runs.find(r => r.name === 'SAST');
+            const sastSuccess = sastRun?.conclusion === 'success';
+            core.setOutput('sast', sastSuccess.toString());
+
+            if (!ciSuccess || !sastSuccess) {
+              core.setFailed(`Deployment gates failed: CI=${ciSuccess}, SAST=${sastSuccess}`);
+            }
+
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: check-gates
+    if: ${{ needs.check-gates.outputs.ci == 'true' && needs.check-gates.outputs.sast == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

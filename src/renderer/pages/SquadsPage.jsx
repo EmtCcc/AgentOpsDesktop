@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { createRoot } from 'react-dom/client';
 
 const IconPlus = () => (
@@ -38,14 +38,61 @@ const IconUsers = () => (
   </svg>
 );
 
-function SquadCard({ squad, onStart, onStop, onStatus, onDelete }) {
+const IconRefresh = () => (
+  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+
+function useFocusTrap(isOpen, onClose) {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const focusable = modal.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+
+    modal.addEventListener('keydown', handleKeyDown);
+    first?.focus();
+
+    return () => modal.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  return modalRef;
+}
+
+function SquadCard({ squad, onStart, onStop, onStatus, onDelete, reactivating, memberProgress }) {
   const members = squad.members || [];
   const memberCount = members.length;
   const statusClass = squad.status === 'running' ? 'squad-card--running' : squad.status === 'error' ? 'squad-card--error' : '';
   const statusLabel = squad.status === 'running' ? 'Running' : squad.status === 'error' ? 'Error' : 'Idle';
   const statusDotClass = squad.status === 'running' ? 'status-dot--running' : squad.status === 'error' ? 'status-dot--error' : 'status-dot--idle';
+  const statusDotLabel = squad.status === 'running' ? 'Running' : squad.status === 'error' ? 'Error' : 'Idle';
   const leaderMember = members.find((m) => m.role === 'leader');
   const leaderName = leaderMember ? leaderMember.agentId : 'None';
+  const rules = squad.triggerRules || DEFAULT_TRIGGER_RULES;
+  const completedCount = memberProgress?.completed || 0;
+  const progressTotal = memberProgress?.total || 0;
 
   return (
     <div className={`squad-card ${statusClass}`} role="listitem" data-squad-id={squad.id}>
@@ -55,13 +102,36 @@ function SquadCard({ squad, onStart, onStop, onStatus, onDelete }) {
           {squad.description && <div className="squad-card__desc">{squad.description}</div>}
         </div>
         <span className={`status-badge status-badge--${squad.status}`}>
-          <span className={`status-dot ${statusDotClass}`} /> {statusLabel}
+          <span className={`status-dot ${statusDotClass}`} role="img" aria-label={statusDotLabel} /> {statusLabel}
         </span>
       </div>
       <div className="squad-card__meta">
         <span className="squad-card__members">{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
         <span className="squad-card__leader">Leader: {leaderName}</span>
+        <span className="squad-card__rules" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
+          Rules: {rules.on_member_complete} / {rules.on_error} / {rules.on_all_complete}
+        </span>
       </div>
+      {squad.instructions && (
+        <div className="squad-card__instructions" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)', marginTop: 'var(--space-1)', whiteSpace: 'pre-wrap', maxHeight: 48, overflow: 'hidden' }}>
+          {squad.instructions}
+        </div>
+      )}
+      {(reactivating || progressTotal > 0) && (
+        <div className="squad-card__activity" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>
+          {reactivating && (
+            <span className="squad-reactivating" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-primary)', fontWeight: 500 }}>
+              <span className="spin"><IconRefresh /></span>
+              Leader reactivating
+            </span>
+          )}
+          {progressTotal > 0 && (
+            <span style={{ color: 'var(--color-text-tertiary)' }}>
+              {completedCount}/{progressTotal} members done
+            </span>
+          )}
+        </div>
+      )}
       <div className="squad-card__actions">
         <button
           className="btn btn--ghost btn--sm"
@@ -102,12 +172,53 @@ function SquadCard({ squad, onStart, onStop, onStatus, onDelete }) {
   );
 }
 
+const DEFAULT_TRIGGER_RULES = {
+  on_member_complete: 'continue',
+  on_error: 'fail-fast',
+  on_all_complete: 'idle',
+};
+
+function TriggerRulesEditor({ rules, onChange }) {
+  const set = (key, value) => onChange({ ...rules, [key]: value });
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+        On member complete
+        <select style={{ width: '100%', marginTop: 4 }} value={rules.on_member_complete} onChange={(e) => set('on_member_complete', e.target.value)}>
+          <option value="continue">Continue</option>
+          <option value="pause">Pause squad</option>
+          <option value="notify">Notify only</option>
+        </select>
+      </label>
+      <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+        On error
+        <select style={{ width: '100%', marginTop: 4 }} value={rules.on_error} onChange={(e) => set('on_error', e.target.value)}>
+          <option value="fail-fast">Fail fast</option>
+          <option value="continue">Continue</option>
+          <option value="pause">Pause squad</option>
+        </select>
+      </label>
+      <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+        On all complete
+        <select style={{ width: '100%', marginTop: 4 }} value={rules.on_all_complete} onChange={(e) => set('on_all_complete', e.target.value)}>
+          <option value="idle">Set idle</option>
+          <option value="archive">Archive</option>
+          <option value="notify">Notify only</option>
+        </select>
+      </label>
+    </div>
+  );
+}
+
 function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [leaderId, setLeaderId] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [triggerRules, setTriggerRules] = useState(DEFAULT_TRIGGER_RULES);
   const [selectedMembers, setSelectedMembers] = useState(new Set());
   const [saving, setSaving] = useState(false);
+  const modalRef = useFocusTrap(isOpen, onClose);
 
   const toggleMember = (agentId) => {
     setSelectedMembers((prev) => {
@@ -126,33 +237,33 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
         name: name.trim(),
         description: description.trim(),
         leaderId: leaderId || null,
+        instructions: instructions.trim() || null,
+        triggerRules,
         members: Array.from(selectedMembers),
       });
       setName('');
       setDescription('');
       setLeaderId('');
+      setInstructions('');
+      setTriggerRules(DEFAULT_TRIGGER_RULES);
       setSelectedMembers(new Set());
     } finally {
       setSaving(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') onClose();
-  };
-
   if (!isOpen) return null;
 
   return (
     <div
+      ref={modalRef}
       className="modal-overlay"
       id="squad-modal-overlay"
       style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, alignItems: 'center', justifyContent: 'center' }}
       role="dialog"
       aria-modal="true"
-      aria-label="New Squad"
+      aria-labelledby="squad-modal-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={handleKeyDown}
     >
       <div className="card" style={{ width: 520, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
         <div className="card__header">
@@ -170,8 +281,8 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
               style={{ width: '100%' }}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
+              required
+              aria-required="true"
             />
           </div>
           <div>
@@ -184,7 +295,6 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
               style={{ width: '100%', height: 56, resize: 'vertical' }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={handleKeyDown}
             />
           </div>
           <div>
@@ -202,6 +312,24 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="squad-instructions" style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
+              Leader instructions
+            </label>
+            <textarea
+              id="squad-instructions"
+              placeholder="System prompt injected into the leader agent at spawn time. Describe delegation rules, routing logic, or team conventions."
+              style={{ width: '100%', height: 80, resize: 'vertical' }}
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
+              Trigger Rules
+            </label>
+            <TriggerRulesEditor rules={triggerRules} onChange={setTriggerRules} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
@@ -248,6 +376,9 @@ export default function SquadsPage() {
   const [agents, setAgents] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reactivatingSquads, setReactivatingSquads] = useState(new Set());
+  const [memberProgress, setMemberProgress] = useState({});
+  const reactivatingTimers = useRef({});
 
   const loadSquads = useCallback(async () => {
     try {
@@ -273,6 +404,41 @@ export default function SquadsPage() {
     loadSquads();
     loadAgents();
   }, [loadSquads, loadAgents]);
+
+  // Listen for squad events (leader reactivation, member completion)
+  useEffect(() => {
+    if (!window.agentOps?.squads?.onEvent) return;
+    const unsubscribe = window.agentOps.squads.onEvent((event) => {
+      if (event.type === 'leader-reactivated' && event.squadId) {
+        setReactivatingSquads((prev) => new Set([...prev, event.squadId]));
+        // Clear after 3s
+        clearTimeout(reactivatingTimers.current[event.squadId]);
+        reactivatingTimers.current[event.squadId] = setTimeout(() => {
+          setReactivatingSquads((prev) => {
+            const next = new Set(prev);
+            next.delete(event.squadId);
+            return next;
+          });
+        }, 3000);
+      }
+      if (event.type === 'member-complete' && event.squadId) {
+        setMemberProgress((prev) => {
+          const squad = prev[event.squadId] || { completed: 0, total: 0 };
+          return { ...prev, [event.squadId]: { ...squad, completed: squad.completed + 1 } };
+        });
+      }
+      if (event.type === 'member-spawned' && event.squadId) {
+        setMemberProgress((prev) => {
+          const squad = prev[event.squadId] || { completed: 0, total: 0 };
+          return { ...prev, [event.squadId]: { ...squad, total: squad.total + 1 } };
+        });
+      }
+    });
+    return () => {
+      unsubscribe?.();
+      Object.values(reactivatingTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   const handleCreate = async ({ name, description, leaderId, members }) => {
     await window.agentOps.squads.create({ name, description, leaderId, members });
@@ -359,6 +525,8 @@ export default function SquadsPage() {
               onStop={handleStop}
               onStatus={handleStatus}
               onDelete={handleDelete}
+              reactivating={reactivatingSquads.has(squad.id)}
+              memberProgress={memberProgress[squad.id]}
             />
           ))
         )}

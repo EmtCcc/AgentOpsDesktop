@@ -278,6 +278,10 @@
   gap: var(--space-3);
   position: relative;
   margin-bottom: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
 }
 
 .sidebar__item:hover {
@@ -745,4 +749,67 @@
   .grid--3 {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ── Update Banner ── */
+
+#update-banner {
+  grid-column: 1 / -1;
+  background: var(--color-primary-light);
+  border-bottom: 1px solid var(--color-primary);
+  z-index: 10;
+}
+
+.update-banner__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-6);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.update-banner__icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.update-banner__text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.update-banner__progress-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  min-width: 36px;
+}
+
+.update-banner__progress {
+  flex: 1;
+  min-width: 80px;
+  max-width: 200px;
+  height: 6px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.update-banner__progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.update-banner__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-shrink: 0;
 }

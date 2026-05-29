@@ -55,7 +55,7 @@ class TaskOrchestrator extends EventEmitter {
    * @param {import('./repositories/orchestrator.repository').OrchestratorRepository} opts.repo
    * @param {import('./agent-runtime').AgentRuntime} opts.runtime
    */
-  constructor({ repo, runtime, costGuard, skillRepo, workspaceManager, squadRepo }) {
+  constructor({ repo, runtime, costGuard, skillRepo, workspaceManager, squadRepo, bus }) {
     super();
     this.repo = repo;
     this.runtime = runtime;
@@ -63,6 +63,7 @@ class TaskOrchestrator extends EventEmitter {
     this.skillRepo = skillRepo || null;
     this.workspaceManager = workspaceManager || null;
     this.squadRepo = squadRepo || null;
+    this.bus = bus || null;
 
     // In-memory execution state per active DAG
     this._dags = new Map(); // dagId -> DagContext
@@ -72,6 +73,10 @@ class TaskOrchestrator extends EventEmitter {
     this._agentTaskMap = new Map();
     // Task workspace mapping: taskId -> workspaceId
     this._taskWorkspaces = new Map();
+    // Delegation subscriber IDs: squadId -> subscriberId
+    this._delegationSubs = new Map();
+    // Squad leader tracking: squadId -> leaderAgentId
+    this._squadLeaders = new Map();
 
     // Bind runtime event handlers
     if (this.runtime) {
@@ -524,11 +529,15 @@ class TaskOrchestrator extends EventEmitter {
         const leader = squad.members.find((m) => m.role === 'leader') || squad.members[0];
         this.repo.updateTask(taskId, { agentId: leader.agentId });
         task.agentId = leader.agentId;
+        this._squadLeaders.set(task.squadId, leader.agentId);
         // Stash roster + instructions for injection at spawn time
         task._squadRoster = squad.members.map((m) => ({ agentId: m.agentId, role: m.role }));
         task._squadInstructions = squad.instructions || null;
         this.emit('task:squad-resolved', { dagId, taskId, squadId: task.squadId, agentId: leader.agentId, role: 'leader' });
         logger.info('orchestrator.squad-leader-resolved', { dagId, taskId, squadId: task.squadId, agentId: leader.agentId });
+
+        // Subscribe to delegation events so orchestrator can auto-spawn members
+        this._subscribeDelegation(task.squadId);
       } catch (err) {
         logger.warn('orchestrator.squad-resolve-failed', { dagId, taskId, squadId: task.squadId, error: err.message });
       }
@@ -903,6 +912,131 @@ class TaskOrchestrator extends EventEmitter {
     }
   }
 
+  // ── Squad delegation via MessageBus ──
+
+  /**
+   * Subscribe to delegation events for a squad.
+   * When a leader publishes to squad.{id}.delegate, auto-spawn the target member.
+   * @param {string} squadId
+   */
+  _subscribeDelegation(squadId) {
+    if (!this.bus || this._delegationSubs.has(squadId)) return;
+
+    const topic = `squad.${squadId}.delegate`;
+    const handler = (msg) => this._handleDelegation(squadId, msg);
+    const subscriberId = this.bus.subscribe(topic, handler);
+    this._delegationSubs.set(squadId, subscriberId);
+
+    // Also subscribe to complete/error for routing back to leader
+    this.bus.subscribe(`squad.${squadId}.complete`, (msg) => {
+      this.emit('squad:member-complete', { squadId, ...msg.payload });
+      this._reactivateLeader(squadId, msg.payload, 'completed');
+    });
+    this.bus.subscribe(`squad.${squadId}.error`, (msg) => {
+      this.emit('squad:member-error', { squadId, ...msg.payload });
+      this._reactivateLeader(squadId, msg.payload, 'error');
+    });
+
+    logger.info('orchestrator.delegation-subscribed', { squadId });
+  }
+
+  /**
+   * Handle an incoming delegation event from a leader.
+   * Spawns the target member agent with the task payload.
+   */
+  _handleDelegation(squadId, msg) {
+    const { targetAgentId, task, description, payload } = msg.payload || {};
+    if (!targetAgentId) {
+      logger.warn('orchestrator.delegation-no-target', { squadId });
+      return;
+    }
+
+    logger.info('orchestrator.delegation-received', { squadId, targetAgentId, task });
+
+    if (!this.runtime) {
+      logger.warn('orchestrator.delegation-no-runtime', { squadId, targetAgentId });
+      return;
+    }
+
+    try {
+      const squad = this.squadRepo?.getSquadWithMembers(squadId);
+      const member = squad?.members?.find((m) => m.agentId === targetAgentId);
+      if (!member) {
+        logger.warn('orchestrator.delegation-member-not-found', { squadId, targetAgentId });
+        return;
+      }
+
+      const config = member.agentConfig || {};
+      const result = this.runtime.spawnAgent({
+        execPath: config.execPath || 'node',
+        args: config.args || [],
+        cwd: config.cwd || process.cwd(),
+        env: {
+          ...config.env,
+          AGENT_DELEGATED_TASK: JSON.stringify({ task, description, payload }),
+          AGENT_DELEGATOR: msg.senderId,
+        },
+        label: config.label || `delegated-${targetAgentId}`,
+        squadId,
+      });
+
+      this.emit('squad:member-spawned', {
+        squadId,
+        agentId: result.agentId,
+        targetAgentId,
+        delegatedBy: msg.senderId,
+      });
+      logger.info('orchestrator.delegation-spawned', { squadId, agentId: result.agentId, targetAgentId });
+    } catch (err) {
+      logger.error('orchestrator.delegation-spawn-failed', { squadId, targetAgentId, error: err.message });
+    }
+  }
+
+  /**
+   * Reactivate leader when a member completes or errors.
+   * Publishes a member-result message to the bus so the leader agent
+   * can receive the output and decide whether to delegate more or finish.
+   */
+  _reactivateLeader(squadId, payload, status) {
+    if (!this.bus) return;
+
+    const leaderAgentId = this._squadLeaders.get(squadId);
+    const memberAgentId = payload?.agentId;
+
+    const resultMessage = {
+      memberAgentId,
+      status,
+      result: status === 'completed' ? (payload?.result || payload) : null,
+      error: status === 'error' ? (payload?.error || 'Unknown error') : null,
+      timestamp: Date.now(),
+    };
+
+    // Publish to the squad-level topic so the leader can subscribe once
+    this.bus.publish(`squad.${squadId}.member-result`, 'event', resultMessage);
+
+    logger.info('orchestrator.leader-reactivated', {
+      squadId,
+      leaderAgentId,
+      memberAgentId,
+      status,
+    });
+
+    this.emit('squad:leader-reactivated', { squadId, leaderAgentId, memberAgentId, status });
+  }
+
+  /**
+   * Unsubscribe from delegation events for a squad.
+   * @param {string} squadId
+   */
+  _unsubscribeDelegation(squadId) {
+    const subId = this._delegationSubs.get(squadId);
+    if (subId && this.bus) {
+      this.bus.unsubscribe(subId);
+      this._delegationSubs.delete(squadId);
+    }
+    this._squadLeaders.delete(squadId);
+  }
+
   // ── Startup recovery ──
 
   /**
@@ -969,6 +1103,11 @@ class TaskOrchestrator extends EventEmitter {
     // Unbind cost guard listener
     if (this.costGuard && this.costGuard.emitter) {
       this.costGuard.emitter.removeListener('budget:hard-stop', this._onBudgetHardStop);
+    }
+
+    // Unsubscribe delegation listeners
+    for (const squadId of this._delegationSubs.keys()) {
+      this._unsubscribeDelegation(squadId);
     }
   }
 }

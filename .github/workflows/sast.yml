@@ -1,0 +1,182 @@
+name: SAST
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly scan on Mondays at 06:00 UTC — catches newly disclosed CVE patterns
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+          # Custom config: treat src/ as source, ignore node_modules and tests
+          config: |
+            paths:
+              - src
+            paths-ignore:
+              - 'node_modules/**'
+              - 'tests/**'
+              - 'docs-site/**'
+              - '**/*.test.js'
+              - '**/*.spec.js'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'
+          # Fail the job if any high-severity findings are detected
+          fail-fast: true
+
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep ci --config auto --config p/javascript --config p/typescript --config p/nodejs --config p/owasp-top-ten --config p/security-audit --sarif --output semgrep-results.sarif
+        env:
+          SEMGREP_RULES: >-
+            p/javascript
+            p/typescript
+            p/nodejs
+            p/owasp-top-ten
+            p/security-audit
+        continue-on-error: true
+
+      - name: Upload Semgrep results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
+
+      - name: Semgrep summary
+        if: always()
+        run: |
+          if [ -f semgrep-results.sarif ]; then
+            TOTAL=$(grep -c '"ruleId"' semgrep-results.sarif || echo 0)
+            echo "## Semgrep Results" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Findings | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Semgrep Results" >> $GITHUB_STEP_SUMMARY
+            echo "No results generated." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Run npm audit
+        run: npm audit --audit-level=high --json > npm-audit-results.json || true
+      - name: npm audit summary
+        if: always()
+        run: |
+          if [ -f npm-audit-results.json ]; then
+            VULNS=$(cat npm-audit-results.json | grep -c '"severity"' || echo 0)
+            echo "## npm audit Results" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Vulnerabilities | $VULNS |" >> $GITHUB_STEP_SUMMARY
+            if [ "$VULNS" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```json' >> $GITHUB_STEP_SUMMARY
+              cat npm-audit-results.json >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## npm audit Results" >> $GITHUB_STEP_SUMMARY
+            echo "No results generated." >> $GITHUB_STEP_SUMMARY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-results
+          path: npm-audit-results.json
+          retention-days: 7
+
+  eslint-security:
+    name: ESLint Security Rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Install security plugins
+        run: npm install --no-save eslint-plugin-security eslint-plugin-no-unsanitized
+      - name: Run ESLint with security rules
+        run: |
+          npx eslint src/ \
+            --no-eslintrc \
+            --rule 'security/detect-object-injection: warn' \
+            --rule 'security/detect-non-literal-regexp: warn' \
+            --rule 'security/detect-unsafe-regex: error' \
+            --rule 'security/detect-buffer-noassert: error' \
+            --rule 'security/detect-possible-timing-attacks: warn' \
+            --rule 'security/detect-eval-with-expression: error' \
+            --rule 'security/detect-no-csrf-before-method-override: error' \
+            --rule 'security/detect-non-literal-fs-filename: warn' \
+            --rule 'security/detect-child-process: warn' \
+            --rule 'no-unsanitized/method: error' \
+            --rule 'no-unsanitized/property: error' \
+            --format json \
+            --output-file eslint-security-results.json \
+            || true
+      - name: ESLint security summary
+        if: always()
+        run: |
+          if [ -f eslint-security-results.json ]; then
+            ERRORS=$(cat eslint-security-results.json | grep -c '"severity":2' || echo 0)
+            WARNINGS=$(cat eslint-security-results.json | grep -c '"severity":1' || echo 0)
+            echo "## ESLint Security Results" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Warnings | $WARNINGS |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ESLint Security Results" >> $GITHUB_STEP_SUMMARY
+            echo "No results generated." >> $GITHUB_STEP_SUMMARY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-security-results
+          path: eslint-security-results.json
+          retention-days: 7

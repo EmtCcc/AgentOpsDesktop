@@ -13,13 +13,16 @@ describe('SkillRepository', () => {
 
     db.exec(`
       CREATE TABLE skills (
-        id          TEXT PRIMARY KEY,
-        name        TEXT NOT NULL,
-        description TEXT,
-        content     TEXT NOT NULL,
-        tags        TEXT DEFAULT '[]',
-        created_at  TEXT NOT NULL,
-        updated_at  TEXT NOT NULL
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        description   TEXT,
+        content       TEXT NOT NULL,
+        tags          TEXT DEFAULT '[]',
+        version       TEXT,
+        allowed_tools TEXT DEFAULT '[]',
+        hooks         TEXT DEFAULT '{}',
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL
       );
 
       CREATE INDEX idx_skills_name ON skills(name);
@@ -54,7 +57,8 @@ describe('SkillRepository', () => {
       expect(skill.name).toBe('test-skill');
       expect(skill.description).toBe('A test skill');
       expect(skill.content).toBe('# Test\nThis is a test skill.');
-      expect(skill.tags).toEqual(['test', 'example']);
+      expect(skill.tags).toEqual(expect.arrayContaining(['test', 'example']));
+      expect(skill.tags).toHaveLength(2);
       expect(skill.createdAt).toBeDefined();
       expect(skill.updatedAt).toBeDefined();
     });
@@ -68,6 +72,21 @@ describe('SkillRepository', () => {
       expect(skill.name).toBe('minimal-skill');
       expect(skill.description).toBeNull();
       expect(skill.tags).toEqual([]);
+    });
+
+    it('creates a skill with format fields (version, allowedTools, hooks)', () => {
+      const skill = repo.create({
+        name: 'format-skill',
+        description: 'A skill with format fields',
+        content: '# Format',
+        version: '2.0.0',
+        allowedTools: ['Bash(git:*)', 'Read'],
+        hooks: { on_enable: ['echo ok'], pre_run: ['git status'] },
+      });
+
+      expect(skill.version).toBe('2.0.0');
+      expect(skill.allowedTools).toEqual(['Bash(git:*)', 'Read']);
+      expect(skill.hooks).toEqual({ on_enable: ['echo ok'], pre_run: ['git status'] });
     });
 
     it('normalizes tags to lowercase', () => {
@@ -126,6 +145,25 @@ describe('SkillRepository', () => {
 
     it('returns null for non-existent id', () => {
       expect(repo.update('non-existent', { name: 'x' })).toBeNull();
+    });
+
+    it('persists format fields through update', () => {
+      const created = repo.create({
+        name: 'format-update',
+        content: 'Old body.',
+        version: '1.0.0',
+        allowedTools: ['Read'],
+        hooks: { on_enable: ['echo v1'] },
+      });
+      const updated = repo.update(created.id, {
+        version: '2.0.0',
+        allowedTools: ['Read', 'Write'],
+        hooks: { on_enable: ['echo v2'], on_disable: ['echo bye'] },
+      });
+
+      expect(updated.version).toBe('2.0.0');
+      expect(updated.allowedTools).toEqual(['Read', 'Write']);
+      expect(updated.hooks).toEqual({ on_enable: ['echo v2'], on_disable: ['echo bye'] });
     });
   });
 

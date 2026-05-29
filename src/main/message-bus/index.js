@@ -2,6 +2,8 @@
 
 const { MessageBus, VALID_TYPES } = require('./message-bus');
 const { MessagePersistence } = require('./persistence');
+const { SocketBusServer } = require('./socket-server');
+const { SocketBusClient } = require('./socket-client');
 
 /**
  * Create a fully configured MessageBus instance.
@@ -23,4 +25,11 @@ function createMessageBus(options = {}) {
   });
 }
 
-module.exports = { createMessageBus, MessageBus, MessagePersistence, VALID_TYPES };
+module.exports = {
+  createMessageBus,
+  MessageBus,
+  MessagePersistence,
+  SocketBusServer,
+  SocketBusClient,
+  VALID_TYPES,
+};

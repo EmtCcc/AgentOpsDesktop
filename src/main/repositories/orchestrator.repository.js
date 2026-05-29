@@ -38,15 +38,15 @@ class OrchestratorRepository {
 
       // ── DAG task operations ──
       insertTask: this.db.prepare(`
-        INSERT INTO dag_tasks (id, dag_id, agent_id, title, description, task_type,
+        INSERT INTO dag_tasks (id, dag_id, agent_id, squad_id, title, description, task_type,
           status, agent_config_json, retry_count, retry_max, output_json, error_message,
           started_at, completed_at, created_at, updated_at)
-        VALUES (@id, @dagId, @agentId, @title, @description, @taskType,
+        VALUES (@id, @dagId, @agentId, @squadId, @title, @description, @taskType,
           @status, @agentConfigJson, @retryCount, @retryMax, @outputJson, @errorMessage,
           @startedAt, @completedAt, @createdAt, @updatedAt)
       `),
       updateTask: this.db.prepare(`
-        UPDATE dag_tasks SET agent_id = @agentId, title = @title, description = @description,
+        UPDATE dag_tasks SET agent_id = @agentId, squad_id = @squadId, title = @title, description = @description,
           task_type = @taskType, status = @status, agent_config_json = @agentConfigJson,
           retry_count = @retryCount, retry_max = @retryMax, output_json = @outputJson,
           error_message = @errorMessage, started_at = @startedAt, completed_at = @completedAt,
@@ -119,6 +119,7 @@ class OrchestratorRepository {
       id: row.id,
       dagId: row.dag_id,
       agentId: row.agent_id,
+      squadId: row.squad_id || null,
       title: row.title,
       description: row.description,
       taskType: row.task_type,
@@ -141,6 +142,7 @@ class OrchestratorRepository {
       id: task.id || randomUUID(),
       dagId: task.dagId,
       agentId: task.agentId || null,
+      squadId: task.squadId || null,
       title: task.title,
       description: task.description || null,
       taskType: task.taskType || 'agent',

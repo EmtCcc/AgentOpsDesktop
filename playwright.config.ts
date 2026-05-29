@@ -27,6 +27,8 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
 
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
+
   projects: [
     {
       name: 'chromium',
@@ -47,6 +49,16 @@ export default defineConfig({
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 13'] },
+    },
+    {
+      name: 'snapshot',
+      use: {
+        ...devices['Desktop Chrome'],
+        screenshot: 'off',
+        video: 'off',
+        trace: 'off',
+      },
+      testMatch: /.*snapshot\.spec\.js/,
     },
   ],
 });

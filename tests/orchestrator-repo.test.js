@@ -33,6 +33,7 @@ function createTestDb() {
       id TEXT PRIMARY KEY,
       dag_id TEXT NOT NULL REFERENCES dags(id) ON DELETE CASCADE,
       agent_id TEXT REFERENCES agents(id) ON DELETE SET NULL,
+      squad_id TEXT,
       title TEXT NOT NULL, description TEXT,
       task_type TEXT NOT NULL DEFAULT 'agent'
         CHECK (task_type IN ('agent','noop','manual')),

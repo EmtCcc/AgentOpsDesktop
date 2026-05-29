@@ -1,0 +1,56 @@
+{
+  "spawnAgent orchestration (mock process)": {
+    "hz": 209721.19,
+    "min": 0.0022,
+    "max": 14.5888,
+    "mean": 0.0048
+  },
+  "healthCheck (valid path)": {
+    "hz": 375323.8,
+    "min": 0.0023,
+    "max": 0.486,
+    "mean": 0.0027
+  },
+  "healthCheck (PATH lookup)": {
+    "hz": 1005.29,
+    "min": 0.8945,
+    "max": 2.736,
+    "mean": 0.9947
+  },
+  "append 1000 log entries": {
+    "hz": 4508.9,
+    "min": 0.1993,
+    "max": 1.0519,
+    "mean": 0.2218
+  },
+  "append single entry": {
+    "hz": 3904838.91,
+    "min": 0.0001,
+    "max": 1.06,
+    "mean": 0.0003
+  },
+  "getHealth() snapshot": {
+    "hz": 124101.22,
+    "min": 0.0066,
+    "max": 0.5943,
+    "mean": 0.0081
+  },
+  "recordIpcCall + getHealth cycle": {
+    "hz": 126262.65,
+    "min": 0.0064,
+    "max": 0.6337,
+    "mean": 0.0079
+  },
+  "spawnAgent + getAgent (mock spawn)": {
+    "hz": 14752.43,
+    "min": 0.0558,
+    "max": 11.3076,
+    "mean": 0.0678
+  },
+  "listAgents (10 agents)": {
+    "hz": 1505.25,
+    "min": 0.6124,
+    "max": 4.0808,
+    "mean": 0.6643
+  }
+}

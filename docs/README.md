@@ -17,6 +17,7 @@ All project documentation for AgentOps Desktop.
 | Document | Description |
 |----------|-------------|
 | [Contributing](../CONTRIBUTING.md) | Setup, conventions, PR process, code style |
+| [Adapter Contribution Guide](ADAPTER-CONTRIBUTION-GUIDE.md) | How to build, test, and register a new CLI adapter |
 | [CI/CD Pipeline](CI-CD.md) | GitHub Actions workflows, required secrets, developer workflow |
 | [Release Process](RELEASE-PROCESS.md) | Versioning, build, publish, rollback playbook |
 | [Code Signing](CODE-SIGNING.md) | Apple Developer certificate setup |

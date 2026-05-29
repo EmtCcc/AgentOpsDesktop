@@ -19,6 +19,7 @@ const schedules = require('./routes/schedules');
 const squads = require('./routes/squads');
 const costRoutes = require('./routes/cost');
 const adapterRoutes = require('./routes/adapters');
+const adapterRegistryRoutes = require('./routes/adapter-registry');
 const skillRoutes = require('./routes/skills');
 const { createAuthRoutes } = require('./routes/auth');
 const { createAuthMiddleware } = require('./middleware/auth');
@@ -32,7 +33,7 @@ const { ValidationError } = require('./middleware/validate');
  * @param {import('../ipc/middleware/token-manager').TokenManager} opts.tokenManager
  * @returns {Hono}
  */
-function createApp({ repos, tokenManager, adapterRegistry }) {
+function createApp({ repos, tokenManager, adapterRegistry, adapterRegistryService, agentEngine }) {
   const app = new Hono();
 
   // ── Global middleware ──
@@ -43,6 +44,8 @@ function createApp({ repos, tokenManager, adapterRegistry }) {
   app.use('*', async (c, next) => {
     c.set('repos', repos);
     c.set('adapterRegistry', adapterRegistry);
+    c.set('adapterRegistryService', adapterRegistryService);
+    c.set('agentEngine', agentEngine || null);
     await next();
   });
 
@@ -96,6 +99,7 @@ function createApp({ repos, tokenManager, adapterRegistry }) {
   app.route('/api/squads', squads);
   app.route('/api/cost', costRoutes);
   app.route('/api/adapters', adapterRoutes);
+  app.route('/api/adapter-registry', adapterRegistryRoutes);
   app.route('/api/skills', skillRoutes);
 
   // ── Error handler ──

@@ -319,29 +319,45 @@ class WorkspaceManager extends EventEmitter {
   /**
    * Clean up archived or abandoned workspaces.
    * A workspace is "abandoned" if it has been archived for > 7 days.
-   * @returns {number} count of cleaned workspaces
+   * Also cleans up GC-eligible task workspaces whose gc_at has passed.
+   * @returns {{ archived: number, gc: number }} count of cleaned workspaces
    */
   cleanup() {
-    const now = Date.now();
+    const now = new Date();
+    const nowMs = now.getTime();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const archived = this.repo.list({ status: 'archived' });
-    let cleaned = 0;
+    let archivedCleaned = 0;
+    let gcCleaned = 0;
 
+    // 1. Clean old archived workspaces
+    const archived = this.repo.list({ status: 'archived' });
     for (const ws of archived.items) {
-      if (now - ws.updatedAt > sevenDaysMs) {
+      if (nowMs - ws.updatedAt > sevenDaysMs) {
         try {
           this.delete(ws.id);
-          cleaned++;
+          archivedCleaned++;
         } catch (err) {
           this.emit('cleanup-error', { workspaceId: ws.id, error: err.message });
         }
       }
     }
 
-    if (cleaned > 0) {
-      this.emit('cleanup', { cleaned });
+    // 2. Clean GC-eligible task workspaces
+    const gcEligible = this.repo.listGcEligible(now);
+    for (const ws of gcEligible) {
+      try {
+        this.delete(ws.id);
+        gcCleaned++;
+      } catch (err) {
+        this.emit('cleanup-error', { workspaceId: ws.id, error: err.message });
+      }
     }
-    return cleaned;
+
+    const totalCleaned = archivedCleaned + gcCleaned;
+    if (totalCleaned > 0) {
+      this.emit('cleanup', { archived: archivedCleaned, gc: gcCleaned, total: totalCleaned });
+    }
+    return { archived: archivedCleaned, gc: gcCleaned };
   }
 
   /**
@@ -364,6 +380,122 @@ class WorkspaceManager extends EventEmitter {
     const ws = this._requireWorkspace(workspaceId);
     const usedBytes = this._dirSize(ws.rootPath);
     return { usedBytes, maxBytes: ws.maxSizeBytes };
+  }
+
+  // ── Task workspace lifecycle ──
+
+  /**
+   * Create an isolated workspace for a task.
+   * @param {{ taskId: string, agentId: string, projectRoot?: string, injectFiles?: string[], name?: string, maxSizeBytes?: number }} opts
+   * @returns {object} workspace record
+   */
+  createForTask(opts) {
+    const { taskId, agentId, projectRoot, injectFiles, name, maxSizeBytes } = opts;
+    if (!taskId) throw new Error('taskId is required');
+    if (!agentId) throw new Error('agentId is required');
+
+    const id = randomUUID();
+    const wsDir = path.join(this.baseDir, 'tasks', id);
+    fs.mkdirSync(wsDir, { recursive: true });
+    fs.mkdirSync(path.join(wsDir, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(wsDir, '.snapshots'), { recursive: true });
+
+    const record = this.repo.create({
+      id,
+      agentId,
+      taskId,
+      name: name || `task-${taskId.slice(0, 8)}`,
+      rootPath: wsDir,
+      maxSizeBytes: maxSizeBytes || this.defaultMaxBytes,
+    });
+
+    this._locks.set(id, { readers: new Set(), writer: null });
+
+    // Inject project files if requested
+    const injected = [];
+    if (projectRoot && injectFiles && injectFiles.length > 0) {
+      for (const relPath of injectFiles) {
+        try {
+          const srcFile = path.resolve(projectRoot, relPath);
+          if (!fs.existsSync(srcFile)) continue;
+          const destFile = path.join(wsDir, 'src', relPath);
+          const destDir = path.dirname(destFile);
+          fs.mkdirSync(destDir, { recursive: true });
+          fs.copyFileSync(srcFile, destFile);
+          injected.push(relPath);
+        } catch (err) {
+          this.emit('inject-error', { workspaceId: id, relPath, error: err.message });
+        }
+      }
+      this.repo.update(id, { injectedFiles: injected });
+    } else if (projectRoot) {
+      // Inject all files from project root (excluding node_modules, .git, etc.)
+      try {
+        const count = this._injectProjectTree(projectRoot, path.join(wsDir, 'src'));
+        if (count > 0) injected.push('*');
+        this.repo.update(id, { injectedFiles: injected });
+      } catch (err) {
+        this.emit('inject-error', { workspaceId: id, error: err.message });
+      }
+    }
+
+    this.emit('task-workspace-created', { ...record, injectedFiles: injected });
+    return this.repo.getById(id);
+  }
+
+  /**
+   * Inject project files into a task workspace (full tree copy, excluding common large dirs).
+   * @param {string} srcRoot — source project root
+   * @param {string} destRoot — workspace src/ dir
+   * @returns {number} file count copied
+   */
+  _injectProjectTree(srcRoot, destRoot) {
+    const skipDirs = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.cache', '__pycache__', '.venv', 'target']);
+    const skipExts = new Set(['.pyc', '.pyo', '.o', '.obj']);
+    let count = 0;
+
+    const walk = (src, dest) => {
+      const entries = fs.readdirSync(src, { withFileTypes: true });
+      for (const entry of entries) {
+        if (skipDirs.has(entry.name)) continue;
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+          fs.mkdirSync(destPath, { recursive: true });
+          count += walk(srcPath, destPath);
+        } else {
+          const ext = path.extname(entry.name);
+          if (skipExts.has(ext)) continue;
+          fs.copyFileSync(srcPath, destPath);
+          count++;
+        }
+      }
+      return count;
+    };
+
+    fs.mkdirSync(destRoot, { recursive: true });
+    return walk(srcRoot, destRoot);
+  }
+
+  /**
+   * Schedule a task workspace for GC.
+   * @param {string} workspaceId
+   * @param {number} [delayMs=300000] — delay before GC (default: 5 minutes)
+   */
+  scheduleGc(workspaceId, delayMs = 5 * 60 * 1000) {
+    const gcAt = new Date(Date.now() + delayMs).toISOString();
+    this.repo.update(workspaceId, { gcAt, status: 'gc-pending' });
+    this.emit('gc-scheduled', { workspaceId, gcAt });
+  }
+
+  /**
+   * Get the workspace for a task.
+   * @param {string} taskId
+   * @returns {object|null}
+   */
+  getByTaskId(taskId) {
+    const result = this.repo.list({ taskId, limit: 1 });
+    return result.items.length > 0 ? result.items[0] : null;
   }
 
   // ── Shutdown ──

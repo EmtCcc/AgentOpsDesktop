@@ -3,6 +3,7 @@
 const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
 const logger = require('./logger');
+const { PlainTextParser } = require('./parsers');
 
 /**
  * Base class for custom agent adapters.
@@ -52,6 +53,44 @@ class AgentAdapter extends EventEmitter {
    */
   async execute(_task) {
     throw new Error(`${this.constructor.name}.execute() not implemented`);
+  }
+
+  /**
+   * Send input data to a running agent instance.
+   * @param {string} instanceId
+   * @param {string|Buffer} data
+   * @returns {Promise<void>}
+   */
+  async sendInput(_instanceId, _data) {
+    throw new Error(`${this.constructor.name}.sendInput() not implemented`);
+  }
+
+  /**
+   * Get a readable stream from a running agent instance.
+   * @param {string} instanceId
+   * @param {'stdout'|'stderr'} [stream='stdout']
+   * @returns {import('stream').Readable}
+   */
+  readStream(_instanceId, _stream = 'stdout') {
+    throw new Error(`${this.constructor.name}.readStream() not implemented`);
+  }
+
+  /**
+   * Resume or verify a session is still alive.
+   * @param {string} instanceId
+   * @returns {Promise<{ alive: boolean, pid?: number }>}
+   */
+  async resumeSession(_instanceId) {
+    throw new Error(`${this.constructor.name}.resumeSession() not implemented`);
+  }
+
+  /**
+   * Get an output parser for this adapter's response format.
+   * Override in subclasses to return a format-specific parser.
+   * @returns {import('./parsers').OutputParser}
+   */
+  getOutputParser() {
+    return new PlainTextParser();
   }
 }
 

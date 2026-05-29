@@ -168,6 +168,7 @@ taskController.schemas = {
     limit: { type: 'number' },
     status: { type: 'string', enum: ['pending', 'assigned', 'running', 'done', 'failed', 'blocked'] },
     goalId: { type: 'string' },
+    squadId: { type: 'string' },
     sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'title', 'status'] },
     sortOrder: { type: 'string', enum: ['asc', 'desc'] },
   },
@@ -179,6 +180,7 @@ taskController.schemas = {
     description: { type: 'string', maxLength: 5000 },
     goalId: { type: 'string' },
     assigneeAgentId: { type: 'string' },
+    squadId: { type: 'string' },
     dependsOn: { type: 'object' },
   },
   update: {
@@ -188,7 +190,7 @@ taskController.schemas = {
       required: true,
       validate: (v) => {
         if (!v || typeof v !== 'object') return 'updates must be an object';
-        const allowed = ['title', 'description', 'status', 'goalId', 'assigneeAgentId', 'output', 'dependsOn'];
+        const allowed = ['title', 'description', 'status', 'goalId', 'assigneeAgentId', 'squadId', 'output', 'dependsOn'];
         const keys = Object.keys(v);
         if (keys.length === 0) return 'updates must not be empty';
         const invalid = keys.filter((k) => !allowed.includes(k));

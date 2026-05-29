@@ -88,4 +88,26 @@ agents.delete('/:id', async (c) => {
   return c.json({ ok: true, data: { deleted: true, id: c.req.param('id') } });
 });
 
+/**
+ * POST /agents/:id/send-input — Send input to a running agent's stdin.
+ */
+agents.post('/:id/send-input', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  if (!body || typeof body.data !== 'string') {
+    return c.json({ ok: false, error: { code: 'VALIDATION', message: 'data (string) is required' } }, 400);
+  }
+  const engine = c.get('agentEngine');
+  if (!engine) {
+    return c.json({ ok: false, error: { code: 'UNAVAILABLE', message: 'Agent engine not available' } }, 503);
+  }
+  try {
+    await engine.sendInput(id, body.data);
+    return c.json({ ok: true });
+  } catch (err) {
+    const status = err.message.includes('not found') ? 404 : 400;
+    return c.json({ ok: false, error: { code: 'ERROR', message: err.message } }, status);
+  }
+});
+
 module.exports = agents;

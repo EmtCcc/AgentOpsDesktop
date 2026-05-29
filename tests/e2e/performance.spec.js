@@ -211,3 +211,64 @@ test.describe('DOM Efficiency', () => {
     expect(duplicates).toHaveLength(0);
   });
 });
+
+test.describe('Dashboard Render Time', () => {
+  test('full page load under 3s', async ({ page, appUrl }) => {
+    const start = Date.now();
+    await page.goto(appUrl);
+    await page.waitForLoadState('domcontentloaded');
+    const domReady = Date.now() - start;
+
+    await page.waitForLoadState('networkidle');
+    const fullLoad = Date.now() - start;
+
+    // Log for CI visibility
+    console.log(`Dashboard render: DOM ready ${domReady}ms, full load ${fullLoad}ms`);
+
+    expect(domReady).toBeLessThan(1500);
+    expect(fullLoad).toBeLessThan(3000);
+  });
+
+  test('navigation timing API reports fast load', async ({ mainPage }) => {
+    const timing = await mainPage.evaluate(() => {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (!nav) return null;
+      return {
+        domContentLoaded: nav.domContentLoadedEventEnd - nav.startTime,
+        loadComplete: nav.loadEventEnd - nav.startTime,
+        domInteractive: nav.domInteractive - nav.startTime,
+        responseEnd: nav.responseEnd - nav.startTime,
+      };
+    });
+
+    if (timing) {
+      console.log('Navigation timing:', JSON.stringify(timing));
+      expect(timing.domContentLoaded).toBeLessThan(2000);
+      expect(timing.loadComplete).toBeLessThan(3000);
+    }
+  });
+});
+
+test.describe('Render Stress Test', () => {
+  test('rapid re-renders stay under budget', async ({ mainPage }) => {
+    // Measure time for 10 rapid DOM mutations simulating dashboard updates
+    const duration = await mainPage.evaluate(async () => {
+      const start = performance.now();
+      const container = document.querySelector('main') || document.body;
+
+      for (let i = 0; i < 10; i++) {
+        const el = document.createElement('div');
+        el.className = 'perf-stress-test';
+        el.innerHTML = `<span>Update ${i}</span><span>${Date.now()}</span>`;
+        container.appendChild(el);
+        // Force layout
+        void container.offsetHeight;
+        el.remove();
+      }
+
+      return performance.now() - start;
+    });
+
+    expect(duration).toBeLessThan(100); // 10 DOM cycles under 100ms
+  });
+});

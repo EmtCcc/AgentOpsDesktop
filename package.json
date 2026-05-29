@@ -8,12 +8,14 @@
     "dev": "electron . --dev",
     "lint": "eslint src/",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "npx playwright test",
     "test:e2e:chromium": "npx playwright test --project=chromium",
     "test:e2e:firefox": "npx playwright test --project=firefox",
     "test:e2e:webkit": "npx playwright test --project=webkit",
     "test:e2e:mobile": "npx playwright test --project=mobile-chrome --project=mobile-safari",
     "test:perf": "npx playwright test performance",
+    "test:benchmark": "npx vitest bench --run",
     "test:cross-browser": "npx playwright test cross-browser",
     "test:report": "npx playwright show-report",
     "test:smoke": "node scripts/smoke-test.js",
@@ -28,7 +30,10 @@
     "package:win": "node scripts/build.js && electron-builder --win",
     "package:linux": "node scripts/build.js && electron-builder --linux",
     "docs:generate": "node scripts/generate-api-docs.js",
-    "check-links": "node scripts/check-links.js"
+    "check-links": "node scripts/check-links.js",
+    "docs:dev": "cd docs-site && pnpm dev",
+    "docs:build": "cd docs-site && pnpm build",
+    "docs:preview": "cd docs-site && pnpm preview"
   },
   "keywords": [
     "agentops",
@@ -36,25 +41,30 @@
     "electron"
   ],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "@hono/node-server": "^2.0.4",
     "better-sqlite3": "^12.10.0",
     "electron-updater": "^6.3.9",
+    "gray-matter": "^4.0.3",
     "hono": "^4.12.23",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@electron/notarize": "^3.0.0",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "electron": "^41.7.1",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.28.0",
     "eslint": "^9.14.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "prettier": "^3.8.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.9"
   },
   "build": {
     "appId": "com.agentops.desktop",
@@ -81,7 +91,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png"
@@ -95,7 +107,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",

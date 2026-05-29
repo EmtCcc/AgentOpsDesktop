@@ -155,4 +155,30 @@ cost.get('/reports/agent/:agentId/period', validateRequest({ query: { since: { t
   return c.json({ ok: true, data });
 });
 
+// ── Dashboard Aggregations ──
+
+cost.get('/reports/by-model', validateRequest({ query: { since: { type: 'string' } } }), async (c) => {
+  const repo = c.get('repos').costs;
+  const { since } = c.req.query();
+  return c.json({ ok: true, data: repo.getSpendByModel(since) });
+});
+
+cost.get('/reports/by-task', validateRequest({ query: { since: { type: 'string' }, limit: { type: 'number', min: 1, max: 100 } } }), async (c) => {
+  const repo = c.get('repos').costs;
+  const { since, limit } = c.req.query();
+  return c.json({ ok: true, data: repo.getSpendByTask(since, limit ? parseInt(limit, 10) : 25) });
+});
+
+cost.get('/reports/tokens-by-agent', validateRequest({ query: { since: { type: 'string' } } }), async (c) => {
+  const repo = c.get('repos').costs;
+  const { since } = c.req.query();
+  return c.json({ ok: true, data: repo.getTokensByAgent(since) });
+});
+
+cost.get('/reports/trends', validateRequest({ query: { since: { type: 'string' }, until: { type: 'string' } } }), async (c) => {
+  const repo = c.get('repos').costs;
+  const { since, until } = c.req.query();
+  return c.json({ ok: true, data: repo.getSpendByPeriodAll(since, until) });
+});
+
 module.exports = cost;

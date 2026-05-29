@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentOps Desktop — Settings</title>
+  <link rel="stylesheet" href="../../src/renderer/styles/tokens.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/base.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/layout.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/components.css">
+  <link rel="stylesheet" href="../../src/renderer/styles/pages.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header" data-testid="header">
+      <div class="header__left">
+        <div class="header__logo">
+          <div class="header__logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="6" y="14" width="12" height="8" rx="2" ry="2"/><path d="M12 16v4"/></svg>
+          </div>
+          <div>
+            <div class="header__title">AgentOps</div>
+            <div class="header__subtitle">Desktop</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="sidebar" data-testid="sidebar">
+      <div class="sidebar__section">
+        <div class="sidebar__section-title">Overview</div>
+        <a class="sidebar__item" data-page="dashboard">
+          <span class="sidebar__item-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" data-testid="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-header__title">Settings</h1>
+          <p class="page-header__desc">Application configuration</p>
+        </div>
+      </div>
+
+      <div class="settings-sections">
+        <section class="settings-section card">
+          <h2 class="settings-section__title">General</h2>
+          <div class="settings-section__body">
+            <div class="settings-row">
+              <label>App Version</label>
+              <span class="settings-value" data-testid="app-version">v0.1.0</span>
+            </div>
+            <div class="settings-row">
+              <label>Platform</label>
+              <span class="settings-value" data-testid="platform">darwin</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section card">
+          <h2 class="settings-section__title">Agents</h2>
+          <div class="settings-section__body">
+            <div class="settings-row">
+              <label for="setting-max-agents">Max Parallel Agents</label>
+              <input type="number" id="setting-max-agents" value="5" min="1" max="20" />
+            </div>
+            <div class="settings-row">
+              <label for="setting-task-timeout">Task Timeout (seconds)</label>
+              <input type="number" id="setting-task-timeout" value="300" min="30" max="3600" />
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section card">
+          <h2 class="settings-section__title">Logs</h2>
+          <div class="settings-section__body">
+            <div class="settings-row">
+              <label for="setting-log-retention">Log Retention (days)</label>
+              <input type="number" id="setting-log-retention" value="7" min="1" max="90" />
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer" data-testid="footer">
+      <div class="footer__left">
+        <div class="footer__status">
+          <span class="footer__dot footer__dot--running"></span>
+          <span>System ready</span>
+        </div>
+      </div>
+      <div class="footer__right">
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

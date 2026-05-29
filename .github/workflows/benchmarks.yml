@@ -1,0 +1,80 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - name: Run unit benchmarks
+        run: npx vitest bench --run 2>&1 | tee benchmarks/results.txt
+        continue-on-error: true
+
+      - name: Download baseline
+        uses: actions/cache@v4
+        with:
+          path: benchmarks/baseline.json
+          key: perf-baseline-${{ github.base_ref || 'main' }}
+          restore-keys: |
+            perf-baseline-main
+
+      - name: Check for regressions
+        run: node scripts/check-benchmarks.js --threshold 20
+        continue-on-error: true
+
+      - name: Update baseline (main branch only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: node scripts/check-benchmarks.js --update
+
+      - name: Save baseline cache (main branch only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: benchmarks/baseline.json
+          key: perf-baseline-main
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: benchmarks/
+          retention-days: 30
+
+  e2e-performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+      - run: npx playwright install --with-deps
+
+      - name: Run E2E performance tests
+        run: npx playwright test performance --reporter=list --reporter=json
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-perf-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14

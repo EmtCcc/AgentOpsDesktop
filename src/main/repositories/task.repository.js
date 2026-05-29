@@ -14,12 +14,12 @@ class TaskRepository {
   _prepareStatements() {
     this._stmts = {
       insert: this.db.prepare(`
-        INSERT INTO tasks (id, goal_id, agent_id, title, description, status, output_summary, output, depends_on, owner_role, started_at, completed_at, created_at, updated_at)
-        VALUES (@id, @goalId, @agentId, @title, @description, @status, @outputSummary, @output, @dependsOn, @ownerRole, @startedAt, @completedAt, @createdAt, @updatedAt)
+        INSERT INTO tasks (id, goal_id, agent_id, squad_id, title, description, status, output_summary, output, depends_on, owner_role, started_at, completed_at, created_at, updated_at)
+        VALUES (@id, @goalId, @agentId, @squadId, @title, @description, @status, @outputSummary, @output, @dependsOn, @ownerRole, @startedAt, @completedAt, @createdAt, @updatedAt)
       `),
       update: this.db.prepare(`
         UPDATE tasks
-        SET goal_id = @goalId, agent_id = @agentId, title = @title, description = @description,
+        SET goal_id = @goalId, agent_id = @agentId, squad_id = @squadId, title = @title, description = @description,
             status = @status, output_summary = @outputSummary, output = @output, depends_on = @dependsOn,
             started_at = @startedAt, completed_at = @completedAt, updated_at = @updatedAt
         WHERE id = @id
@@ -34,6 +34,8 @@ class TaskRepository {
       listByOwnerAndStatus: this.db.prepare('SELECT * FROM tasks WHERE owner_role = @ownerRole AND status = @status ORDER BY created_at DESC'),
       listByOwnerAndGoal: this.db.prepare('SELECT * FROM tasks WHERE owner_role = @ownerRole AND goal_id = @goalId ORDER BY created_at DESC'),
       listByOwnerAndGoalAndStatus: this.db.prepare('SELECT * FROM tasks WHERE owner_role = @ownerRole AND goal_id = @goalId AND status = @status ORDER BY created_at DESC'),
+      listBySquad: this.db.prepare('SELECT * FROM tasks WHERE squad_id = @squadId ORDER BY created_at DESC'),
+      listBySquadAndStatus: this.db.prepare('SELECT * FROM tasks WHERE squad_id = @squadId AND status = @status ORDER BY created_at DESC'),
     };
   }
 
@@ -43,6 +45,7 @@ class TaskRepository {
       id: row.id,
       goalId: row.goal_id,
       agentId: row.agent_id,
+      squadId: row.squad_id || null,
       title: row.title,
       description: row.description,
       status: row.status,
@@ -63,6 +66,7 @@ class TaskRepository {
       id: task.id || randomUUID(),
       goalId: task.goalId || null,
       agentId: task.agentId || null,
+      squadId: task.squadId || null,
       title: task.title,
       description: task.description || null,
       status: task.status || 'pending',
@@ -113,10 +117,14 @@ class TaskRepository {
   }
 
   list(params = {}) {
-    const { offset = 0, limit = 20, status, goalId, ownerRole } = params;
+    const { offset = 0, limit = 20, status, goalId, ownerRole, squadId } = params;
 
     let rows;
-    if (ownerRole && goalId && status) {
+    if (squadId && status) {
+      rows = this._stmts.listBySquadAndStatus.all({ squadId, status });
+    } else if (squadId) {
+      rows = this._stmts.listBySquad.all({ squadId });
+    } else if (ownerRole && goalId && status) {
       rows = this._stmts.listByOwnerAndGoalAndStatus.all({ ownerRole, goalId, status });
     } else if (ownerRole && goalId) {
       rows = this._stmts.listByOwnerAndGoal.all({ ownerRole, goalId });

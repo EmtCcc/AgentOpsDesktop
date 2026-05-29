@@ -11,7 +11,7 @@ const costController = {
 
   // ── Budget CRUD ──
 
-  async listBudgets(event, params = {}) {
+  async listBudgets(_event, _params = {}) {
     if (!costRepo) throw IpcError.internal('Cost repository not initialized');
     return costRepo.listBudgets();
   },
@@ -69,7 +69,7 @@ const costController = {
 
   async getCostReport(event, params = {}) {
     if (!costRepo) throw IpcError.internal('Cost repository not initialized');
-    const { agentId, goalId, since, until } = params;
+    const { agentId, goalId, since } = params;
 
     if (agentId) {
       const spend = costRepo.getSpendByAgent(agentId, since);
@@ -91,10 +91,32 @@ const costController = {
     return { totalSpend, byGoal, budgets };
   },
 
-  async resetBudgets(event) {
+  async resetBudgets(_event) {
     if (!costRepo) throw IpcError.internal('Cost repository not initialized');
     const count = costRepo.resetMonthlyBudgets();
     return { reset: count };
+  },
+
+  // ── Dashboard Aggregations ──
+
+  async getSpendByModel(_event, params = {}) {
+    if (!costRepo) throw IpcError.internal('Cost repository not initialized');
+    return costRepo.getSpendByModel(params.since);
+  },
+
+  async getSpendByTask(_event, params = {}) {
+    if (!costRepo) throw IpcError.internal('Cost repository not initialized');
+    return costRepo.getSpendByTask(params.since, params.limit);
+  },
+
+  async getTokensByAgent(_event, params = {}) {
+    if (!costRepo) throw IpcError.internal('Cost repository not initialized');
+    return costRepo.getTokensByAgent(params.since);
+  },
+
+  async getSpendTrends(_event, params = {}) {
+    if (!costRepo) throw IpcError.internal('Cost repository not initialized');
+    return costRepo.getSpendByPeriodAll(params.since, params.until);
   },
 };
 
@@ -142,6 +164,20 @@ costController.schemas = {
     until: { type: 'string' },
   },
   resetBudgets: {},
+  getSpendByModel: {
+    since: { type: 'string' },
+  },
+  getSpendByTask: {
+    since: { type: 'string' },
+    limit: { type: 'number' },
+  },
+  getTokensByAgent: {
+    since: { type: 'string' },
+  },
+  getSpendTrends: {
+    since: { type: 'string' },
+    until: { type: 'string' },
+  },
 };
 
 module.exports = costController;

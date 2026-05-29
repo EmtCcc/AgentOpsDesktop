@@ -30,6 +30,9 @@ describe('SQLite Repositories', () => {
         working_directory TEXT,
         config_json     TEXT DEFAULT '{}',
         owner_role      TEXT,
+        type            TEXT NOT NULL DEFAULT 'custom',
+        exec_path       TEXT,
+        cwd             TEXT,
         created_at      TEXT NOT NULL,
         updated_at      TEXT NOT NULL
       );
@@ -40,6 +43,7 @@ describe('SQLite Repositories', () => {
         description     TEXT,
         status          TEXT NOT NULL DEFAULT 'active',
         owner_role      TEXT,
+        squad_id        TEXT,
         created_at      TEXT NOT NULL,
         updated_at      TEXT NOT NULL
       );
@@ -48,10 +52,13 @@ describe('SQLite Repositories', () => {
         id              TEXT PRIMARY KEY,
         goal_id         TEXT REFERENCES goals(id) ON DELETE CASCADE,
         agent_id        TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        squad_id        TEXT,
         title           TEXT NOT NULL,
         description     TEXT,
         status          TEXT NOT NULL DEFAULT 'pending',
         output_summary  TEXT,
+        output          TEXT,
+        depends_on      TEXT,
         owner_role      TEXT,
         started_at      TEXT,
         completed_at    TEXT,

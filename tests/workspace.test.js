@@ -139,6 +139,14 @@ describe('WorkspaceManager', () => {
       VALUES (@id, 'Agent', '/usr/bin/echo', '/tmp', 'custom', 'custom', 'idle', '2026-01-01', '2026-01-01')`).run({ id });
   }
 
+  function createTask(taskId) {
+    // Ensure a goal exists first (FK requirement)
+    db.prepare(`INSERT OR IGNORE INTO goals (id, title, status, created_at, updated_at)
+      VALUES ('g1', 'Test Goal', 'active', '2026-01-01', '2026-01-01')`).run();
+    db.prepare(`INSERT INTO tasks (id, goal_id, title, status, created_at, updated_at)
+      VALUES (@taskId, 'g1', 'Test Task', 'pending', '2026-01-01', '2026-01-01')`).run({ taskId });
+  }
+
   describe('create', () => {
     it('creates workspace with on-disk directory', () => {
       createAgent();
@@ -308,7 +316,7 @@ describe('WorkspaceManager', () => {
         .run(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), ws.id);
 
       const cleaned = manager.cleanup();
-      expect(cleaned).toBe(1);
+      expect(cleaned.archived).toBe(1);
       expect(manager.get(ws.id)).toBeNull();
     });
 
@@ -318,7 +326,166 @@ describe('WorkspaceManager', () => {
       manager.archive(ws.id);
 
       const cleaned = manager.cleanup();
-      expect(cleaned).toBe(0);
+      expect(cleaned.archived).toBe(0);
+      expect(cleaned.gc).toBe(0);
+      expect(manager.get(ws.id)).not.toBeNull();
+    });
+  });
+
+  describe('task workspace lifecycle', () => {
+    it('creates an isolated workspace for a task', () => {
+      createAgent();
+      createTask('task-001');
+      const ws = manager.createForTask({ taskId: 'task-001', agentId: 'a1' });
+
+      expect(ws.taskId).toBe('task-001');
+      expect(ws.agentId).toBe('a1');
+      expect(ws.name).toBe('task-task-001');
+      expect(fs.existsSync(ws.rootPath)).toBe(true);
+      expect(fs.existsSync(path.join(ws.rootPath, 'src'))).toBe(true);
+    });
+
+    it('creates task workspace under tasks/ subdirectory', () => {
+      createAgent();
+      createTask('task-002');
+      const ws = manager.createForTask({ taskId: 'task-002', agentId: 'a1' });
+
+      expect(ws.rootPath).toContain(path.join(tmpDir, 'tasks'));
+    });
+
+    it('injects specific project files into task workspace', () => {
+      createAgent();
+      createTask('task-003');
+      // Create a project root with some files
+      const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-'));
+      fs.writeFileSync(path.join(projectDir, 'index.js'), 'console.log("hi")');
+      fs.writeFileSync(path.join(projectDir, 'utils.js'), 'export const x = 1');
+      fs.writeFileSync(path.join(projectDir, 'secret.key'), 'topsecret');
+
+      const ws = manager.createForTask({
+        taskId: 'task-003',
+        agentId: 'a1',
+        projectRoot: projectDir,
+        injectFiles: ['index.js', 'utils.js'],
+      });
+
+      expect(ws.injectedFiles).toEqual(['index.js', 'utils.js']);
+      expect(manager.readFile(ws.id, 'src/index.js')).toBe('console.log("hi")');
+      expect(manager.readFile(ws.id, 'src/utils.js')).toBe('export const x = 1');
+      // secret.key should NOT be injected
+      expect(() => manager.readFile(ws.id, 'src/secret.key')).toThrow();
+
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it('injects full project tree when no injectFiles specified', () => {
+      createAgent();
+      createTask('task-004');
+      const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-'));
+      fs.writeFileSync(path.join(projectDir, 'main.py'), 'print("hello")');
+      fs.mkdirSync(path.join(projectDir, 'lib'));
+      fs.writeFileSync(path.join(projectDir, 'lib', 'util.py'), 'def foo(): pass');
+      // These should be skipped
+      fs.mkdirSync(path.join(projectDir, 'node_modules'));
+      fs.writeFileSync(path.join(projectDir, 'node_modules', 'pkg.js'), 'skip');
+      fs.mkdirSync(path.join(projectDir, '.git'));
+      fs.writeFileSync(path.join(projectDir, '.git', 'config'), 'skip');
+
+      const ws = manager.createForTask({
+        taskId: 'task-004',
+        agentId: 'a1',
+        projectRoot: projectDir,
+      });
+
+      expect(ws.injectedFiles).toEqual(['*']);
+      expect(manager.readFile(ws.id, 'src/main.py')).toBe('print("hello")');
+      expect(manager.readFile(ws.id, 'src/lib/util.py')).toBe('def foo(): pass');
+      // node_modules and .git should be skipped
+      expect(() => manager.readFile(ws.id, 'src/node_modules/pkg.js')).toThrow();
+      expect(() => manager.readFile(ws.id, 'src/.git/config')).toThrow();
+
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it('skips nonexistent files in injectFiles gracefully', () => {
+      createAgent();
+      createTask('task-005');
+      const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-'));
+      fs.writeFileSync(path.join(projectDir, 'exists.txt'), 'here');
+
+      const ws = manager.createForTask({
+        taskId: 'task-005',
+        agentId: 'a1',
+        projectRoot: projectDir,
+        injectFiles: ['exists.txt', 'nope.txt'],
+      });
+
+      expect(ws.injectedFiles).toEqual(['exists.txt']);
+      expect(manager.readFile(ws.id, 'src/exists.txt')).toBe('here');
+
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it('throws when taskId is missing', () => {
+      createAgent();
+      expect(() => manager.createForTask({ agentId: 'a1' })).toThrow('taskId is required');
+    });
+
+    it('throws when agentId is missing', () => {
+      expect(() => manager.createForTask({ taskId: 't1' })).toThrow('agentId is required');
+    });
+
+    it('retrieves workspace by taskId via getByTaskId', () => {
+      createAgent();
+      createTask('task-lookup');
+      const ws = manager.createForTask({ taskId: 'task-lookup', agentId: 'a1' });
+      const found = manager.getByTaskId('task-lookup');
+
+      expect(found).not.toBeNull();
+      expect(found.id).toBe(ws.id);
+      expect(found.taskId).toBe('task-lookup');
+    });
+
+    it('returns null from getByTaskId for unknown task', () => {
+      expect(manager.getByTaskId('nonexistent')).toBeNull();
+    });
+
+    it('schedules GC for a task workspace', () => {
+      createAgent();
+      createTask('task-gc');
+      const ws = manager.createForTask({ taskId: 'task-gc', agentId: 'a1' });
+
+      manager.scheduleGc(ws.id, 0); // 0ms delay for test
+
+      const updated = manager.get(ws.id);
+      expect(updated.status).toBe('gc-pending');
+      expect(updated.gcAt).not.toBeNull();
+    });
+
+    it('cleanup removes GC-eligible task workspaces', () => {
+      createAgent();
+      createTask('task-gc-clean');
+      const ws = manager.createForTask({ taskId: 'task-gc-clean', agentId: 'a1' });
+
+      // Schedule GC with 0 delay (already eligible)
+      manager.scheduleGc(ws.id, 0);
+
+      const cleaned = manager.cleanup();
+      expect(cleaned.gc).toBe(1);
+      expect(manager.get(ws.id)).toBeNull();
+      expect(fs.existsSync(ws.rootPath)).toBe(false);
+    });
+
+    it('cleanup does not remove task workspaces whose GC time has not passed', () => {
+      createAgent();
+      createTask('task-gc-future');
+      const ws = manager.createForTask({ taskId: 'task-gc-future', agentId: 'a1' });
+
+      // Schedule GC with long delay
+      manager.scheduleGc(ws.id, 60 * 60 * 1000); // 1 hour
+
+      const cleaned = manager.cleanup();
+      expect(cleaned.gc).toBe(0);
       expect(manager.get(ws.id)).not.toBeNull();
     });
   });

@@ -267,6 +267,11 @@ const agentController = {
     return engine.getLogs(id, { limit, offset });
   },
 
+  async sendInput(_event, { id, data }) {
+    await engine.sendInput(id, data);
+    return { ok: true };
+  },
+
   async listLive() {
     return engine.listAgents();
   },
@@ -346,6 +351,10 @@ agentController.schemas = {
     id: { type: 'string', required: true },
     limit: { type: 'number' },
     offset: { type: 'number' },
+  },
+  sendInput: {
+    id: { type: 'string', required: true },
+    data: { type: 'string', required: true },
   },
 };
 

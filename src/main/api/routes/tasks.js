@@ -10,6 +10,7 @@ const listQuerySchema = {
   limit: { type: 'number', min: 1, max: 100 },
   status: { type: 'string', enum: ['pending', 'assigned', 'running', 'done', 'failed', 'blocked'] },
   goalId: { type: 'string' },
+  squadId: { type: 'string' },
   sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'title', 'status'] },
   sortOrder: { type: 'string', enum: ['asc', 'desc'] },
 };
@@ -19,6 +20,7 @@ const createBodySchema = {
   description: { type: 'string', maxLength: 5000 },
   goalId: { type: 'string' },
   assigneeAgentId: { type: 'string' },
+  squadId: { type: 'string' },
   dependsOn: { type: 'object' },
 };
 
@@ -28,6 +30,7 @@ const updateBodySchema = {
   status: { type: 'string', enum: ['pending', 'assigned', 'running', 'done', 'failed', 'blocked'] },
   goalId: { type: 'string' },
   assigneeAgentId: { type: 'string' },
+  squadId: { type: 'string' },
   output: { type: 'object' },
   dependsOn: { type: 'object' },
 };
@@ -37,12 +40,13 @@ const updateBodySchema = {
  */
 tasks.get('/', validateRequest({ query: listQuerySchema }), async (c) => {
   const repo = c.get('repos').tasks;
-  const { offset, limit, status, goalId, sortBy, sortOrder } = c.req.query();
+  const { offset, limit, status, goalId, squadId, sortBy, sortOrder } = c.req.query();
   const params = {
     offset: offset ? parseInt(offset, 10) : undefined,
     limit: limit ? parseInt(limit, 10) : undefined,
     status,
     goalId,
+    squadId,
     sortBy,
     sortOrder,
   };

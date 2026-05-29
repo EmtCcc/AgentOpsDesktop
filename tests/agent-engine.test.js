@@ -9,6 +9,9 @@ function createMockProc() {
   proc.killed = false;
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
+  proc.stdin = new EventEmitter();
+  proc.stdin.destroyed = false;
+  proc.stdin.write = vi.fn((data, cb) => { if (cb) cb(null); return true; });
   proc.kill = vi.fn((signal) => {
     // Only set killed for signals that actually terminate
     if (signal !== 'SIGSTOP' && signal !== 'SIGCONT') {
@@ -474,6 +477,40 @@ describe('AgentEngine', () => {
     it('throws if still running', () => {
       const { agentId } = spawnAndRunning();
       expect(() => engine.removeAgent(agentId)).toThrow('Cannot remove running agent');
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // SEND INPUT
+  // ══════════════════════════════════════════════════════════
+
+  describe('sendInput', () => {
+    it('writes data to agent stdin', async () => {
+      const { agentId } = spawnAndRunning();
+      await engine.sendInput(agentId, 'hello agent\n');
+      expect(mockProc.stdin.write).toHaveBeenCalledWith('hello agent\n', expect.any(Function));
+    });
+
+    it('throws if agent not found', async () => {
+      await expect(engine.sendInput('nonexistent', 'data')).rejects.toThrow('Agent not found');
+    });
+
+    it('throws if agent process not running', async () => {
+      const { agentId } = spawnAndRunning();
+      mockProc.emit('close', 0, null);
+      await expect(engine.sendInput(agentId, 'data')).rejects.toThrow('Agent process not running');
+    });
+
+    it('throws if stdin is destroyed', async () => {
+      const { agentId } = spawnAndRunning();
+      mockProc.stdin.destroyed = true;
+      await expect(engine.sendInput(agentId, 'data')).rejects.toThrow('stdin not available');
+    });
+
+    it('propagates write errors', async () => {
+      const { agentId } = spawnAndRunning();
+      mockProc.stdin.write = vi.fn((data, cb) => { cb(new Error('write failed')); return true; });
+      await expect(engine.sendInput(agentId, 'data')).rejects.toThrow('write failed');
     });
   });
 
