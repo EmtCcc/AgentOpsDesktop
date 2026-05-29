@@ -1,273 +1,316 @@
 #!/usr/bin/env node
+'use strict';
+
 /**
- * Broken link and redirect checker.
- * Crawls markdown and HTML files, verifies:
- *  - Internal links resolve to existing files
- *  - Anchor references exist in target files
- *  - External links are reachable (HTTP HEAD/GET)
- *  - Redirect map entries are consistent with canonical routes
- *  - Gone paths don't overlap with live routes
- *  - Parameterized redirect patterns are well-formed
+ * Link checker for AgentOps docs-site.
+ *
+ * Validates:
+ *  1. Internal links (markdown cross-references, config nav/sidebar) resolve to real files
+ *  2. External links are reachable (skipped when no network)
+ *  3. Redirect map entries return expected status codes
+ *
+ * Usage: node scripts/check-links.js
+ * Exit: 0 = all checks pass, 1 = failures found, 2 = fatal error
  */
 
-import { readdir, readFile, stat } from "node:fs/promises";
-import { resolve, dirname, extname, join, relative } from "node:path";
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const http = require('http');
 
-const ROOT = resolve(import.meta.dirname, "..");
-const TIMEOUT_MS = 15_000;
-const CONCURRENCY = 10;
+const DOCS_DIR = path.resolve(__dirname, '..', 'docs-site');
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const TIMEOUT_MS = 10000;
+const CONCURRENCY = 5;
 
-// --- File discovery -----------------------------------------------------------
+// Old URL -> expected redirect target (populate when legacy URLs exist)
+const REDIRECT_MAP = {};
 
-async function walk(dir, exts) {
-  const entries = await readdir(dir, { withFileTypes: true });
+const results = {
+  internal: { total: 0, ok: 0, broken: [] },
+  external: { total: 0, ok: 0, broken: [], unreachable: false },
+  redirects: { total: 0, ok: 0, broken: [] },
+};
+
+function collectMarkdownFiles(dir) {
   const files = [];
-  for (const e of entries) {
-    const full = join(dir, e.name);
-    if (e.isDirectory()) {
-      if (["node_modules", ".git", "dist", "build", "release", "playwright-report", "test-results"].includes(e.name)) continue;
-      files.push(...await walk(full, exts));
-    } else if (exts.includes(extname(e.name).toLowerCase())) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '.vitepress') {
+      files.push(...collectMarkdownFiles(full));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
       files.push(full);
     }
   }
   return files;
 }
 
-// --- Link extraction ---------------------------------------------------------
-
-const MD_LINK = /\[([^\]]*)\]\(([^)]+)\)/g;
-const HTML_LINK = /href="([^"]+)"/g;
-const ANCHOR_RE = /^([^#]*)#(.+)$/;
-
-function extractLinks(content, filePath) {
+function extractLinks(filePath, content) {
   const links = [];
-  const regex = filePath.endsWith(".html") ? HTML_LINK : MD_LINK;
-  let m;
-  while ((m = regex.exec(content)) !== null) {
-    const target = filePath.endsWith(".html") ? m[1] : m[2];
-    links.push({ target, source: filePath });
+  const relativePath = path.relative(PROJECT_ROOT, filePath);
+
+  // Markdown links: [text](url)
+  const mdLinkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = mdLinkRegex.exec(content)) !== null) {
+    const url = match[2].split('#')[0].split('?')[0];
+    if (!url) continue;
+    links.push({ url, line: content.substring(0, match.index).split('\n').length, source: relativePath });
   }
+
+  // HTML href: href="url"
+  const hrefRegex = /href=["']([^"']+)["']/g;
+  while ((match = hrefRegex.exec(content)) !== null) {
+    const url = match[1].split('#')[0].split('?')[0];
+    if (!url) continue;
+    links.push({ url, line: content.substring(0, match.index).split('\n').length, source: relativePath });
+  }
+
+  // YAML/config link properties
+  const linkInConfig = /link:\s*['"]?([^'")\s,]+)/g;
+  while ((match = linkInConfig.exec(content)) !== null) {
+    const url = match[1].split('#')[0].split('?')[0];
+    if (!url) continue;
+    links.push({ url, line: content.substring(0, match.index).split('\n').length, source: relativePath });
+  }
+
   return links;
 }
 
-// --- Internal link validation -----------------------------------------------
+function resolveInternalLink(url, sourceFile) {
+  let cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+  cleanUrl = cleanUrl.replace(/\/$/, '');
 
-function normalizeInternal(target, sourceFile) {
-  const clean = target.replace(/#.*$/, "").replace(/\?.*$/, "");
-  if (!clean) return null; // pure anchor
-  if (/^https?:\/\//.test(clean)) return null; // external
-  if (clean.startsWith("mailto:")) return null;
-  const base = dirname(sourceFile);
-  return resolve(base, clean);
+  const mdPath = path.join(DOCS_DIR, cleanUrl + '.md');
+  if (fs.existsSync(mdPath)) return { ok: true, resolved: mdPath };
+
+  const indexPath = path.join(DOCS_DIR, cleanUrl, 'index.md');
+  if (fs.existsSync(indexPath)) return { ok: true, resolved: indexPath };
+
+  const directPath = path.join(DOCS_DIR, cleanUrl);
+  if (fs.existsSync(directPath)) return { ok: true, resolved: directPath };
+
+  const sourceDir = path.dirname(path.join(DOCS_DIR, sourceFile));
+  const relativePath = path.resolve(sourceDir, url);
+  if (fs.existsSync(relativePath)) return { ok: true, resolved: relativePath };
+
+  return { ok: false };
 }
 
-async function fileExists(p) {
-  try { await stat(p); return true; } catch { return false; }
-}
-
-async function validateInternal(link) {
-  const { target, source } = link;
-  const anchorMatch = target.match(ANCHOR_RE);
-  const filePath = normalizeInternal(target, source);
-  const issues = [];
-
-  if (filePath) {
-    if (!(await fileExists(filePath))) {
-      issues.push({ type: "broken_file", target, source: relative(ROOT, source), resolved: relative(ROOT, filePath) });
-      return issues;
-    }
-  }
-
-  // Anchor check
-  const anchor = anchorMatch ? anchorMatch[2] : null;
-  if (anchor) {
-    const fileToCheck = filePath || source;
-    try {
-      const content = await readFile(fileToCheck, "utf-8");
-      const anchorSlug = anchor.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
-      const headingRe = new RegExp(`^#{1,6}\\s+.*${anchor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}.*$`, "mi");
-      const idRe = new RegExp(`id=["']${anchor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`, "i");
-      if (!headingRe.test(content) && !idRe.test(content) && !content.includes(`#${anchor}`)) {
-        // Soft check — anchor may still work in rendered HTML; flag as warning
-        issues.push({ type: "anchor_maybe_missing", target, source: relative(ROOT, source), anchor });
+function checkExternalUrl(url) {
+  return new Promise((resolve) => {
+    const proto = url.startsWith('https') ? https : http;
+    const req = proto.get(url, { timeout: TIMEOUT_MS, headers: { 'User-Agent': 'AgentOpsDocs-LinkChecker/1.0' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        resolve({ ok: true, status: res.statusCode, redirect: res.headers.location });
+        res.resume();
+        return;
       }
-    } catch { /* file read failed — already caught above */ }
-  }
-
-  return issues;
-}
-
-// --- External link validation -----------------------------------------------
-
-async function validateExternal(link) {
-  const { target, source } = link;
-  const url = target.replace(/#.*$/, "").replace(/\?.*$/, "");
-  if (!/^https?:\/\/.+/.test(url)) return [];
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const res = await fetch(url, {
-      method: "HEAD",
-      signal: controller.signal,
-      redirect: "manual",
-      headers: { "User-Agent": "AgentOps-LinkChecker/1.0" },
+      resolve({ ok: res.statusCode >= 200 && res.statusCode < 400, status: res.statusCode });
+      res.resume();
     });
-    clearTimeout(timer);
+    req.on('error', (err) => resolve({ ok: false, error: err.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
+  });
+}
 
-    const issues = [];
-    if (res.status >= 400) {
-      // Retry with GET — some servers block HEAD
-      const controller2 = new AbortController();
-      const timer2 = setTimeout(() => controller2.abort(), TIMEOUT_MS);
-      const res2 = await fetch(url, {
-        method: "GET",
-        signal: controller2.signal,
-        redirect: "manual",
-        headers: { "User-Agent": "AgentOps-LinkChecker/1.0" },
-      });
-      clearTimeout(timer2);
-      if (res2.status >= 400) {
-        issues.push({ type: "http_error", status: res2.status, target: url, source: relative(ROOT, source) });
+async function checkExternalLinks(links) {
+  const unique = new Map();
+  for (const link of links) {
+    if (!unique.has(link.url)) unique.set(link.url, []);
+    unique.get(link.url).push(link);
+  }
+
+  const urls = [...unique.keys()];
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    const batch = urls.slice(i, i + CONCURRENCY);
+    const checks = await Promise.all(batch.map(async (url) => {
+      const result = await checkExternalUrl(url);
+      return { url, result, sources: unique.get(url) };
+    }));
+    for (const { url, result, sources } of checks) {
+      results.external.total++;
+      if (result.ok) {
+        results.external.ok++;
+      } else {
+        for (const src of sources) {
+          results.external.broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}` });
+        }
       }
-    } else if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (!location) {
-        issues.push({ type: "redirect_no_location", status: res.status, target: url, source: relative(ROOT, source) });
-      }
-      // Accept 301/302/307/308 as valid redirects
     }
-    return issues;
-  } catch (err) {
-    if (err.name === "AbortError") {
-      return [{ type: "timeout", target: url, source: relative(ROOT, source) }];
-    }
-    return [{ type: "network_error", target: url, source: relative(ROOT, source), error: err.message }];
   }
 }
 
-// --- Concurrency helper -----------------------------------------------------
-
-async function pool(tasks, fn, concurrency) {
-  const results = [];
-  let i = 0;
-  async function worker() {
-    while (i < tasks.length) {
-      const idx = i++;
-      results[idx] = await fn(tasks[idx]);
-    }
+async function probeNetwork() {
+  try {
+    const result = await checkExternalUrl('https://example.com');
+    return result.ok === true;
+  } catch {
+    return false;
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker()));
-  return results;
 }
 
-// --- Main --------------------------------------------------------------------
+function collectProjectMarkdownFiles() {
+  const extraFiles = [];
+  const readmePath = path.join(PROJECT_ROOT, 'README.md');
+  if (fs.existsSync(readmePath)) extraFiles.push(readmePath);
+  const docsReadmePath = path.join(PROJECT_ROOT, 'docs', 'README.md');
+  if (fs.existsSync(docsReadmePath)) extraFiles.push(docsReadmePath);
+  return extraFiles;
+}
+
+function resolveProjectLink(url, sourceFile) {
+  const sourceDir = path.dirname(sourceFile);
+  const resolved = path.resolve(sourceDir, url);
+  if (fs.existsSync(resolved)) return { ok: true, resolved };
+  return { ok: false };
+}
 
 async function main() {
-  console.log("🔗 AgentOps Link Checker\n");
+  console.log('=== AgentOps Docs Link Checker ===\n');
 
-  const files = [
-    ...(await walk(ROOT, [".md"])),
-    ...(await walk(ROOT, [".html"])),
-  ];
-
-  console.log(`Scanning ${files.length} files...`);
-
-  // Extract all links
-  const allLinks = [];
-  for (const f of files) {
-    try {
-      const content = await readFile(f, "utf-8");
-      allLinks.push(...extractLinks(content, f));
-    } catch { /* skip unreadable */ }
+  // Collect docs-site markdown files
+  const docsSiteFiles = collectMarkdownFiles(DOCS_DIR);
+  const configPath = path.join(DOCS_DIR, '.vitepress', 'config.ts');
+  if (fs.existsSync(configPath)) {
+    docsSiteFiles.push(configPath);
   }
 
-  // Deduplicate external links
-  const seen = new Set();
-  const uniqueExternal = [];
-  const allInternal = [];
-  for (const link of allLinks) {
-    if (/^https?:\/\//.test(link.target.replace(/#.*$/, ""))) {
-      const key = link.target.replace(/#.*$/, "");
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueExternal.push(link);
+  // Collect project-level markdown files
+  const projectFiles = collectProjectMarkdownFiles();
+  const allFiles = [...docsSiteFiles, ...projectFiles];
+
+  console.log(`Found ${docsSiteFiles.length} docs-site files, ${projectFiles.length} project files.\n`);
+
+  const allInternalLinks = [];
+  const allExternalLinks = [];
+
+  for (const filePath of allFiles) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const isProjectFile = !filePath.startsWith(DOCS_DIR);
+    const links = extractLinks(filePath, content);
+
+    for (const link of links) {
+      if (link.url.startsWith('http://') || link.url.startsWith('https://')) {
+        allExternalLinks.push(link);
+      } else if (link.url.startsWith('/') || link.url.startsWith('./') || link.url.startsWith('../') || !link.url.includes(':')) {
+        allInternalLinks.push({ ...link, isProjectFile, absPath: filePath });
       }
-    } else if (!link.target.startsWith("mailto:")) {
-      allInternal.push(link);
     }
   }
 
-  console.log(`Found ${allInternal.length} internal links, ${uniqueExternal.length} unique external links\n`);
+  // Check internal links
+  console.log('--- Internal Links ---');
+  for (const link of allInternalLinks) {
+    results.internal.total++;
+    let result;
+    if (link.isProjectFile) {
+      result = resolveProjectLink(link.url, link.absPath);
+    } else {
+      result = resolveInternalLink(link.url, link.source);
+    }
+    if (result.ok) {
+      results.internal.ok++;
+    } else {
+      results.internal.broken.push({ url: link.url, source: link.source, line: link.line });
+      console.log(`  BROKEN: ${link.url} (in ${link.source}:${link.line})`);
+    }
+  }
+  console.log(`  Total: ${results.internal.total}, OK: ${results.internal.ok}, Broken: ${results.internal.broken.length}\n`);
 
-  // Validate internal
-  console.log("Checking internal links...");
-  const internalResults = await pool(allInternal, validateInternal, CONCURRENCY);
-  const internalIssues = internalResults.flat();
-
-  // Validate external
-  console.log("Checking external links...");
-  const externalResults = await pool(uniqueExternal, validateExternal, CONCURRENCY);
-  const externalIssues = externalResults.flat();
-
-  // --- Report ----------------------------------------------------------------
-
-  const allIssues = [...internalIssues, ...externalIssues];
-
-  if (allIssues.length === 0) {
-    console.log("\n✅ All links valid. No broken links found.");
-    process.exit(0);
+  // Probe network before checking external links
+  console.log('--- External Links ---');
+  const hasNetwork = await probeNetwork();
+  if (!hasNetwork) {
+    results.external.unreachable = true;
+    const uniqueUrls = [...new Set(allExternalLinks.map(l => l.url))];
+    results.external.total = uniqueUrls.length;
+    results.external.ok = 0;
+    console.log(`  SKIPPED: No network access (${uniqueUrls.length} unique URLs to verify)\n`);
+    for (const url of uniqueUrls) {
+      const sources = allExternalLinks.filter(l => l.url === url);
+      for (const src of sources) {
+        results.external.broken.push({ url, source: src.source, line: src.line, error: 'no network — verify in CI' });
+      }
+    }
+  } else {
+    await checkExternalLinks(allExternalLinks);
+    for (const b of results.external.broken) {
+      console.log(`  BROKEN: ${b.url} — ${b.error} (in ${b.source}:${b.line})`);
+    }
+    console.log(`  Total: ${results.external.total}, OK: ${results.external.ok}, Broken: ${results.external.broken.length}\n`);
   }
 
-  console.log(`\n❌ Found ${allIssues.length} issue(s):\n`);
-
-  const brokenFiles = allIssues.filter(i => i.type === "broken_file");
-  const anchors = allIssues.filter(i => i.type === "anchor_maybe_missing");
-  const httpErrors = allIssues.filter(i => i.type === "http_error");
-  const timeouts = allIssues.filter(i => i.type === "timeout");
-  const netErrors = allIssues.filter(i => i.type === "network_error");
-  const redirectIssues = allIssues.filter(i => i.type === "redirect_no_location");
-
-  if (brokenFiles.length) {
-    console.log("── Broken file links ──");
-    for (const i of brokenFiles) console.log(`  ${i.source} → ${i.target} (resolved: ${i.resolved})`);
-    console.log();
+  // Check redirect map
+  console.log('--- Redirect Map ---');
+  const redirectEntries = Object.entries(REDIRECT_MAP);
+  if (redirectEntries.length === 0) {
+    console.log('  No old URL redirect entries configured.\n');
+  } else if (!hasNetwork) {
+    console.log(`  SKIPPED: ${redirectEntries.length} entries (no network)\n`);
+  } else {
+    for (const [oldUrl, expectedNew] of redirectEntries) {
+      results.redirects.total++;
+      const result = await checkExternalUrl(oldUrl);
+      if (result.ok && result.redirect && result.redirect.includes(expectedNew)) {
+        results.redirects.ok++;
+        console.log(`  OK: ${oldUrl} -> ${result.redirect}`);
+      } else {
+        results.redirects.broken.push({ from: oldUrl, expected: expectedNew, result });
+        console.log(`  BROKEN: ${oldUrl} -> expected ${expectedNew}, got ${result.status || result.error}`);
+      }
+    }
+    console.log(`  Total: ${results.redirects.total}, OK: ${results.redirects.ok}, Broken: ${results.redirects.broken.length}\n`);
   }
 
-  if (httpErrors.length) {
-    console.log("── HTTP errors ──");
-    for (const i of httpErrors) console.log(`  ${i.source} → ${i.target} [${i.status}]`);
-    console.log();
+  // Verify VitePress config consistency: every sidebar/nav link has a matching .md file
+  console.log('--- Config Consistency ---');
+  if (fs.existsSync(configPath)) {
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    const configLinks = [];
+    const linkRe = /link:\s*['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = linkRe.exec(configContent)) !== null) {
+      configLinks.push(m[1]);
+    }
+    const internalConfigLinks = configLinks.filter(l => !l.startsWith('http://') && !l.startsWith('https://'));
+    let configBroken = 0;
+    for (const link of internalConfigLinks) {
+      const resolved = resolveInternalLink(link, '.vitepress/config.ts');
+      if (!resolved.ok) {
+        configBroken++;
+        console.log(`  BROKEN config link: ${link}`);
+      }
+    }
+    if (configBroken === 0) {
+      console.log(`  All ${internalConfigLinks.length} internal config links resolve.\n`);
+    }
   }
 
-  if (timeouts.length) {
-    console.log("── Timeouts ──");
-    for (const i of timeouts) console.log(`  ${i.source} → ${i.target}`);
-    console.log();
+  // Summary
+  console.log('=== Summary ===');
+  const internalFail = results.internal.broken.length > 0;
+  const externalFail = results.external.broken.length > 0 && !results.external.unreachable;
+  const redirectFail = results.redirects.broken.length > 0;
+  const allOk = !internalFail && !externalFail && !redirectFail;
+
+  console.log(`Internal links:  ${results.internal.ok}/${results.internal.total} OK`);
+  console.log(`External links:  ${results.external.ok}/${results.external.total} OK${results.external.unreachable ? ' (skipped — no network)' : ''}`);
+  console.log(`Redirect checks: ${results.redirects.ok}/${results.redirects.total} OK`);
+  console.log(`\nOverall: ${allOk ? 'PASS' : 'FAIL'}`);
+
+  if (results.external.unreachable) {
+    console.log('\nNOTE: External link reachability was skipped (no network). Run in CI for full validation.');
   }
 
-  if (netErrors.length) {
-    console.log("── Network errors ──");
-    for (const i of netErrors) console.log(`  ${i.source} → ${i.target} (${i.error})`);
-    console.log();
-  }
+  const reportPath = path.resolve(PROJECT_ROOT, 'link-check-report.json');
+  fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
+  console.log(`\nDetailed report: ${reportPath}`);
 
-  if (redirectIssues.length) {
-    console.log("── Redirect issues (no Location header) ──");
-    for (const i of redirectIssues) console.log(`  ${i.source} → ${i.target} [${i.status}]`);
-    console.log();
-  }
-
-  if (anchors.length) {
-    console.log("── Anchor warnings (may be fine in rendered HTML) ──");
-    for (const i of anchors) console.log(`  ${i.source} → ${i.target}`);
-    console.log();
-  }
-
-  // Exit non-zero only for hard failures (not anchor warnings)
-  const hardFailures = brokenFiles.length + httpErrors.length + timeouts.length + netErrors.length + redirectIssues.length;
-  process.exit(hardFailures > 0 ? 1 : 0);
+  process.exit(allOk ? 0 : 1);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(2);
+});

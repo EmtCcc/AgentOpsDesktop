@@ -1,0 +1,61 @@
+{
+  "internal": {
+    "total": 63,
+    "ok": 63,
+    "broken": []
+  },
+  "external": {
+    "total": 5,
+    "ok": 0,
+    "broken": [
+      {
+        "url": "https://www.conventionalcommits.org/",
+        "source": "docs-site/guide/contributing.md",
+        "line": 32,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://docs.anthropic.com/en/docs/claude-code",
+        "source": "docs-site/guide/getting-started.md",
+        "line": 10,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://docs.anthropic.com/en/docs/claude-code",
+        "source": "README.md",
+        "line": 37,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://github.com/openai/codex",
+        "source": "docs-site/guide/getting-started.md",
+        "line": 11,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://github.com/google-gemini/gemini-cli",
+        "source": "docs-site/guide/getting-started.md",
+        "line": 12,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://github.com/EmtCcc/AgentOpsDesktop",
+        "source": "docs-site/index.md",
+        "line": 13,
+        "error": "no network — verify in CI"
+      },
+      {
+        "url": "https://github.com/EmtCcc/AgentOpsDesktop",
+        "source": "docs-site/.vitepress/config.ts",
+        "line": 68,
+        "error": "no network — verify in CI"
+      }
+    ],
+    "unreachable": true
+  },
+  "redirects": {
+    "total": 0,
+    "ok": 0,
+    "broken": []
+  }
+}
