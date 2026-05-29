@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-478 (re-verification of CMPAAA-476)
+**Issue:** CMPAAA-491 (re-verification)
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -43,7 +43,7 @@
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
 
-## Test Results (2026-05-29 — CMPAAA-478 re-verification)
+## Test Results (2026-05-29 — CMPAAA-491 re-verification)
 
 ```
 ✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
@@ -51,7 +51,26 @@
 
 Test Files  2 passed (2)
 Tests       42 passed (42)
-Duration    282ms
+Duration    324ms
+```
+
+### Smoke Test (2026-05-29 — CMPAAA-491)
+
+```
+✓ Returns HTTP 200
+✓ Content-Type is application/json
+✓ Has status field (ok|degraded|unhealthy)
+✓ Has version field (semver)
+✓ Has ISO timestamp
+✓ Has uptimeMs (non-negative)
+✓ Memory object with rss/heapUsed/heapTotal/external
+✓ System object with totalMem/freeMem/loadAvg/cpus
+✓ IPC object with calls/errors/avgLatencyMs
+✓ DB connectivity ok
+✓ Alerts array, status/alerts consistency
+✓ Uptime stats: uptimePercent (0-100), breakdown, transitions
+
+All API smoke checks passed.
 ```
 
 ## Monitoring Infrastructure
