@@ -704,11 +704,9 @@ export function GroupChatPage() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{activeSession?.title || 'Chat'}</h3>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
-                {activeSession?.strategyType} &middot; {participants.length} participants &middot; {messages.length} messages
-              </div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setShowEditModal(true)} title="Edit session" style={{ padding: '2px 4px' }}><IconEdit /></button>
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               {!isRunning && activeSession?.status !== 'completed' && (
@@ -749,7 +747,15 @@ export function GroupChatPage() {
             </div>
 
             {/* Participant Panel */}
-            <ParticipantPanel participants={participants} agentMap={agentMap} engineState={engineState} />
+            <ParticipantPanel
+              participants={participants}
+              agentMap={agentMap}
+              engineState={engineState}
+              strategyType={activeSession?.strategyType}
+              onAddParticipant={() => setShowAddParticipantModal(true)}
+              onRemoveParticipant={handleRemoveParticipant}
+              onStrategyChange={handleStrategyChange}
+            />
           </div>
 
           {/* Input Area */}
@@ -782,6 +788,23 @@ export function GroupChatPage() {
         onClose={() => setShowCreateModal(false)}
         onSave={handleCreate}
         agents={agents}
+      />
+
+      {/* Edit Session Modal */}
+      <EditSessionModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleEditSession}
+        session={activeSession}
+      />
+
+      {/* Add Participant Modal */}
+      <AddParticipantModal
+        isOpen={showAddParticipantModal}
+        onClose={() => setShowAddParticipantModal(false)}
+        onSave={handleAddParticipant}
+        agents={agents}
+        existingParticipantIds={participants.map((p) => p.agentId)}
       />
 
       <style>{`
