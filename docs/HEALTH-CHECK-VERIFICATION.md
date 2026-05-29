@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-473
+**Issue:** CMPAAA-476 (re-verification of CMPAAA-473)
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -43,17 +43,15 @@
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
 
-## Test Results (2026-05-29)
+## Test Results (2026-05-29 — CMPAAA-476 re-verification)
 
 ```
-✓ tests/health.test.js (14 tests) — uptime tracking + classifyStatus
-✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint behavior
-✓ tests/integration/http-api.integration.test.js — /health integration
-✓ scripts/api-smoke-test.js (24 checks) — real HTTP
+✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
+✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
 
 Test Files  2 passed (2)
 Tests       42 passed (42)
-Smoke       24/24 passed
+Duration    282ms
 ```
 
 ## Monitoring Infrastructure
