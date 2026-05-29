@@ -437,7 +437,7 @@ function _CostDashboardPage() {
   );
 }
 
-export function mount_CostDashboardPage(container) {
+export function mountCostDashboardPage(container) {
   const root = createRoot(container);
   root.render(<_CostDashboardPage />);
   return () => root.unmount();
