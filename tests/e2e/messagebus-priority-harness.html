@@ -174,19 +174,19 @@
       display.innerHTML = '';
       if (queue.length === 0) {
         display.innerHTML = '<div style="color:var(--color-text-secondary,#999);font-size:0.85rem;padding:12px;">Queue empty</div>';
-        return;
+      } else {
+        queue.forEach((msg, i) => {
+          const el = document.createElement('div');
+          el.className = `msg-item msg-item--${msg.priority}`;
+          el.innerHTML = `
+            <span class="msg-item__priority msg-item__priority--${msg.priority}">${msg.priority}</span>
+            <span class="msg-item__topic">${msg.topic}</span>
+            <span class="msg-item__payload">${msg.payload}</span>
+            ${msg.dropped ? '<span class="msg-item__badge msg-item__badge--dropped">DROPPED</span>' : ''}
+          `;
+          display.appendChild(el);
+        });
       }
-      queue.forEach((msg, i) => {
-        const el = document.createElement('div');
-        el.className = `msg-item msg-item--${msg.priority}`;
-        el.innerHTML = `
-          <span class="msg-item__priority msg-item__priority--${msg.priority}">${msg.priority}</span>
-          <span class="msg-item__topic">${msg.topic}</span>
-          <span class="msg-item__payload">${msg.payload}</span>
-          ${msg.dropped ? '<span class="msg-item__badge msg-item__badge--dropped">DROPPED</span>' : ''}
-        `;
-        display.appendChild(el);
-      });
       updateStats();
     }
 

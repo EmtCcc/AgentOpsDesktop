@@ -173,7 +173,11 @@ test.describe('Group Chat — Create Modal', () => {
     await page.click('#btn-create-chat');
     const modal = page.locator('#create-chat-modal');
     await expect(modal).toHaveClass(/visible/);
-    await modal.click({ position: { x: 5, y: 5 } });
+    // Click the overlay backdrop area (outside the modal dialog)
+    await page.evaluate(() => {
+      const overlay = document.getElementById('create-chat-modal');
+      overlay.click();
+    });
     await expect(modal).not.toHaveClass(/visible/);
   });
 
