@@ -27,6 +27,10 @@ See [ROADMAP.md](ROADMAP.md) for the milestone plan and [CHANGELOG.md](CHANGELOG
 - **HTTP API** — Full REST API (Hono) alongside Electron IPC
 - **Auto-updater** — Seamless updates via electron-updater + GitHub Releases
 - **Health monitoring** — Metrics, alerting, and crash tracking
+- **Group chat** — Multi-agent conversation orchestration with strategy-based turn management
+- **Shared context** — DAG-scoped key-value blackboard for agent collaboration
+- **Governance** — Approval gates for task-level policy enforcement
+- **Telemetry** — Usage statistics, export, and data management
 
 ## Quick Start
 
@@ -72,6 +76,7 @@ AgentOpsDesktop/
 │   │   ├── agent-engine.js      # Agent lifecycle engine
 │   │   ├── agent-runtime.js     # CLI agent spawn/kill via child_process
 │   │   ├── task-orchestrator.js # DAG-based multi-agent orchestration
+│   │   ├── group-chat-engine.js # Multi-agent group chat orchestration
 │   │   ├── workspace-manager.js # Shared workspace for agents
 │   │   ├── scheduler.js         # Cron-based auto-scheduling
 │   │   ├── cost-guard.js        # Budget management and cost tracking
@@ -83,7 +88,7 @@ AgentOpsDesktop/
 │   │   │   ├── schema.js        # Full schema (v10, includes DAG tables)
 │   │   │   └── repositories/    # Agent, goal, task, log, settings repos
 │   │   ├── repositories/        # Extended repos (schedule, squad, cost, etc.)
-│   │   ├── ipc/                 # 16 IPC controllers + middleware (auth, RBAC)
+│   │   ├── ipc/                 # 20 IPC controllers + middleware (auth, RBAC)
 │   │   ├── api/                 # Hono REST API (13 route files)
 │   │   └── message-bus/         # Inter-agent messaging with persistence
 │   ├── renderer/
@@ -134,6 +139,12 @@ The renderer communicates with the main process through these namespaces via `wi
 | `skills`       | `list`, `register`, `invoke`                               |
 | `stats`        | `summary`                                                  |
 | `monitor`      | `health`                                                   |
+| `chat`         | `list`, `get`, `create`, `update`, `delete`, `start`, `pause`, `resume`, `stop`, `sendMessage`, `listMessages`, `addParticipant`, `removeParticipant`, `getState` |
+| `messageBus`   | `publish`, `subscribe`, `unsubscribe`, `request`, `replay`, `stats` |
+| `sharedContext` | `set`, `get`, `getMany`, `list`, `delete`                 |
+| `governance`   | `approve`, `listPending`, `register`                       |
+| `system`       | `healthCheck`, `listRoutes`                                |
+| `telemetry`    | `getStats`, `setEnabled`, `exportData`, `clearData`        |
 
 See [docs/API.md](docs/API.md) for full reference.
 

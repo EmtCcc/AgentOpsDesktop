@@ -167,6 +167,103 @@ When an IPC handler throws an `IpcError`, the router catches it and returns a st
 
 **HealthReport includes:** status, uptime, memory usage (RSS, heap), system info (total/free memory, load average, CPU count), IPC metrics (call count, error count, avg latency), renderer crash/unresponsive counts, and app error counts.
 
+### Chat
+
+Group chat sessions for multi-agent conversation orchestration.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `chat.list(params?)` | `{ offset?, limit?, status? }` | `ChatSession[]` | List chat sessions (status: active/paused/completed) |
+| `chat.get(id)` | `{ id }` | `ChatSession` | Get a single chat session with details |
+| `chat.create(params)` | `{ title, agentIds, strategyType?, strategyConfig? }` | `ChatSession` | Create a new group chat session |
+| `chat.update(id, updates)` | `{ id, updates }` | `ChatSession` | Update session title, status, or strategy |
+| `chat.delete(id)` | `{ id }` | `{ deleted: true, id }` | Delete session (stops if running) |
+| `chat.start(id)` | `{ id }` | `SessionState` | Start a chat session |
+| `chat.pause(id)` | `{ id }` | `SessionState` | Pause a running session |
+| `chat.resume(id)` | `{ id }` | `SessionState` | Resume a paused session |
+| `chat.stop(id)` | `{ id }` | `SessionState` | Stop a session |
+| `chat.sendMessage(id, content)` | `{ id, content }` | `Message` | Send a human message into the chat |
+| `chat.listMessages(id, since?)` | `{ id, since? }` | `Message[]` | List messages (optionally since timestamp) |
+| `chat.addParticipant(id, agentId, role?)` | `{ id, agentId, role? }` | `Participant` | Add an agent (role: manager/expert/observer) |
+| `chat.removeParticipant(id, agentId)` | `{ id, agentId }` | `{ removed: true }` | Remove an agent from the session |
+| `chat.getState(id)` | `{ id }` | `SessionState` | Get current engine state for a session |
+
+**Strategy types:** `round-robin`, `manager-assign`, `topic-trigger`, `human-assign`
+
+### Message Bus
+
+Inter-agent pub/sub messaging with persistence and request-reply correlation.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `messageBus.publish(params)` | `{ topic, type, payload, senderId?, ttl? }` | `{ ok: true, messageId }` | Publish a message to a topic |
+| `messageBus.subscribe(topic)` | `{ topic }` | `{ ok: true, subscriberId }` | Subscribe to a topic; messages pushed to renderer via `bus:message` |
+| `messageBus.unsubscribe(subscriberId)` | `{ subscriberId }` | `{ ok: boolean }` | Unsubscribe from a topic |
+| `messageBus.request(params)` | `{ topic, payload, timeout?, senderId? }` | `Message` | Send request and wait for correlated response (timeout: 100-60000ms) |
+| `messageBus.replay(params)` | `{ topic, since?, limit? }` | `{ ok: true, messages }` | Replay persisted messages (crash recovery); limit max 500 |
+| `messageBus.stats()` | — | `BusStats` | Get bus statistics |
+
+**Message types:** `request`, `response`, `event`, `heartbeat`
+
+### Shared Context
+
+DAG-scoped key-value blackboard for agent collaboration within a task graph.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `sharedContext.set(params)` | `{ dagId, key, value, updatedBy? }` | `ContextEntry` | Set a key-value pair scoped to a DAG |
+| `sharedContext.get(params)` | `{ dagId, key }` | `ContextEntry` | Get a single context entry |
+| `sharedContext.getMany(params)` | `{ dagId, keys }` | `ContextEntry[]` | Get multiple entries by key list |
+| `sharedContext.list(dagId)` | `{ dagId }` | `ContextEntry[]` | List all entries for a DAG |
+| `sharedContext.delete(params)` | `{ dagId, key }` | `{ ok: true }` | Delete a context entry |
+
+### Governance
+
+Approval gates for task-level policy enforcement.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `governance.approve(params)` | `{ gateId, decision, comment? }` | `Gate` | Respond to an approval gate |
+| `governance.listPending()` | — | `Gate[]` | List all pending (undecided) gates |
+| `governance.register(params)` | `{ taskId, type?, description? }` | `Gate` | Register a new approval gate |
+
+**Decision values:** `approve`, `reject`, `rollback`
+**Gate types:** `manual` (default), `auto`
+
+### System
+
+Application diagnostics and health.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `system.healthCheck()` | — | `SystemHealth` | App status, version, platform, memory, uptime |
+| `system.listRoutes()` | — | `{ routes }` | List all registered IPC routes (debugging) |
+
+**SystemHealth shape:**
+```js
+{
+  status: 'ok',
+  version: string,
+  platform: string,       // 'darwin' | 'win32' | 'linux'
+  arch: string,
+  nodeVersion: string,
+  uptime: number,         // seconds
+  memory: { total, free, usage: { rss, heapTotal, heapUsed, ... } },
+  timestamp: number
+}
+```
+
+### Telemetry
+
+Usage statistics and data management.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `telemetry.getStats()` | — | `TelemetryStats` | Get aggregated telemetry statistics |
+| `telemetry.setEnabled(params)` | `{ enabled }` | `{ enabled }` | Enable or disable telemetry collection |
+| `telemetry.exportData()` | — | `TelemetryExport` | Export all collected telemetry data |
+| `telemetry.clearData()` | — | `{ ok: true }` | Clear all stored telemetry data |
+
 ## Agent Runtime (Main Process Module)
 
 `src/main/agent-runtime.js` exports `AgentRuntime`, a class for managing CLI agent processes. This module is available in the main process but not yet wired to IPC handlers.
