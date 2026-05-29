@@ -1,72 +1,46 @@
-# API Health Check — Verification Report
+# API Health Check — CMPAAA-559 Verification
 
-> Issues: CMPAAA-554, CMPAAA-556
-> Status: **DONE** — Health endpoint verified, uptime monitoring confirmed
-> Date: 2026-05-29
-> Re-verified: 2026-05-29 (CMPAAA-556) — 42/42 tests pass, no regressions
+**Date:** 2026-05-29
+**Status:** ✅ Verified
 
-## Endpoint: `GET /health`
+## Endpoint
 
-- **Framework**: Hono v4.12.23, served via `@hono/node-server` on port 3967
-- **Auth**: Public (unauthenticated)
-- **HTTP 200** for `ok` / `degraded`, **HTTP 503** for `unhealthy` (e.g., DB unreachable)
-
-## Response Payload
-
-| Field | Description |
-|-------|-------------|
-| `status` | `ok` / `degraded` / `unhealthy` |
-| `version` | Semver from `package.json` |
-| `ts` | ISO 8601 timestamp |
-| `uptimeMs` | Process uptime in ms |
-| `memory` | `rss`, `heapUsed`, `heapTotal`, `external` |
-| `system` | `totalMem`, `freeMem`, `loadAvg`, `cpus` |
-| `ipc` | `calls`, `errors`, `avgLatencyMs` |
-| `renderer` | `crashes`, `unresponsive` |
-| `app` | `startedAt`, `uncaughtExceptions`, `unhandledRejections` |
-| `db` | `{ ok: true/false, error? }` via `SELECT 1` |
-| `alerts` | Array of threshold-based alerts |
-| `uptime` | `uptimePercent`, breakdown, transitions |
-
-## Alert Thresholds
-
-| Alert ID | Condition | Severity |
-|----------|-----------|----------|
-| `high_heap` | Heap usage > 85% | warn |
-| `high_ipc_error_rate` | IPC error rate > 5% | error |
-| `high_ipc_latency` | Avg IPC latency > 500ms | warn |
-| `low_system_memory` | Free system memory < 10% | warn |
-| `high_cpu_load` | Load per CPU > 2.0 | warn |
-| `db_unreachable` | DB query fails | error |
-
-## Uptime Monitoring
-
-- **Periodic loop**: `startHealthLoop()` runs every 30s in `monitor.js`
-- **Tracking**: Tracks `ok` / `degraded` / `unhealthy` durations and transitions (last 100)
-- **Uptime %**: `(okMs + degradedMs) / totalMs * 100`
-- **Started**: On `app.whenReady()` in `main/index.js`
+`GET /health` — public, no auth required. Default port `3967`.
 
 ## Test Results
 
-### Unit Tests — 42/42 passed
+### Unit & Endpoint Tests (vitest)
 
-- `tests/health.test.js` — Monitor module: getHealth, checkAlerts, classifyStatus, recordIpcCall, uptime tracking, status transitions
-- `tests/health-endpoint.test.js` — HTTP endpoint: response shape, DB check, 503 on DB failure, uptime stats, Content-Type, auth bypass
+| File | Tests | Result |
+|------|-------|--------|
+| `tests/health.test.js` | 30 | ✅ pass |
+| `tests/monitor.test.js` | 30 | ✅ pass |
+| `tests/health-endpoint.test.js` | 12 | ✅ pass |
+| **Total** | **72** | **✅ all pass** |
 
-### Smoke Tests — 24/24 passed
+### Smoke Test (`scripts/api-smoke-test.js`)
 
-- `scripts/api-smoke-test.js` — Real HTTP server test: all fields present, valid types, DB connectivity, status classification
+24/24 checks passed:
 
-## Additional Health Endpoints
+- HTTP 200, Content-Type `application/json`
+- Response fields: `status`, `version` (semver), `ts` (ISO), `uptimeMs`, `memory`, `system`, `ipc`, `renderer`, `app`, `db`, `alerts`, `uptime`
+- DB connectivity: ok
+- Uptime stats: `uptimePercent` (0-100), `breakdown` (okMs/degradedMs/unhealthyMs), `transitions` array
 
-| Endpoint | Type | Auth | Purpose |
-|----------|------|------|---------|
-| `monitor:health` | IPC | Public | Inter-process health |
-| `system:healthCheck` | IPC | Auth | System info |
-| `agents:health-check` | IPC | Auth | Per-agent liveness |
-| `POST /api/adapters/:id/health-check` | HTTP | Auth | Per-adapter check |
-| `GET /api/squads/:id/status` | HTTP | Auth | Squad status |
+## Monitoring Architecture
 
-## Disposition: DONE
+- **Metrics:** IPC calls/errors/latency, renderer crashes, app errors, process memory, system CPU/memory
+- **Alerts:** high_heap (>85%), high_ipc_error_rate (>5%), high_ipc_latency (>500ms), low_system_memory (<10% free), high_cpu_load (>2.0)
+- **Status classification:** `ok` / `degraded` (warnings) / `unhealthy` (errors → HTTP 503)
+- **Uptime tracking:** cumulative time per status, transition history (capped at 100)
+- **Health loop:** 30s periodic tick with debug logging
+- **SLOs:** 99.9% uptime, <1% IPC error rate, <200ms IPC p95 latency
 
-All health checks pass. Endpoint returns correct status codes, payload shape, and uptime monitoring is active.
+## Key Files
+
+| Component | Path |
+|-----------|------|
+| Health route | `src/main/api/routes/health.js` |
+| Monitor module | `src/main/monitor.js` |
+| Smoke test | `scripts/api-smoke-test.js` |
+| Docs | `docs/MONITORING.md` |
