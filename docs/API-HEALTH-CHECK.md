@@ -1,6 +1,6 @@
-# API Health Check Verification — CMPAAA-562
+# API Health Check Verification — CMPAAA-679
 
-**Date**: 2026-05-29
+**Date**: 2026-05-30
 **Status**: ✅ Verified
 
 ## Health Endpoint
@@ -75,3 +75,13 @@
 | `src/main/api/server.js` | Server startup (port 3967) |
 | `tests/health.test.js` | Monitor module unit tests |
 | `tests/health-endpoint.test.js` | HTTP endpoint integration tests |
+| `scripts/api-smoke-test.js` | End-to-end smoke test |
+
+## Re-verification — 2026-05-30
+
+- **42/42 unit tests passing** (vitest)
+- **24/24 smoke test checks passing** (api-smoke-test.js)
+- Endpoint returns HTTP 200 with valid JSON shape
+- DB connectivity check (`db.ok: true`) verified
+- Uptime stats (percent, breakdown, transitions) confirmed
+- All alert thresholds and status classification logic verified
