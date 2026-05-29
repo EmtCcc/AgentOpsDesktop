@@ -1,93 +1,71 @@
-# API Health Check Verification — CMPAAA-553
+# API Health Check — Verification Report
 
-**Date**: 2026-05-29
-**Status**: ✅ Verified
+> Issue: CMPAAA-554
+> Status: **DONE** — Health endpoint verified, uptime monitoring confirmed
+> Date: 2026-05-29
 
-## Endpoint
+## Endpoint: `GET /health`
 
-`GET /health` — Hono route at `src/main/api/routes/health.js`
+- **Framework**: Hono v4.12.23, served via `@hono/node-server` on port 3967
+- **Auth**: Public (unauthenticated)
+- **HTTP 200** for `ok` / `degraded`, **HTTP 503** for `unhealthy` (e.g., DB unreachable)
 
-- Public endpoint, no authentication required
-- Returns HTTP 200 for `ok`/`degraded`, HTTP 503 for `unhealthy`
+## Response Payload
 
-## Response Shape
-
-```json
-{
-  "status": "ok|degraded|unhealthy",
-  "version": "x.y.z",
-  "ts": "ISO-8601",
-  "uptimeMs": 12345,
-  "memory": { "rss", "heapUsed", "heapTotal", "external" },
-  "system": { "totalMem", "freeMem", "loadAvg", "cpus" },
-  "ipc": { "calls", "errors", "avgLatencyMs" },
-  "renderer": { "crashes", "unresponsive" },
-  "app": { "startedAt", "uncaughtExceptions", "unhandledRejections" },
-  "db": { "ok": true },
-  "alerts": [],
-  "uptime": {
-    "uptimePercent": 100,
-    "totalUptimeMs": 12345,
-    "totalDowntimeMs": 0,
-    "breakdown": { "okMs", "degradedMs", "unhealthyMs" },
-    "lastStatusChange": "ok",
-    "lastStatusChangeAt": "ISO-8601",
-    "transitions": []
-  }
-}
-```
+| Field | Description |
+|-------|-------------|
+| `status` | `ok` / `degraded` / `unhealthy` |
+| `version` | Semver from `package.json` |
+| `ts` | ISO 8601 timestamp |
+| `uptimeMs` | Process uptime in ms |
+| `memory` | `rss`, `heapUsed`, `heapTotal`, `external` |
+| `system` | `totalMem`, `freeMem`, `loadAvg`, `cpus` |
+| `ipc` | `calls`, `errors`, `avgLatencyMs` |
+| `renderer` | `crashes`, `unresponsive` |
+| `app` | `startedAt`, `uncaughtExceptions`, `unhandledRejections` |
+| `db` | `{ ok: true/false, error? }` via `SELECT 1` |
+| `alerts` | Array of threshold-based alerts |
+| `uptime` | `uptimePercent`, breakdown, transitions |
 
 ## Alert Thresholds
 
-| Alert ID | Severity | Condition |
-|----------|----------|-----------|
-| `high_heap` | warn | Heap usage > 85% |
-| `high_ipc_error_rate` | error | IPC error rate > 5% (min 10 calls) |
-| `high_ipc_latency` | warn | Avg IPC latency > 500ms (min 10 calls) |
-| `low_system_memory` | warn | Free system memory < 10% |
-| `high_cpu_load` | warn | Load avg per CPU > 2.0 |
-| `db_unreachable` | error | SQLite `SELECT 1` fails |
+| Alert ID | Condition | Severity |
+|----------|-----------|----------|
+| `high_heap` | Heap usage > 85% | warn |
+| `high_ipc_error_rate` | IPC error rate > 5% | error |
+| `high_ipc_latency` | Avg IPC latency > 500ms | warn |
+| `low_system_memory` | Free system memory < 10% | warn |
+| `high_cpu_load` | Load per CPU > 2.0 | warn |
+| `db_unreachable` | DB query fails | error |
 
-## Status Classification
+## Uptime Monitoring
 
-- **ok**: No alerts
-- **degraded**: Warning-level alerts only
-- **unhealthy**: At least one error-level alert → HTTP 503
-
-## Uptime Tracking
-
-- Tracks cumulative time per status (ok/degraded/unhealthy)
-- `degraded` counts as uptime, not downtime
-- Transition history capped at 100 internal, last 10 in response
-- Periodic health tick every 30s via `startHealthLoop()`
-- Telemetry integration for health metrics
+- **Periodic loop**: `startHealthLoop()` runs every 30s in `monitor.js`
+- **Tracking**: Tracks `ok` / `degraded` / `unhealthy` durations and transitions (last 100)
+- **Uptime %**: `(okMs + degradedMs) / totalMs * 100`
+- **Started**: On `app.whenReady()` in `main/index.js`
 
 ## Test Results
 
-```
-✓ tests/health.test.js (30 tests) 7ms
-✓ tests/health-endpoint.test.js (12 tests) 22ms
+### Unit Tests — 42/42 passed
 
-Test Files  2 passed (2)
-Tests      42 passed (42)
-```
+- `tests/health.test.js` — Monitor module: getHealth, checkAlerts, classifyStatus, recordIpcCall, uptime tracking, status transitions
+- `tests/health-endpoint.test.js` — HTTP endpoint: response shape, DB check, 503 on DB failure, uptime stats, Content-Type, auth bypass
 
-### Coverage
+### Smoke Tests — 24/24 passed
 
-- ✅ 200 response with all required fields
-- ✅ No authentication required
-- ✅ DB connectivity check (ok + unreachable paths)
-- ✅ Version string format validation
-- ✅ ISO timestamp validation
-- ✅ Non-negative uptime
-- ✅ Memory usage fields
-- ✅ Alerts array shape
-- ✅ Status classification consistency
-- ✅ 503 on DB failure with error details
-- ✅ Uptime stats with percentage and breakdown
-- ✅ Content-Type application/json
-- ✅ IPC metrics recording (calls, errors, avg latency)
-- ✅ Status transitions with deduplication
-- ✅ Cumulative time tracking per status
-- ✅ Transition array capping (100 internal, 10 response)
-- ✅ Alert threshold edge cases (heap, IPC error rate, system memory)
+- `scripts/api-smoke-test.js` — Real HTTP server test: all fields present, valid types, DB connectivity, status classification
+
+## Additional Health Endpoints
+
+| Endpoint | Type | Auth | Purpose |
+|----------|------|------|---------|
+| `monitor:health` | IPC | Public | Inter-process health |
+| `system:healthCheck` | IPC | Auth | System info |
+| `agents:health-check` | IPC | Auth | Per-agent liveness |
+| `POST /api/adapters/:id/health-check` | HTTP | Auth | Per-adapter check |
+| `GET /api/squads/:id/status` | HTTP | Auth | Squad status |
+
+## Disposition: DONE
+
+All health checks pass. Endpoint returns correct status codes, payload shape, and uptime monitoring is active.
