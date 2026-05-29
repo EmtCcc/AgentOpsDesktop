@@ -9,12 +9,14 @@
 const { IpcError } = require('../errors');
 const { paginate } = require('../pagination');
 const goalController = require('./goal.controller');
+const { autoAssign } = require('../../auto-assign');
 
 const tasks = new Map();
 let nextId = 1;
 
 // ── Repository (injected) ──
 let taskRepo = null;
+let agentRepo = null;
 
 const taskController = {
   /**
@@ -23,6 +25,14 @@ const taskController = {
    */
   setRepository(repo) {
     taskRepo = repo;
+  },
+
+  /**
+   * Set the agent repository (needed for auto-assign).
+   * @param {import('../../repositories/agent.repository').AgentRepository} repo
+   */
+  setAgentRepository(repo) {
+    agentRepo = repo;
   },
 
   /**
@@ -141,6 +151,19 @@ const taskController = {
     return { deleted: true, id };
   },
 
+  /**
+   * Auto-assign unassigned pending tasks to best available agents.
+   * @param {Object} event
+   * @param {Object} params
+   * @param {number} [params.limit] - Max tasks to assign
+   */
+  async autoAssign(event, params = {}) {
+    if (!taskRepo || !agentRepo) {
+      throw IpcError.internal('Repositories not available for auto-assign');
+    }
+    return autoAssign(taskRepo, agentRepo, { limit: params.limit });
+  },
+
   async remove(event, { id }) {
     const role = event?.session?.role;
     if (taskRepo) {
@@ -206,6 +229,9 @@ taskController.schemas = {
   },
   remove: {
     id: { type: 'string', required: true },
+  },
+  autoAssign: {
+    limit: { type: 'number', min: 1 },
   },
 };
 

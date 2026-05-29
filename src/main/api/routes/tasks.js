@@ -2,6 +2,7 @@
 
 const { Hono } = require('hono');
 const { validateRequest } = require('../middleware/validate');
+const { autoAssign } = require('../../auto-assign');
 
 const tasks = new Hono();
 
@@ -52,6 +53,42 @@ tasks.get('/', validateRequest({ query: listQuerySchema }), async (c) => {
   };
   const result = repo.list(params);
   return c.json({ ok: true, data: result.items || result });
+});
+
+/**
+ * POST /tasks/auto-assign — Auto-assign unassigned pending tasks to best available agents.
+ * Body: { limit?: number } — max tasks to assign (default: all)
+ */
+tasks.post('/auto-assign', async (c) => {
+  const repos = c.get('repos');
+  const taskRepo = repos.tasks;
+  const agentRepo = repos.agents;
+
+  if (!taskRepo || !agentRepo) {
+    return c.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'Repositories not available' } }, 500);
+  }
+
+  let body = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    // empty body is fine
+  }
+
+  const limit = body.limit ? parseInt(body.limit, 10) : undefined;
+  const result = autoAssign(taskRepo, agentRepo, { limit });
+
+  return c.json({
+    ok: true,
+    data: {
+      assigned: result.assigned,
+      skipped: result.skipped,
+      summary: {
+        assignedCount: result.assigned.length,
+        skippedCount: result.skipped.length,
+      },
+    },
+  });
 });
 
 /**

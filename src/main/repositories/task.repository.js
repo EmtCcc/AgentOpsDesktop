@@ -36,6 +36,7 @@ class TaskRepository {
       listByOwnerAndGoalAndStatus: this.db.prepare('SELECT * FROM tasks WHERE owner_role = @ownerRole AND goal_id = @goalId AND status = @status ORDER BY created_at DESC'),
       listBySquad: this.db.prepare('SELECT * FROM tasks WHERE squad_id = @squadId ORDER BY created_at DESC'),
       listBySquadAndStatus: this.db.prepare('SELECT * FROM tasks WHERE squad_id = @squadId AND status = @status ORDER BY created_at DESC'),
+      listUnassigned: this.db.prepare('SELECT * FROM tasks WHERE agent_id IS NULL AND status = @status ORDER BY created_at ASC'),
     };
   }
 
@@ -146,6 +147,15 @@ class TaskRepository {
     const items = rows.slice(offset, offset + limit).map((r) => this._toRecord(r));
 
     return { items, total, offset, limit, hasMore: offset + limit < total };
+  }
+
+  /**
+   * List unassigned tasks (agent_id IS NULL) with given status.
+   * @param {string} [status='pending'] - Task status filter
+   * @returns {Array<Object>} unassigned tasks
+   */
+  listUnassigned(status = 'pending') {
+    return this._stmts.listUnassigned.all({ status }).map((r) => this._toRecord(r));
   }
 
   // ── Output / Handoff methods ──

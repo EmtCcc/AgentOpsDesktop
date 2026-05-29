@@ -113,6 +113,41 @@ class AgentRepository {
 
     return { items, total, offset, limit, hasMore: offset + limit < total };
   }
+
+  /**
+   * Get workload counts (active tasks) per agent.
+   * Active = tasks with status IN ('assigned', 'running').
+   * @returns {Map<string, number>} agentId → active task count
+   */
+  getWorkloadMap() {
+    const rows = this.db.prepare(`
+      SELECT agent_id, COUNT(*) as cnt
+      FROM tasks
+      WHERE agent_id IS NOT NULL
+        AND status IN ('assigned', 'running')
+      GROUP BY agent_id
+    `).all();
+    const map = new Map();
+    for (const row of rows) {
+      map.set(row.agent_id, row.cnt);
+    }
+    return map;
+  }
+
+  /**
+   * Get idle agents sorted by workload (fewest active tasks first).
+   * Filters out agents with status 'error' or 'offline'.
+   * @param {Object} [opts]
+   * @param {string} [opts.ownerRole] - Filter by owner role
+   * @returns {Array<Object>} agents with .workload field
+   */
+  getIdleAgentsByWorkload(opts = {}) {
+    const agents = this.list({ status: 'idle', ownerRole: opts.ownerRole, limit: 1000 }).items;
+    const workloadMap = this.getWorkloadMap();
+    return agents
+      .map((a) => ({ ...a, workload: workloadMap.get(a.id) || 0 }))
+      .sort((a, b) => a.workload - b.workload);
+  }
 }
 
 module.exports = { AgentRepository };

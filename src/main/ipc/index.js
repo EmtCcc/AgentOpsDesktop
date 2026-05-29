@@ -78,6 +78,7 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain, { notificationServi
     agentController.setRepository(repos.agents);
     goalController.setRepository(repos.goals);
     taskController.setRepository(repos.tasks);
+    taskController.setAgentRepository(repos.agents);
     taskRepo = repos.tasks;
     logController.setRepository(repos.taskLogs);
     settingsController.setRepository(repos.settings);
@@ -173,6 +174,7 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain, { notificationServi
   router.register('tasks:create', taskController.create, { schema: taskController.schemas.create, auth: true, permission: 'tasks:create' });
   router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true, permission: 'tasks:update' });
   router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true, permission: 'tasks:delete' });
+  router.register('tasks:autoAssign', taskController.autoAssign, { schema: taskController.schemas.autoAssign, auth: true, permission: 'tasks:update' });
 
   // ── Task output / handoff (protected) ──
   router.register('tasks:set-output', async (_event, { id, output }) => {
