@@ -48,8 +48,9 @@
 }
 
 .btn--danger:hover {
-  background: #DC2626;
-  border-color: #DC2626;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  filter: brightness(0.9);
 }
 
 .btn--ghost {
@@ -279,8 +280,8 @@
 }
 
 .status-badge--running {
-  background: #D1FAE5;
-  color: #047857;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .status-badge--idle {
@@ -289,13 +290,13 @@
 }
 
 .status-badge--error {
-  background: #FEE2E2;
-  color: #991B1B;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 .status-badge--spawning {
-  background: #FEF3C7;
-  color: #92400E;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 /* ── Badge / Tag ── */
@@ -630,40 +631,6 @@
 .skeleton--card {
   height: 120px;
   width: 100%;
-}
-
-/* ── Dark Mode Badge Contrast Overrides ── */
-
-@media (prefers-color-scheme: dark) {
-  .status-badge--running {
-    background: rgba(52, 211, 153, 0.2);
-    color: #6EE7B7;
-  }
-
-  .status-badge--error {
-    background: rgba(248, 113, 113, 0.2);
-    color: #FCA5A5;
-  }
-
-  .status-badge--spawning {
-    background: rgba(251, 191, 36, 0.2);
-    color: #FDE68A;
-  }
-
-  .badge--success {
-    background: rgba(52, 211, 153, 0.2);
-    color: #6EE7B7;
-  }
-
-  .badge--warning {
-    background: rgba(251, 191, 36, 0.2);
-    color: #FDE68A;
-  }
-
-  .badge--danger {
-    background: rgba(248, 113, 113, 0.2);
-    color: #FCA5A5;
-  }
 }
 
 /* ── Theme Toggle ── */
