@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-594",
+  "title": "[Bug P1] delegateToRole 服务端响应未回传 requestId，导致客户端 Promise 挂起至超时",
+  "description": "## 复现步骤\n\n1. 客户端调用 `delegateToRole(targetRole, taskPayload)`\n2. 客户端发送 `{ type: \"delegateToRole\", targetRole, taskPayload, requestId }` 到服务端\n3. 服务端 `_handleDelegateToRole` 成功后回传 `{ type: \"delegateToRole_ok\", agentId, targetRole }` — **未包含 requestId**\n4. 客户端 `case \"delegateToRole_ok\"` 用 `msg.requestId` 查找 pending map\n5. `msg.requestId` 为 undefined，查找失败，Promise 永不 resolve\n6. 直到 `_requestTimeout`（默认 10s）超时才 reject\n\n## 根因\n\n`socket-server.js:409` 和 `socket-server.js:421` 发送响应时未回传 `msg.requestId`。\n\n## 修复方案\n\n```js\n// socket-server.js:409\nthis._send(socket, { type: 'delegateToRole_error', error: `...`, requestId: msg.requestId });\n\n// socket-server.js:421\nthis._send(socket, { type: 'delegateToRole_ok', agentId: agent.id, targetRole, requestId: msg.requestId });\n```\n\n## 影响\n\n- 严重性: P1 — delegateToRole 功能完全不可用（总是超时）\n- 范围: socket-server.js, socket-client.js",
+  "priority": "critical",
+  "status": "todo",
+  "labels": ["bug", "message-bus", "P1"],
+  "parentIssueId": "CMPAAA-593",
+  "source": "code-review"
+}

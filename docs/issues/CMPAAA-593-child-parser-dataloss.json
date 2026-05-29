@@ -1,0 +1,10 @@
+{
+  "id": "CMPAAA-596",
+  "title": "[Bug P1] LineDelimitedJsonParser 不处理跨 chunk 行分割，流式场景静默丢数据",
+  "description": "## 问题\n\n`line-delimited-json.parser.js` 的 `parse()` 方法直接 `chunk.split('\\n')`，不累积 buffer。流式场景下如果一个 JSON 行被分割到两个 chunk，第二段会被当作独立行解析失败，静默丢失。\n\n## 对比\n\n`claude-code-stream.parser.js` 正确实现了 `_buffer` 累积 + `indexOf('\\n')` 分割。\n\n## 修复方案\n\n添加 buffer 累积：\n\n```js\nclass LineDelimitedJsonParser extends OutputParser {\n  constructor() { super(); this._buffer = ''; }\n\n  parse(chunk) {\n    this._buffer += chunk;\n    const messages = [];\n    let idx;\n    while ((idx = this._buffer.indexOf('\\n')) !== -1) {\n      const line = this._buffer.slice(0, idx).trim();\n      this._buffer = this._buffer.slice(idx + 1);\n      if (!line) continue;\n      // ... parse logic ...\n    }\n    return messages;\n  }\n\n  flush() {\n    const remaining = this._buffer.trim();\n    this._buffer = '';\n    if (!remaining) return [];\n    // try parse remaining\n  }\n}\n```\n\n## 影响\n\n- 严重性: P1 — 数据丢失，影响 Codex/Gemini 适配器输出完整性\n- 范围: line-delimited-json.parser.js",
+  "priority": "critical",
+  "status": "todo",
+  "labels": ["bug", "parsers", "P1"],
+  "parentIssueId": "CMPAAA-593",
+  "source": "code-review"
+}
