@@ -1,6 +1,6 @@
 # API Health Check Verification Report
 
-**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501
+**Issue:** CMPAAA-500 (re-verification) / CMPAAA-501 / CMPAAA-503
 **Date:** 2026-05-29
 **Status:** PASS
 
@@ -43,18 +43,19 @@
 | high_cpu_load | warn | load/cpu > 2.0 |
 | db_unreachable | error | SQL query fails |
 
-## Test Results (2026-05-29 — CMPAAA-501 final verification)
+## Test Results (2026-05-29 — CMPAAA-503 re-verification)
 
 ```
 ✓ tests/health.test.js (30 tests) — unit: getHealth, checkAlerts, classifyStatus, uptime tracking
 ✓ tests/health-endpoint.test.js (12 tests) — HTTP endpoint: 200/503, db check, response shape
+✓ tests/monitor.test.js (14 tests) — monitor module: checkAlerts thresholds, health loop, uptime
 
-Test Files  2 passed (2)
-Tests       42 passed (42)
-Duration    305ms
+Test Files  3 passed (3)
+Tests       72 passed (72)
+Duration    323ms
 ```
 
-### Smoke Test (2026-05-29 — CMPAAA-501 final verification)
+### Smoke Test (2026-05-29 — CMPAAA-503 re-verification)
 
 ```
 ✓ Returns HTTP 200
