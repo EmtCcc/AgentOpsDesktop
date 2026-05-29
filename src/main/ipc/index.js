@@ -175,6 +175,7 @@ function bootstrapRoutes(mainWindow, repos, electronIpcMain, { notificationServi
   router.register('tasks:update', taskController.update, { schema: taskController.schemas.update, auth: true, permission: 'tasks:update' });
   router.register('tasks:delete', taskController.delete, { schema: taskController.schemas.delete, auth: true, permission: 'tasks:delete' });
   router.register('tasks:autoAssign', taskController.autoAssign, { schema: taskController.schemas.autoAssign, auth: true, permission: 'tasks:update' });
+  router.register('tasks:autoAssignPaperclip', taskController.autoAssignPaperclip, { schema: taskController.schemas.autoAssignPaperclip, auth: true, permission: 'tasks:update' });
 
   // ── Task output / handoff (protected) ──
   router.register('tasks:set-output', async (_event, { id, output }) => {
