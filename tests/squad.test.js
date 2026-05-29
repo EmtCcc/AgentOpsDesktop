@@ -206,4 +206,57 @@ describe('Squad Implementation', () => {
     const code = fs.readFileSync('./src/main/message-bus/socket-server.js', 'utf8');
     assert.ok(code.includes('resolveWildcardAgent'), 'socket server uses resolveWildcardAgent');
   });
+
+  // ── Dynamic Member Discovery (CMPAAA-543) ──
+
+  it('migration v25 widens squad_members role constraint', () => {
+    const { migrations } = require('../src/main/db/schema');
+    const v25 = migrations.find(m => m.version === 25);
+    assert.ok(v25, 'Migration v25 exists');
+    assert.strictEqual(v25.name, 'widen_squad_member_roles');
+    assert.ok(v25.up.includes('squad_members_new'), 'creates new table without CHECK constraint');
+    assert.ok(v25.up.includes('INSERT INTO squad_members_new'), 'migrates data');
+  });
+
+  it('SquadRepository has wildcard discovery methods', () => {
+    const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
+    assert.ok(code.includes('getWildcardMembers'), 'getWildcardMembers method');
+    assert.ok(code.includes("m.agentId === '*'"), 'filters wildcard members');
+    assert.ok(code.includes('resolveWildcardAgent'), 'resolveWildcardAgent method');
+    assert.ok(code.includes('expandRoster'), 'expandRoster method');
+    assert.ok(code.includes('getIdleAgentsByWorkload'), 'uses getIdleAgentsByWorkload for resolution');
+  });
+
+  it('socket server accepts agentRepo option for wildcard resolution', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-server.js', 'utf8');
+    assert.ok(code.includes('opts.agentRepo'), 'accepts agentRepo option');
+    assert.ok(code.includes('this._agentRepo'), 'stores agentRepo');
+    assert.ok(code.includes("m.agentId === '*'"), 'checks wildcard members in handshake');
+    assert.ok(code.includes('ownerRole'), 'matches agent ownerRole for wildcard');
+  });
+
+  it('socket server handles delegateToRole message type', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-server.js', 'utf8');
+    assert.ok(code.includes("'delegateToRole'"), 'handles delegateToRole message type');
+    assert.ok(code.includes('_handleDelegateToRole'), 'has _handleDelegateToRole method');
+    assert.ok(code.includes('resolveWildcardAgent'), 'resolves wildcard to concrete agent');
+    assert.ok(code.includes('delegateToRole_ok'), 'returns delegateToRole_ok response');
+    assert.ok(code.includes('delegateToRole_error'), 'returns delegateToRole_error response');
+  });
+
+  it('socket client has delegateToRole method', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-client.js', 'utf8');
+    assert.ok(code.includes('delegateToRole('), 'delegateToRole method exists');
+    assert.ok(code.includes('targetRole'), 'sends targetRole parameter');
+    assert.ok(code.includes('delegateToRole_ok'), 'handles delegateToRole_ok response');
+    assert.ok(code.includes('delegateToRole_error'), 'handles delegateToRole_error response');
+  });
+
+  it('task orchestrator handles targetRole in delegation', () => {
+    const code = fs.readFileSync('./src/main/task-orchestrator.js', 'utf8');
+    assert.ok(code.includes('targetRole'), 'extracts targetRole from delegation payload');
+    assert.ok(code.includes('resolveWildcardAgent'), 'resolves wildcard agent for role');
+    assert.ok(code.includes('delegation-role-unresolved'), 'logs when role cannot be resolved');
+    assert.ok(code.includes('resolvedAgentId'), 'uses resolved agent ID for spawning');
+  });
 });
