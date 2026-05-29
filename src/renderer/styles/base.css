@@ -23,6 +23,30 @@ body {
   background-color: var(--color-bg-primary);
   overflow: hidden;
   user-select: none;
+  transition: background-color var(--motion-normal), color var(--motion-normal);
+}
+
+/* Theme transition for major containers */
+.app,
+.header,
+.sidebar,
+.card,
+.settings-section {
+  transition: background-color var(--motion-normal),
+              color var(--motion-normal),
+              border-color var(--motion-normal);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .app,
+  .header,
+  .sidebar,
+  .card,
+  .settings-section {
+    transition: none;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {

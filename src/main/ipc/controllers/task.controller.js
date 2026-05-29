@@ -9,7 +9,8 @@
 const { IpcError } = require('../errors');
 const { paginate } = require('../pagination');
 const goalController = require('./goal.controller');
-const { autoAssign } = require('../../auto-assign');
+const { autoAssign, autoAssignPaperclipIssues } = require('../../auto-assign');
+const { PaperclipClient } = require('../../paperclip-client');
 
 const tasks = new Map();
 let nextId = 1;
@@ -164,6 +165,25 @@ const taskController = {
     return autoAssign(taskRepo, agentRepo, { limit: params.limit });
   },
 
+  /**
+   * Auto-assign unassigned Paperclip issues to best available agents.
+   * @param {Object} event
+   * @param {Object} params
+   * @param {number} [params.limit] - Max issues to assign
+   * @param {string} [params.baseUrl] - Paperclip API base URL
+   * @param {string} [params.issuesDir] - Paperclip issues directory
+   */
+  async autoAssignPaperclip(event, params = {}) {
+    if (!agentRepo) {
+      throw IpcError.internal('Agent repository not available for Paperclip auto-assign');
+    }
+    const paperclip = new PaperclipClient({
+      baseUrl: params.baseUrl,
+      issuesDir: params.issuesDir,
+    });
+    return autoAssignPaperclipIssues(paperclip, agentRepo, { limit: params.limit });
+  },
+
   async remove(event, { id }) {
     const role = event?.session?.role;
     if (taskRepo) {
@@ -232,6 +252,11 @@ taskController.schemas = {
   },
   autoAssign: {
     limit: { type: 'number', min: 1 },
+  },
+  autoAssignPaperclip: {
+    limit: { type: 'number', min: 1 },
+    baseUrl: { type: 'string' },
+    issuesDir: { type: 'string' },
   },
 };
 

@@ -1,7 +1,8 @@
-/* AgentOps Desktop — Design System Tokens (v2 - New Design Spec) */
+/* AgentOps Desktop — Design System Tokens (v3 - Theme System) */
 
-:root {
-  /* ── Colors: Core (Light Mode Default) ── */
+/* ── Light Theme (Explicit) ── */
+[data-theme="light"] {
+  /* Colors: Core */
   --color-bg-primary: #FFFFFF;
   --color-bg-secondary: #F9FAFB;
   --color-bg-tertiary: #F3F4F6;
@@ -10,13 +11,13 @@
   --color-border-subtle: #F3F4F6;
   --color-border-focus: #6366F1;
 
-  /* ── Colors: Text ── */
+  /* Colors: Text */
   --color-text-primary: #111827;
   --color-text-secondary: #6B7280;
   --color-text-tertiary: #5F6368;
   --color-text-inverse: #FFFFFF;
 
-  /* ── Colors: Accent / Semantic ── */
+  /* Colors: Accent / Semantic */
   --color-primary: #6366F1;
   --color-primary-hover: #4F46E5;
   --color-primary-light: rgba(99, 102, 241, 0.1);
@@ -29,13 +30,160 @@
   --color-info: #3B82F6;
   --color-info-light: rgba(59, 130, 246, 0.1);
 
-  /* ── Colors: Agent Status ── */
+  /* Colors: Agent Status */
   --status-running: #10B981;
   --status-idle: #6B7280;
   --status-error: #EF4444;
   --status-spawning: #F59E0B;
 
-  /* ── Typography: Fonts ── */
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Dark Theme (Explicit) ── */
+[data-theme="dark"] {
+  /* Colors: Core */
+  --color-bg-primary: #111827;
+  --color-bg-secondary: #1F2937;
+  --color-bg-tertiary: #374151;
+  --color-bg-elevated: #1F2937;
+  --color-border: #374151;
+  --color-border-subtle: #1F2937;
+  --color-border-focus: #818CF8;
+
+  /* Colors: Text */
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #D1D5DB;
+  --color-text-tertiary: #9CA3AF;
+  --color-text-inverse: #111827;
+
+  /* Colors: Accent / Semantic */
+  --color-primary: #818CF8;
+  --color-primary-hover: #6366F1;
+  --color-primary-light: rgba(129, 140, 248, 0.15);
+  --color-success: #34D399;
+  --color-success-light: rgba(52, 211, 153, 0.15);
+  --color-warning: #FBBF24;
+  --color-warning-light: rgba(251, 191, 36, 0.15);
+  --color-danger: #F87171;
+  --color-danger-light: rgba(248, 113, 113, 0.15);
+  --color-info: #60A5FA;
+  --color-info-light: rgba(96, 165, 250, 0.15);
+
+  /* Colors: Agent Status */
+  --status-running: #34D399;
+  --status-idle: #9CA3AF;
+  --status-error: #F87171;
+  --status-spawning: #FBBF24;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.35);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.4);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── System Theme (Follows OS) ── */
+[data-theme="system"] {
+  /* Colors: Core */
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F9FAFB;
+  --color-bg-tertiary: #F3F4F6;
+  --color-bg-elevated: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-border-subtle: #F3F4F6;
+  --color-border-focus: #6366F1;
+
+  /* Colors: Text */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #5F6368;
+  --color-text-inverse: #FFFFFF;
+
+  /* Colors: Accent / Semantic */
+  --color-primary: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: rgba(99, 102, 241, 0.1);
+  --color-success: #10B981;
+  --color-success-light: rgba(16, 185, 129, 0.1);
+  --color-warning: #F59E0B;
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-danger: #EF4444;
+  --color-danger-light: rgba(239, 68, 68, 0.1);
+  --color-info: #3B82F6;
+  --color-info-light: rgba(59, 130, 246, 0.1);
+
+  /* Colors: Agent Status */
+  --status-running: #10B981;
+  --status-idle: #6B7280;
+  --status-error: #EF4444;
+  --status-spawning: #F59E0B;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ── System Theme: Dark Mode Override ── */
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    /* Colors: Core */
+    --color-bg-primary: #111827;
+    --color-bg-secondary: #1F2937;
+    --color-bg-tertiary: #374151;
+    --color-bg-elevated: #1F2937;
+    --color-border: #374151;
+    --color-border-subtle: #1F2937;
+    --color-border-focus: #818CF8;
+
+    /* Colors: Text */
+    --color-text-primary: #F9FAFB;
+    --color-text-secondary: #D1D5DB;
+    --color-text-tertiary: #9CA3AF;
+    --color-text-inverse: #111827;
+
+    /* Colors: Accent / Semantic */
+    --color-primary: #818CF8;
+    --color-primary-hover: #6366F1;
+    --color-primary-light: rgba(129, 140, 248, 0.15);
+    --color-success: #34D399;
+    --color-success-light: rgba(52, 211, 153, 0.15);
+    --color-warning: #FBBF24;
+    --color-warning-light: rgba(251, 191, 36, 0.15);
+    --color-danger: #F87171;
+    --color-danger-light: rgba(248, 113, 113, 0.15);
+    --color-info: #60A5FA;
+    --color-info-light: rgba(96, 165, 250, 0.15);
+
+    /* Colors: Agent Status */
+    --status-running: #34D399;
+    --status-idle: #9CA3AF;
+    --status-error: #F87171;
+    --status-spawning: #FBBF24;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.35);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.4);
+    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* ── Typography: Fonts ── */
+:root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
@@ -83,14 +231,6 @@
   --radius-2xl: 16px;
   --radius-full: 9999px;
 
-  /* ── Shadows ── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-
   /* ── Motion ── */
   --motion-fast: 150ms ease;
   --motion-normal: 200ms ease;
@@ -117,39 +257,4 @@
   --grid-columns: 12;
   --grid-gutter: 24px;
   --grid-margin: 32px;
-}
-
-/* ── Dark Mode ── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg-primary: #111827;
-    --color-bg-secondary: #1F2937;
-    --color-bg-tertiary: #374151;
-    --color-bg-elevated: #1F2937;
-    --color-border: #374151;
-    --color-border-subtle: #1F2937;
-    --color-border-focus: #818CF8;
-
-    --color-text-primary: #F9FAFB;
-    --color-text-secondary: #D1D5DB;
-    --color-text-tertiary: #9CA3AF;
-    --color-text-inverse: #111827;
-
-    --color-primary: #818CF8;
-    --color-primary-hover: #6366F1;
-    --color-primary-light: rgba(129, 140, 248, 0.15);
-    --color-success: #34D399;
-    --color-success-light: rgba(52, 211, 153, 0.15);
-    --color-warning: #FBBF24;
-    --color-warning-light: rgba(251, 191, 36, 0.15);
-    --color-danger: #F87171;
-    --color-danger-light: rgba(248, 113, 113, 0.15);
-    --color-info: #60A5FA;
-    --color-info-light: rgba(96, 165, 250, 0.15);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.35);
-  }
 }

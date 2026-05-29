@@ -2,7 +2,8 @@
 
 const { Hono } = require('hono');
 const { validateRequest } = require('../middleware/validate');
-const { autoAssign } = require('../../auto-assign');
+const { autoAssign, autoAssignPaperclipIssues } = require('../../auto-assign');
+const { PaperclipClient } = require('../../paperclip-client');
 
 const tasks = new Hono();
 
@@ -77,6 +78,46 @@ tasks.post('/auto-assign', async (c) => {
 
   const limit = body.limit ? parseInt(body.limit, 10) : undefined;
   const result = autoAssign(taskRepo, agentRepo, { limit });
+
+  return c.json({
+    ok: true,
+    data: {
+      assigned: result.assigned,
+      skipped: result.skipped,
+      summary: {
+        assignedCount: result.assigned.length,
+        skippedCount: result.skipped.length,
+      },
+    },
+  });
+});
+
+/**
+ * POST /tasks/auto-assign-paperclip — Auto-assign unassigned Paperclip issues to best available agents.
+ * Body: { limit?: number, baseUrl?: string, issuesDir?: string } — max issues to assign (default: all)
+ */
+tasks.post('/auto-assign-paperclip', async (c) => {
+  const repos = c.get('repos');
+  const agentRepo = repos.agents;
+
+  if (!agentRepo) {
+    return c.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'Agent repository not available' } }, 500);
+  }
+
+  let body = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    // empty body is fine
+  }
+
+  const paperclip = new PaperclipClient({
+    baseUrl: body.baseUrl,
+    issuesDir: body.issuesDir,
+  });
+
+  const limit = body.limit ? parseInt(body.limit, 10) : undefined;
+  const result = await autoAssignPaperclipIssues(paperclip, agentRepo, { limit });
 
   return c.json({
     ok: true,

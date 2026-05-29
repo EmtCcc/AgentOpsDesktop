@@ -108,6 +108,87 @@ function _GeneralSection({ _settings, _onChange }) {
   );
 }
 
+// ── Appearance Section ──
+
+const THEME_KEY = 'agentops-theme';
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', icon: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' },
+  { value: 'dark', label: 'Dark', icon: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' },
+  { value: 'system', label: 'System', icon: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+];
+
+function _AppearanceSection() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) || 'system';
+    } catch {
+      return 'system';
+    }
+  });
+
+  const handleThemeChange = useCallback((newTheme) => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem(THEME_KEY, newTheme);
+    } catch {
+      // localStorage not available
+    }
+
+    // Apply theme to document
+    const resolveTheme = (t) => {
+      if (t === 'system') {
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      return t;
+    };
+    document.documentElement.setAttribute('data-theme', resolveTheme(newTheme));
+  }, []);
+
+  return (
+    <div className="settings-section">
+      <h3 className="settings-section__title">Appearance</h3>
+      <div className="settings-row">
+        <div className="settings-row__info">
+          <div className="settings-row__label">Theme</div>
+          <div className="settings-row__desc">Switch between light and dark appearance</div>
+        </div>
+        <div className="settings-row__control">
+          <div
+            className="theme-toggle"
+            role="radiogroup"
+            aria-label="Theme selection"
+          >
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className="theme-toggle__option"
+                role="radio"
+                aria-checked={theme === opt.value}
+                aria-label={opt.label}
+                onClick={() => handleThemeChange(opt.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const idx = THEME_OPTIONS.findIndex(o => o.value === theme);
+                    const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length];
+                    handleThemeChange(next.value);
+                  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const idx = THEME_OPTIONS.findIndex(o => o.value === theme);
+                    const prev = THEME_OPTIONS[(idx - 1 + THEME_OPTIONS.length) % THEME_OPTIONS.length];
+                    handleThemeChange(prev.value);
+                  }
+                }}
+                dangerouslySetInnerHTML={{ __html: opt.icon + ' ' + opt.label }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Agent Preferences Section ──
 
 function _AgentPreferencesSection({ settings, onChange }) {
@@ -896,6 +977,7 @@ export default function SettingsPage() {
       <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
         <div className="card">
           <_GeneralSection settings={settings} onChange={handleChange} />
+          <_AppearanceSection />
           <_AgentPreferencesSection settings={settings} onChange={handleChange} />
         </div>
 

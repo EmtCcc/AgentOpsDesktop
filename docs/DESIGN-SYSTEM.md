@@ -70,6 +70,42 @@
 
 All tokens have dark mode variants via `@media (prefers-color-scheme: dark)`. See `src/renderer/styles/tokens.css` for the full mapping.
 
+### Theme System
+
+The application supports three theme modes controlled by `data-theme` attribute on `<html>`:
+
+| Value | Behavior |
+|-------|----------|
+| `light` | Always light, ignores OS preference |
+| `dark` | Always dark, ignores OS preference |
+| `system` | Follows `prefers-color-scheme` (default) |
+
+**Persistence**: Theme preference stored in `localStorage` under key `agentops-theme`.
+
+**Implementation**: CSS uses `[data-theme="light"]` and `[data-theme="dark"]` selectors for explicit themes, with `[data-theme="system"]` delegating to `@media (prefers-color-scheme: dark)`.
+
+**Light Theme Token Values**:
+
+| Token | Light Value | Dark Value |
+|-------|-------------|------------|
+| `--color-bg-primary` | `#FFFFFF` | `#111827` |
+| `--color-bg-secondary` | `#F9FAFB` | `#1F2937` |
+| `--color-bg-tertiary` | `#F3F4F6` | `#374151` |
+| `--color-bg-elevated` | `#FFFFFF` | `#1F2937` |
+| `--color-border` | `#E5E7EB` | `#374151` |
+| `--color-border-subtle` | `#F3F4F6` | `#1F2937` |
+| `--color-border-focus` | `#6366F1` | `#818CF8` |
+| `--color-text-primary` | `#111827` | `#F9FAFB` |
+| `--color-text-secondary` | `#6B7280` | `#D1D5DB` |
+| `--color-text-tertiary` | `#5F6368` | `#9CA3AF` |
+| `--color-text-inverse` | `#FFFFFF` | `#111827` |
+| `--color-primary` | `#6366F1` | `#818CF8` |
+| `--color-primary-hover` | `#4F46E5` | `#6366F1` |
+| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | `0 1px 2px rgba(0,0,0,0.2)` |
+| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.07)` | `0 4px 6px rgba(0,0,0,0.25)` |
+
+For the complete token mapping, see `docs/LIGHT-THEME-SPEC.md`.
+
 ---
 
 ## Typography
@@ -288,8 +324,9 @@ Base unit: **4px**
 
 | File | Format | Purpose |
 |------|--------|---------|
-| `src/renderer/styles/tokens.css` | CSS Custom Properties | Runtime tokens |
+| `src/renderer/styles/tokens.css` | CSS Custom Properties | Runtime tokens (light + dark) |
 | `src/renderer/styles/tokens.json` | JSON | Tooling, code generation |
+| `docs/LIGHT-THEME-SPEC.md` | Markdown | Light theme design specification |
 | `designs/logo.svg` | SVG | Brand asset (light) |
 | `designs/logo-dark.svg` | SVG | Brand asset (dark) |
 | `designs/logo-mark.svg` | SVG | App icon basis |
