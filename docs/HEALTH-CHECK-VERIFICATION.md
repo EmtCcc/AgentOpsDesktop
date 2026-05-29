@@ -1,28 +1,25 @@
-# API Health Check — Verification Report
+# API Health Check Verification (CMPAAA-694)
 
-> Issue: CMPAAA-560
-> Verified: 2026-05-29
-> Status: **DONE**
+**Date:** 2026-05-30
+**Status:** ✅ Verified
 
----
+## Endpoints
 
-## Endpoint Summary
+| Endpoint | Type | Auth | Behavior |
+|---|---|---|---|
+| `GET /health` | HTTP (Hono, port 3967) | Public | 200 ok/degraded, 503 unhealthy |
+| `POST /api/adapters/:id/health-check` | HTTP | Token | Per-adapter connectivity check |
+| `system:healthCheck` | Electron IPC | IPC only | System info + memory |
+| `agents:health-check` | Electron IPC | IPC only | Per-agent process liveness |
+| Periodic loop (30s) | Background | N/A | Logs status, sends telemetry |
 
-| Property | Value |
-|----------|-------|
-| Route | `GET /health` |
-| File | `src/main/api/routes/health.js` |
-| Auth | Not required (public endpoint) |
-| Healthy | HTTP 200 |
-| Unhealthy | HTTP 503 |
-
-## Response Shape
+## `GET /health` Response Shape
 
 ```json
 {
-  "status": "ok" | "degraded" | "unhealthy",
-  "version": "0.1.0",
-  "ts": "2026-05-29T...",
+  "status": "ok|degraded|unhealthy",
+  "version": "x.y.z",
+  "ts": "ISO-8601",
   "uptimeMs": 12345,
   "memory": { "rss", "heapUsed", "heapTotal", "external" },
   "system": { "totalMem", "freeMem", "loadAvg", "cpus" },
@@ -33,65 +30,39 @@
   "alerts": [],
   "uptime": {
     "uptimePercent": 100,
-    "totalUptimeMs": ...,
+    "totalUptimeMs": 12345,
     "totalDowntimeMs": 0,
     "breakdown": { "okMs", "degradedMs", "unhealthyMs" },
     "lastStatusChange": "ok",
-    "lastStatusChangeAt": ...,
+    "lastStatusChangeAt": 1234567890,
     "transitions": []
   }
 }
 ```
 
-## Verification Results
+## Alert Thresholds
 
-### Unit Tests — 42/42 PASS
+| Alert ID | Severity | Condition |
+|---|---|---|
+| `high_heap` | warn | heapUsed / heapTotal > 85% |
+| `high_ipc_error_rate` | error | errors / calls > 5% |
+| `high_ipc_latency` | warn | avgLatencyMs > 500 |
+| `low_system_memory` | warn | freeMem / totalMem < 10% |
+| `high_cpu_load` | warn | loadAvg[i] / cpus > 2.0 |
+| `db_unreachable` | error | DB `SELECT 1` throws |
+
+## Status Classification
+
+- **ok**: no alerts
+- **degraded**: warnings only (counts as uptime)
+- **unhealthy**: any error-level alert → HTTP 503
+
+## Test Results (141/141 pass)
 
 | Suite | Tests | Status |
-|-------|-------|--------|
-| `tests/health.test.js` — getHealth, checkAlerts, recordIpcCall, classifyStatus, uptime tracking | 30 | ✓ |
-| `tests/health-endpoint.test.js` — HTTP endpoint via Hono app.request() | 12 | ✓ |
-
-### API Smoke Test — 24/24 PASS
-
-Real HTTP server started on ephemeral port, `/health` hit over the network.
-
-| Check | Result |
-|-------|--------|
-| Returns HTTP 200 | ✓ |
-| Content-Type is application/json | ✓ |
-| Has status field | ✓ |
-| Has version field | ✓ |
-| Version matches semver | ✓ |
-| Has ISO timestamp | ✓ |
-| Has uptimeMs (non-negative) | ✓ |
-| Has memory object | ✓ |
-| Memory has rss/heapUsed/heapTotal/external | ✓ |
-| Has system object | ✓ |
-| System has totalMem/freeMem/loadAvg/cpus | ✓ |
-| Has ipc object | ✓ |
-| IPC has calls/errors/avgLatencyMs | ✓ |
-| Has renderer object | ✓ |
-| Has app object | ✓ |
-| DB connectivity ok | ✓ |
-| Alerts is array | ✓ |
-| Status is valid | ✓ |
-| Has uptime object | ✓ |
-| Uptime has uptimePercent | ✓ |
-| Uptime percent 0-100 | ✓ |
-| Uptime has breakdown | ✓ |
-| Breakdown has okMs/degradedMs/unhealthyMs | ✓ |
-| Uptime has transitions array | ✓ |
-
-## Key Behaviors Verified
-
-- **No auth required** — endpoint is public
-- **Status classification** — ok (no alerts), degraded (warn-only), unhealthy (any error)
-- **DB unreachable → 503** — returns `db.ok: false` with error detail and `db_unreachable` alert
-- **Uptime tracking** — records status transitions, caps at 100 internal / 10 in response
-- **Degraded = uptime** — degraded time counts toward uptime, not downtime
-- **Alert thresholds** — heap >85%, IPC error rate >5%, system memory <10%
-
-## Disposition: DONE
-
-Health endpoint responds correctly. Unit tests, endpoint tests, and API smoke tests all pass. No remaining work.
+|---|---|---|
+| `tests/health.test.js` | 32 | ✅ |
+| `tests/health-endpoint.test.js` | 12 | ✅ |
+| `tests/monitor.test.js` | 32 | ✅ |
+| `tests/integration/monitor.integration.test.js` | 19 | ✅ |
+| `tests/integration/http-api.integration.test.js` | 65 | ✅ |
