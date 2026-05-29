@@ -945,13 +945,13 @@ class TaskOrchestrator extends EventEmitter {
    * Spawns the target member agent with the task payload.
    */
   _handleDelegation(squadId, msg) {
-    const { targetAgentId, task, description, payload } = msg.payload || {};
-    if (!targetAgentId) {
+    const { targetAgentId, targetRole, task, description, payload } = msg.payload || {};
+    if (!targetAgentId && !targetRole) {
       logger.warn('orchestrator.delegation-no-target', { squadId });
       return;
     }
 
-    logger.info('orchestrator.delegation-received', { squadId, targetAgentId, task });
+    logger.info('orchestrator.delegation-received', { squadId, targetAgentId, targetRole, task });
 
     if (!this.runtime) {
       logger.warn('orchestrator.delegation-no-runtime', { squadId, targetAgentId });
@@ -960,9 +960,35 @@ class TaskOrchestrator extends EventEmitter {
 
     try {
       const squad = this.squadRepo?.getSquadWithMembers(squadId);
-      const member = squad?.members?.find((m) => m.agentId === targetAgentId);
+
+      // Resolve target: explicit agentId or role-based wildcard
+      let resolvedAgentId = targetAgentId;
+      if (!resolvedAgentId && targetRole && this.squadRepo) {
+        const agentRepo = this.runtime._agentRepo || null;
+        const resolved = this.squadRepo.resolveWildcardAgent(squadId, targetRole, agentRepo);
+        if (!resolved) {
+          logger.warn('orchestrator.delegation-role-unresolved', { squadId, targetRole });
+          return;
+        }
+        resolvedAgentId = resolved.id;
+      }
+
+      const member = squad?.members?.find((m) => m.agentId === resolvedAgentId);
       if (!member) {
-        logger.warn('orchestrator.delegation-member-not-found', { squadId, targetAgentId });
+        logger.warn('orchestrator.delegation-member-not-found', { squadId, targetAgentId: resolvedAgentId });
+        return;
+      }
+
+      // Check overload threshold before spawning
+      const agentRepo = this.runtime?._agentRepo || null;
+      if (this.squadRepo?.isAgentOverloaded(squadId, resolvedAgentId, agentRepo)) {
+        logger.warn('orchestrator.delegation-overloaded', { squadId, targetAgentId: resolvedAgentId });
+        this.bus?.publish(`squad.${squadId}.member-result`, 'event', {
+          memberAgentId: resolvedAgentId,
+          status: 'overloaded',
+          error: 'Agent overloaded — active tasks exceed threshold',
+          timestamp: Date.now(),
+        });
         return;
       }
 
@@ -976,19 +1002,19 @@ class TaskOrchestrator extends EventEmitter {
           AGENT_DELEGATED_TASK: JSON.stringify({ task, description, payload }),
           AGENT_DELEGATOR: msg.senderId,
         },
-        label: config.label || `delegated-${targetAgentId}`,
+        label: config.label || `delegated-${resolvedAgentId}`,
         squadId,
       });
 
       this.emit('squad:member-spawned', {
         squadId,
         agentId: result.agentId,
-        targetAgentId,
+        targetAgentId: resolvedAgentId,
         delegatedBy: msg.senderId,
       });
-      logger.info('orchestrator.delegation-spawned', { squadId, agentId: result.agentId, targetAgentId });
+      logger.info('orchestrator.delegation-spawned', { squadId, agentId: result.agentId, targetAgentId: resolvedAgentId });
     } catch (err) {
-      logger.error('orchestrator.delegation-spawn-failed', { squadId, targetAgentId, error: err.message });
+      logger.error('orchestrator.delegation-spawn-failed', { squadId, targetAgentId: resolvedAgentId, error: err.message });
     }
   }
 

@@ -241,6 +241,33 @@ class SocketBusClient extends EventEmitter {
   }
 
   /**
+   * Delegate a task to any idle agent matching a role (leader only).
+   * The server resolves the role to a concrete agent via wildcard members.
+   * @param {string} targetRole - role to match (e.g. 'engineer')
+   * @param {*} taskPayload - task description
+   * @returns {Promise<{agentId: string, targetRole: string}>}
+   */
+  delegateToRole(targetRole, taskPayload) {
+    this._assertConnected();
+    const requestId = randomUUID();
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this._pending.delete(requestId);
+        reject(new Error(`delegateToRole timed out for role: ${targetRole}`));
+      }, this._requestTimeout);
+
+      this._pending.set(requestId, {
+        resolve: (msg) => resolve(msg.payload || { agentId: msg.agentId, targetRole }),
+        reject,
+        timer,
+      });
+
+      this._rawSend({ type: 'delegateToRole', targetRole, taskPayload, requestId });
+    });
+  }
+
+  /**
    * Report task completion back to the squad (member only).
    * Topic on bus: squad.{squadId}.complete
    * @param {*} resultPayload - task output
@@ -364,6 +391,32 @@ class SocketBusClient extends EventEmitter {
       case 'published':
         this.emit('published', { messageId: msg.messageId, topic: msg.topic });
         break;
+
+      case 'delegateToRole_ok': {
+        const key = msg.requestId;
+        if (key) {
+          const pending = this._pending.get(key);
+          if (pending) {
+            clearTimeout(pending.timer);
+            this._pending.delete(key);
+            pending.resolve({ agentId: msg.agentId, targetRole: msg.targetRole });
+          }
+        }
+        break;
+      }
+
+      case 'delegateToRole_error': {
+        const key = msg.requestId;
+        if (key) {
+          const pending = this._pending.get(key);
+          if (pending) {
+            clearTimeout(pending.timer);
+            this._pending.delete(key);
+            pending.reject(new Error(msg.error));
+          }
+        }
+        break;
+      }
 
       case 'error':
         this.emit('error', new Error(msg.error));

@@ -305,7 +305,107 @@ describe('Back-pressure handling', () => {
 });
 
 // ══════════════════════════════════════════════════════════
-// 6. TOPIC VALIDATION
+// 6. PRIORITY QUEUE
+// ══════════════════════════════════════════════════════════
+
+describe('Priority queue', () => {
+  let bus;
+
+  beforeEach(() => {
+    bus = createBus({ maxQueueSize: 3 });
+  });
+  afterEach(() => bus.close());
+
+  function triggerQueuing(bus) {
+    let count = 0;
+    const id = bus.subscribe('events', () => {
+      count++;
+      if (count <= 1) throw new Error('slow');
+    });
+    bus.publish('events', 'event', { n: 0 }); // trigger error, starts queuing
+    return id;
+  }
+
+  it('higher-priority messages are delivered first', () => {
+    const id = triggerQueuing(bus);
+
+    bus.publish('events', 'event', { n: 1 }, { priority: 'low' });
+    bus.publish('events', 'event', { n: 2 }, { priority: 'critical' });
+    bus.publish('events', 'event', { n: 3 }, { priority: 'normal' });
+
+    const received = [];
+    const origHandler = bus._subscribers.get(id).handler;
+    bus._subscribers.get(id).handler = (msg) => received.push(msg.payload.n);
+    bus.drain(id, 10);
+
+    // n=0 (normal, from trigger), n=1 (low), n=2 (critical), n=3 (normal)
+    // critical > normal(FIFO: 0,3) > low(evicted by n=3 since maxQueueSize=3)
+    expect(received).toEqual([2, 0, 3]);
+  });
+
+  it('drops lowest-priority message when queue is full', () => {
+    const id = triggerQueuing(bus);
+
+    // Fill queue: low, low, low
+    bus.publish('events', 'event', { n: 1 }, { priority: 'low' });
+    bus.publish('events', 'event', { n: 2 }, { priority: 'low' });
+    bus.publish('events', 'event', { n: 3 }, { priority: 'low' });
+    expect(bus.queueDepth(id)).toBe(3);
+
+    // Add a critical — should evict a low
+    bus.publish('events', 'event', { n: 4 }, { priority: 'critical' });
+    expect(bus.queueDepth(id)).toBe(3);
+
+    const received = [];
+    bus._subscribers.get(id).handler = (msg) => received.push(msg.payload.n);
+    bus.drain(id, 10);
+
+    // critical(4) first, then n=0 (normal, from trigger), n=1 (low). n=2 (low) was evicted.
+    expect(received).toEqual([4, 0, 1]);
+  });
+
+  it('drops new message when it has lowest priority and queue is full', () => {
+    const id = triggerQueuing(bus);
+
+    bus.publish('events', 'event', { n: 1 }, { priority: 'high' });
+    bus.publish('events', 'event', { n: 2 }, { priority: 'high' });
+    bus.publish('events', 'event', { n: 3 }, { priority: 'normal' });
+    expect(bus.queueDepth(id)).toBe(3);
+
+    // low should be dropped
+    bus.publish('events', 'event', { n: 4 }, { priority: 'low' });
+    expect(bus.queueDepth(id)).toBe(3);
+
+    const received = [];
+    bus._subscribers.get(id).handler = (msg) => received.push(msg.payload.n);
+    bus.drain(id, 10);
+
+    // n=0 (normal, from trigger), n=1 (high), n=2 (high). n=3 (normal) and n=4 (low) dropped.
+    expect(received).toEqual([1, 2, 0]);
+  });
+
+  it('defaults to normal priority', () => {
+    const id = triggerQueuing(bus);
+
+    bus.publish('events', 'event', { n: 1 }); // no priority → normal
+    bus.publish('events', 'event', { n: 2 }, { priority: 'critical' });
+    bus.publish('events', 'event', { n: 3 }, { priority: 'low' });
+
+    const received = [];
+    bus._subscribers.get(id).handler = (msg) => received.push(msg.payload.n);
+    bus.drain(id, 10);
+
+    // n=0 (normal, from trigger), n=1 (default→normal), n=2 (critical). n=3 (low) dropped.
+    expect(received).toEqual([2, 0, 1]);
+  });
+
+  it('rejects invalid priority', () => {
+    expect(() => bus.publish('x', 'event', {}, { priority: 'urgent' })).toThrow('Invalid priority');
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+// 7. TOPIC VALIDATION
 // ══════════════════════════════════════════════════════════
 
 describe('Topic validation', () => {

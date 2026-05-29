@@ -6,11 +6,16 @@ const DEFAULT_TRIGGER_RULES = {
   on_member_complete: 'continue',
   on_error: 'fail-fast',
   on_all_complete: 'idle',
+  overload_threshold: 3, // max active tasks per member before considered overloaded
 };
 
 /**
  * Repository for Squad (team grouping) persistence.
  * Manages squads and squad_members tables.
+ *
+ * Supports wildcard members: agent_id='*' with a role like 'engineer' means
+ * "any idle agent whose ownerRole matches this role". Wildcard members are
+ * resolved at delegation time, not at squad creation time.
  */
 class SquadRepository {
   constructor(db) {
@@ -181,6 +186,118 @@ class SquadRepository {
 
   listSquadsForAgent(agentId) {
     return this._stmts.listSquadsForAgent.all({ agentId }).map((r) => this._toRecord(r));
+  }
+
+  // ── Wildcard & dynamic discovery ──
+
+  /**
+   * Get wildcard members for a squad (agent_id = '*').
+   * These represent role-based slots that are resolved at delegation time.
+   * @param {string} squadId
+   * @returns {Array<{squadId: string, agentId: string, role: string, addedAt: string}>}
+   */
+  getWildcardMembers(squadId) {
+    return this.listMembers(squadId).filter((m) => m.agentId === '*');
+  }
+
+  /**
+   * Get workload info for all concrete (non-wildcard) members of a squad.
+   * Returns each member annotated with their current active task count.
+   *
+   * @param {string} squadId
+   * @param {import('./agent.repository').AgentRepository} agentRepo
+   * @returns {Array<{agentId: string, role: string, workload: number}>}
+   */
+  getMemberWorkloads(squadId, agentRepo) {
+    if (!agentRepo) return [];
+    const workloadMap = agentRepo.getWorkloadMap();
+    return this.listMembers(squadId)
+      .filter((m) => m.agentId !== '*')
+      .map((m) => ({
+        agentId: m.agentId,
+        role: m.role,
+        workload: workloadMap.get(m.agentId) || 0,
+      }));
+  }
+
+  /**
+   * Check whether a specific agent is overloaded for this squad.
+   * An agent is overloaded when its active task count >= overload_threshold.
+   *
+   * @param {string} squadId
+   * @param {string} agentId
+   * @param {import('./agent.repository').AgentRepository} agentRepo
+   * @returns {boolean} true if the agent is overloaded
+   */
+  isAgentOverloaded(squadId, agentId, agentRepo) {
+    if (!agentRepo) return false;
+    const squad = this.getById(squadId);
+    const threshold = squad?.triggerRules?.overload_threshold ?? DEFAULT_TRIGGER_RULES.overload_threshold;
+    const workloadMap = agentRepo.getWorkloadMap();
+    const workload = workloadMap.get(agentId) || 0;
+    return workload >= threshold;
+  }
+
+  /**
+   * Resolve a wildcard role to a concrete idle agent.
+   * Queries agents by ownerRole, filters out agents already assigned to this squad,
+   * skips overloaded agents, and returns the one with the fewest active tasks.
+   *
+   * @param {string} squadId
+   * @param {string} role - The role to match against agent ownerRole (e.g. 'engineer')
+   * @param {import('./agent.repository').AgentRepository} agentRepo
+   * @returns {object|null} The resolved agent record, or null if none available
+   */
+  resolveWildcardAgent(squadId, role, agentRepo) {
+    if (!agentRepo) return null;
+
+    // Get idle agents with matching ownerRole, sorted by workload
+    const candidates = agentRepo.getIdleAgentsByWorkload({ ownerRole: role });
+    if (candidates.length === 0) return null;
+
+    // Exclude agents already explicitly in this squad
+    const existingMembers = new Set(
+      this.listMembers(squadId)
+        .filter((m) => m.agentId !== '*')
+        .map((m) => m.agentId)
+    );
+
+    // Read overload threshold from squad config
+    const squad = this.getById(squadId);
+    const threshold = squad?.triggerRules?.overload_threshold ?? DEFAULT_TRIGGER_RULES.overload_threshold;
+
+    return candidates.find((a) => !existingMembers.has(a.id) && a.workload < threshold) || null;
+  }
+
+  /**
+   * Expand wildcard members into concrete roster entries.
+   * For each wildcard member (agent_id='*'), attempts to resolve an idle agent.
+   * Non-wildcard members are passed through as-is.
+   *
+   * @param {string} squadId
+   * @param {import('./agent.repository').AgentRepository} agentRepo
+   * @returns {Array<{agentId: string, role: string, resolved: boolean}>}
+   */
+  expandRoster(squadId, agentRepo) {
+    const members = this.listMembers(squadId);
+    const roster = [];
+
+    for (const m of members) {
+      if (m.agentId !== '*') {
+        roster.push({ agentId: m.agentId, role: m.role, resolved: true });
+        continue;
+      }
+
+      // Wildcard: try to resolve
+      const agent = this.resolveWildcardAgent(squadId, m.role, agentRepo);
+      if (agent) {
+        roster.push({ agentId: agent.id, role: m.role, resolved: true });
+      } else {
+        roster.push({ agentId: '*', role: m.role, resolved: false });
+      }
+    }
+
+    return roster;
   }
 }
 

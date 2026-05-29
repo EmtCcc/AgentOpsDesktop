@@ -435,4 +435,4 @@ class MessageBus extends EventEmitter {
   }
 }
 
-module.exports = { MessageBus, VALID_TYPES };
+module.exports = { MessageBus, VALID_TYPES, VALID_PRIORITIES, PRIORITY_ORDER };

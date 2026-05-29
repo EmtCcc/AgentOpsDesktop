@@ -35,6 +35,7 @@ class SocketBusServer extends EventEmitter {
    * @param {object} opts
    * @param {string} opts.socketPath - Unix socket path
    * @param {import('../repositories/squad.repository').SquadRepository} [opts.squadRepo]
+   * @param {import('../repositories/agent.repository').AgentRepository} [opts.agentRepo]
    * @param {(agentId: string, squadId: string, token?: string) => boolean} [opts.authenticate]
    */
   constructor(bus, opts = {}) {
@@ -42,6 +43,7 @@ class SocketBusServer extends EventEmitter {
     this._bus = bus;
     this._socketPath = opts.socketPath;
     this._squadRepo = opts.squadRepo ?? null;
+    this._agentRepo = opts.agentRepo ?? null;
     this._authenticate = opts.authenticate ?? null;
 
     /** @type {Map<import('node:net').Socket, ClientState>} */
@@ -209,6 +211,9 @@ class SocketBusServer extends EventEmitter {
       case 'heartbeat':
         this._handleHeartbeat(socket, state, msg);
         break;
+      case 'delegateToRole':
+        this._handleDelegateToRole(socket, state, msg);
+        break;
       default:
         this._send(socket, { type: 'error', error: `Unknown message type: ${msg.type}` });
     }
@@ -243,15 +248,24 @@ class SocketBusServer extends EventEmitter {
 
       // Check agent is member of squad and determine role
       const members = this._squadRepo.listMembers(squadId);
-      const membership = members.find((m) => m.agentId === agentId);
+      let membership = members.find((m) => m.agentId === agentId);
+
+      // If not an explicit member, check for wildcard match by ownerRole
+      if (!membership && this._agentRepo) {
+        const agent = this._agentRepo.getById(agentId);
+        if (agent?.ownerRole) {
+          membership = members.find((m) => m.agentId === '*' && m.role === agent.ownerRole);
+        }
+      }
+
       if (!membership) {
         this._send(socket, { type: 'handshake_error', error: 'Agent is not a member of this squad' });
         socket.destroy();
         return;
       }
-      role = membership.role;
+      role = membership.role === '*' ? 'member' : membership.role;
 
-      // Leader gets the full roster for delegation
+      // Leader gets the full roster for delegation (including wildcard entries)
       if (role === 'leader') {
         roster = members.map((m) => ({ agentId: m.agentId, role: m.role }));
       }
@@ -366,6 +380,46 @@ class SocketBusServer extends EventEmitter {
     const { topic, payload } = msg;
     const namespaced = this._namespaceTopic(topic || 'heartbeat', state.squadId);
     this._bus.heartbeat(namespaced, state.agentId, payload);
+  }
+
+  /**
+   * Handle role-based delegation: resolve targetRole to a concrete agent via wildcard,
+   * then publish a standard delegation event on the bus.
+   */
+  _handleDelegateToRole(socket, state, msg) {
+    const { targetRole, taskPayload } = msg;
+    if (!targetRole) {
+      this._send(socket, { type: 'error', error: 'targetRole required for delegateToRole' });
+      return;
+    }
+
+    if (state.role !== 'leader') {
+      this._send(socket, { type: 'error', error: 'Only leader can delegate' });
+      return;
+    }
+
+    // Resolve wildcard to a concrete agent
+    if (!this._squadRepo || !this._agentRepo) {
+      this._send(socket, { type: 'error', error: 'Squad/agent repo not available' });
+      return;
+    }
+
+    const agent = this._squadRepo.resolveWildcardAgent(state.squadId, targetRole, this._agentRepo);
+    if (!agent) {
+      this._send(socket, { type: 'delegateToRole_error', error: `No idle agent found for role: ${targetRole}` });
+      return;
+    }
+
+    // Publish as a standard delegation event so the orchestrator picks it up
+    const namespaced = this._namespaceTopic('delegate', state.squadId);
+    this._bus.publish(namespaced, 'event', {
+      targetAgentId: agent.id,
+      targetRole,
+      ...taskPayload,
+    }, { senderId: state.agentId });
+
+    this._send(socket, { type: 'delegateToRole_ok', agentId: agent.id, targetRole });
+    this.emit('delegation', { squadId: state.squadId, targetAgentId: agent.id, targetRole, delegatedBy: state.agentId });
   }
 
   _onDisconnect(socket, state) {

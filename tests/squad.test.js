@@ -178,4 +178,32 @@ describe('Squad Implementation', () => {
     assert.ok(code.includes('this._roster'), 'stores roster');
     assert.ok(code.includes('delegate('), 'delegate method for leader');
   });
+
+  it('DEFAULT_TRIGGER_RULES includes overload_threshold', () => {
+    const { DEFAULT_TRIGGER_RULES } = require('../src/main/repositories/squad.repository');
+    assert.strictEqual(typeof DEFAULT_TRIGGER_RULES.overload_threshold, 'number');
+    assert.ok(DEFAULT_TRIGGER_RULES.overload_threshold > 0, 'threshold must be positive');
+  });
+
+  it('SquadRepository has load-balancing methods', () => {
+    const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
+    assert.ok(code.includes('getMemberWorkloads('), 'getMemberWorkloads method');
+    assert.ok(code.includes('isAgentOverloaded('), 'isAgentOverloaded method');
+  });
+
+  it('resolveWildcardAgent filters overloaded agents', () => {
+    const code = fs.readFileSync('./src/main/repositories/squad.repository.js', 'utf8');
+    assert.ok(code.includes('a.workload < threshold'), 'filters by overload threshold in resolveWildcardAgent');
+  });
+
+  it('orchestrator checks overload before delegation spawn', () => {
+    const code = fs.readFileSync('./src/main/task-orchestrator.js', 'utf8');
+    assert.ok(code.includes('isAgentOverloaded'), 'orchestrator calls isAgentOverloaded');
+    assert.ok(code.includes('orchestrator.delegation-overloaded'), 'logs overloaded delegation');
+  });
+
+  it('socket server delegateToRole uses resolveWildcardAgent (inherits overload filter)', () => {
+    const code = fs.readFileSync('./src/main/message-bus/socket-server.js', 'utf8');
+    assert.ok(code.includes('resolveWildcardAgent'), 'socket server uses resolveWildcardAgent');
+  });
 });

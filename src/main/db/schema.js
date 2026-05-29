@@ -561,6 +561,28 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(chat_id, created_at);
     `,
   },
+  {
+    version: 25,
+    name: 'widen_squad_member_roles',
+    up: `
+      -- Widen squad_members role constraint to support role-based wildcards (e.g. 'engineer', 'designer')
+      -- and allow agent_id='*' for dynamic member discovery.
+      CREATE TABLE IF NOT EXISTS squad_members_new (
+        squad_id    TEXT NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
+        agent_id    TEXT NOT NULL,
+        role        TEXT NOT NULL DEFAULT 'member',
+        added_at    TEXT NOT NULL,
+        PRIMARY KEY (squad_id, agent_id)
+      );
+
+      INSERT INTO squad_members_new SELECT * FROM squad_members;
+      DROP TABLE squad_members;
+      ALTER TABLE squad_members_new RENAME TO squad_members;
+
+      CREATE INDEX IF NOT EXISTS idx_squad_members_squad ON squad_members(squad_id);
+      CREATE INDEX IF NOT EXISTS idx_squad_members_agent ON squad_members(agent_id);
+    `,
+  },
 ];
 
 module.exports = { migrations };
