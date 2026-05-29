@@ -68,7 +68,7 @@ class ClaudeCodeAdapter extends AgentAdapter {
 
     // Max turns
     const maxTurns = params.maxTurns ?? this.maxTurns;
-    if (maxTurns !== null) args.push('--max-turns', String(maxTurns));
+    if (maxTurns != null) args.push('--max-turns', String(maxTurns)); // eslint-disable-line eqeqeq
 
     // Session resumption
     const sessionId = params.sessionId || this.sessionId;
