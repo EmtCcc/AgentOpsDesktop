@@ -129,7 +129,7 @@ class AdapterRegistryService {
     });
 
     // Register in adapter_configs DB so it persists across restarts
-    const adapterConfig = this.adapterRepo.create({
+    const _adapterConfig = this.adapterRepo.create({
       type: name,
       name: meta.displayName || name,
       classPath: entryPath,

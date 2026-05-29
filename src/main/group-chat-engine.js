@@ -1,8 +1,6 @@
 'use strict';
 
 const { EventEmitter } = require('events');
-const { randomUUID } = require('crypto');
-
 const CHAT_STATUS = {
   IDLE: 'idle',
   RUNNING: 'running',
@@ -211,7 +209,7 @@ class GroupChatEngine extends EventEmitter {
       if (!state.running) break;
 
       // Small delay between turns to prevent tight loops
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => { setTimeout(r, 500); });
     }
 
     if (state.turnCount >= state.config.maxTurns) {
@@ -332,7 +330,8 @@ class GroupChatEngine extends EventEmitter {
       const { spawn } = require('child_process');
       const execPath = agent.executable_path || agent.execPath;
       if (!execPath) {
-        return reject(new Error('Agent executable path not set'));
+        reject(new Error('Agent executable path not set'));
+        return;
       }
 
       let output = '';

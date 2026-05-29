@@ -5,11 +5,6 @@ const { validateRequest } = require('../middleware/validate');
 
 const cost = new Hono();
 
-const listQuerySchema = {
-  offset: { type: 'number', min: 0 },
-  limit: { type: 'number', min: 1, max: 100 },
-};
-
 const createBudgetSchema = {
   agentId: { type: 'string', required: true },
   monthlyLimit: { type: 'number', required: true },
@@ -126,7 +121,7 @@ cost.get('/usage', validateRequest({ query: { agentId: { type: 'string' }, taskI
 
 cost.get('/reports', validateRequest({ query: reportQuerySchema }), async (c) => {
   const repo = c.get('repos').costs;
-  const { agentId, goalId, since, until } = c.req.query();
+  const { agentId, goalId, since, until: _until } = c.req.query();
 
   if (agentId) {
     const spend = repo.getSpendByAgent(agentId, since);

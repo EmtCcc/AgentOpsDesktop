@@ -3,62 +3,62 @@ import { createRoot } from 'react-dom/client';
 
 // ── Icons ──
 
-const IconPlus = () => (
+export const IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconPlay = () => (
+export const IconPlay = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="5 3 19 12 5 21 5 3" />
   </svg>
 );
 
-const IconPause = () => (
+export const IconPause = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
   </svg>
 );
 
-const IconStop = () => (
+export const IconStop = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="4" y="4" width="16" height="16" rx="2" />
   </svg>
 );
 
-const IconSend = () => (
+export const IconSend = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
   </svg>
 );
 
-const IconTrash = () => (
+export const IconTrash = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconUsers = () => (
+export const IconUsers = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
     <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
 
-const IconMessageSquare = () => (
+export const IconMessageSquare = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 
-const IconChevronRight = () => (
+export const IconChevronRight = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="9 18 15 12 9 6" />
   </svg>
 );
 
-const IconRefresh = () => (
+export const IconRefresh = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   </svg>
@@ -90,7 +90,7 @@ function useFocusTrap(isOpen, onClose) {
 
 // ── Create Chat Modal ──
 
-function CreateChatModal({ isOpen, onClose, onSave, agents }) {
+export function CreateChatModal({ isOpen, onClose, onSave, agents }) {
   const [title, setTitle] = useState('');
   const [strategyType, setStrategyType] = useState('round-robin');
   const [selectedAgents, setSelectedAgents] = useState(new Set());
@@ -127,6 +127,7 @@ function CreateChatModal({ isOpen, onClose, onSave, agents }) {
       style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, alignItems: 'center', justifyContent: 'center' }}
       role="dialog" aria-modal="true" aria-labelledby="chat-modal-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
     >
       <div className="card" style={{ width: 520, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
         <div className="card__header">
@@ -134,12 +135,12 @@ function CreateChatModal({ isOpen, onClose, onSave, agents }) {
         </div>
         <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           <div>
-            <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Chat Title *</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Architecture Discussion" style={{ width: '100%' }} autoFocus />
+            <label htmlFor="chat-title" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Chat Title *</label>
+            <input type="text" id="chat-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Architecture Discussion" style={{ width: '100%' }} />
           </div>
           <div>
-            <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Turn Strategy</label>
-            <select value={strategyType} onChange={(e) => setStrategyType(e.target.value)} style={{ width: '100%' }}>
+            <label htmlFor="chat-strategy" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Turn Strategy</label>
+            <select id="chat-strategy" value={strategyType} onChange={(e) => setStrategyType(e.target.value)} style={{ width: '100%' }}>
               <option value="round-robin">Round Robin</option>
               <option value="human-assign">Human Assign</option>
             </select>
@@ -147,8 +148,7 @@ function CreateChatModal({ isOpen, onClose, onSave, agents }) {
           <div>
             <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
               Participants * (min 2)
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)' }}>
               {agents.length === 0 && (
                 <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)', padding: 'var(--space-2)' }}>No agents available</div>
               )}
@@ -160,6 +160,7 @@ function CreateChatModal({ isOpen, onClose, onSave, agents }) {
                 </label>
               ))}
             </div>
+            </label>
           </div>
         </div>
         <div className="card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
@@ -175,7 +176,7 @@ function CreateChatModal({ isOpen, onClose, onSave, agents }) {
 
 // ── Message Bubble ──
 
-function MessageBubble({ message, agentName, isStreaming }) {
+export function MessageBubble({ message, agentName, isStreaming }) {
   const isHuman = message.agentId === 'human';
   const isSystem = message.type === 'system';
   const time = message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : '';
@@ -214,7 +215,7 @@ function MessageBubble({ message, agentName, isStreaming }) {
 
 // ── Participant List Panel ──
 
-function ParticipantPanel({ participants, agentMap, engineState }) {
+export function ParticipantPanel({ participants, agentMap, engineState }) {
   const statusColors = { speaking: 'var(--color-success)', listening: 'var(--color-primary)', idle: 'var(--color-text-tertiary)' };
   const statusLabels = { speaking: 'Speaking', listening: 'Listening', idle: 'Idle' };
 
@@ -253,7 +254,7 @@ function ParticipantPanel({ participants, agentMap, engineState }) {
 
 // ── Main Page Component ──
 
-function GroupChatPage() {
+export function GroupChatPage() {
   const [sessions, setSessions] = useState([]);
   const [agents, setAgents] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -459,7 +460,10 @@ function GroupChatPage() {
             sessions.map((session) => (
               <div
                 key={session.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedSession(session.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedSession(session.id); }}
                 style={{
                   padding: 'var(--space-3)', cursor: 'pointer', borderBottom: '1px solid var(--color-border)',
                   background: selectedSession === session.id ? 'var(--color-bg-secondary)' : 'transparent',

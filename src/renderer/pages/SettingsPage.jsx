@@ -3,33 +3,33 @@ import { createRoot } from 'react-dom/client';
 
 // ── Icons ──
 
-const IconPlus = () => (
+const _IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconRefresh = () => (
+const _IconRefresh = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 );
 
-const IconTrash = () => (
+const _IconTrash = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconPlug = () => (
+const _IconPlug = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
     <path d="M12 8v4M12 16h.01" />
   </svg>
 );
 
-const IconDollar = () => (
+const _IconDollar = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
   </svg>
@@ -79,7 +79,7 @@ function useFocusTrap(isOpen, onClose) {
 
 // ── General Section ──
 
-function GeneralSection({ settings, onChange }) {
+function _GeneralSection({ _settings, _onChange }) {
   const version = window.agentOps?.version || '0.1.0';
   const platform = window.agentOps?.platform || 'unknown';
 
@@ -110,7 +110,7 @@ function GeneralSection({ settings, onChange }) {
 
 // ── Agent Preferences Section ──
 
-function AgentPreferencesSection({ settings, onChange }) {
+function _AgentPreferencesSection({ settings, onChange }) {
   return (
     <div className="settings-section">
       <h3 className="settings-section__title">Agents</h3>
@@ -172,7 +172,7 @@ function AgentPreferencesSection({ settings, onChange }) {
 
 // ── Adapter Row ──
 
-function AdapterRow({ adapter, onToggle, onHealthCheck, onDelete }) {
+function _AdapterRow({ adapter, onToggle, onHealthCheck, onDelete }) {
   return (
     <div className="agent-row" data-adapter-id={adapter.id} role="listitem" tabIndex={0} aria-label={`Adapter: ${adapter.name || adapter.type}, ${adapter.enabled ? 'Enabled' : 'Disabled'}`}>
       <span className={`status-dot status-dot--${adapter.enabled ? 'online' : 'offline'}`} role="img" aria-label={adapter.enabled ? 'Enabled' : 'Disabled'} />
@@ -223,7 +223,7 @@ function AdapterRow({ adapter, onToggle, onHealthCheck, onDelete }) {
 
 // ── Adapter Section ──
 
-function AdapterSection() {
+function _AdapterSection() {
   const [adapters, setAdapters] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -285,7 +285,7 @@ function AdapterSection() {
       ) : (
         <div role="list" aria-label="Adapter list">
           {adapters.map((adapter) => (
-            <AdapterRow
+            <_AdapterRow
               key={adapter.id}
               adapter={adapter}
               onToggle={handleToggle}
@@ -301,7 +301,7 @@ function AdapterSection() {
 
 // ── Budget Row ──
 
-function BudgetRow({ budget, onEdit, onDelete }) {
+function _BudgetRow({ budget, onEdit, onDelete }) {
   const pct = budget.monthlyLimit > 0
     ? Math.min(100, Math.round((budget.currentSpend || 0) / budget.monthlyLimit * 100))
     : 0;
@@ -346,7 +346,7 @@ function BudgetRow({ budget, onEdit, onDelete }) {
 
 // ── Budget Modal ──
 
-function BudgetModal({ isOpen, budget, onClose, onSave }) {
+function _BudgetModal({ isOpen, budget, onClose, onSave }) {
   const [agentId, setAgentId] = useState('');
   const [monthlyLimit, setMonthlyLimit] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -398,7 +398,9 @@ function BudgetModal({ isOpen, budget, onClose, onSave }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="budget-modal-title"
+      tabIndex={0}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
     >
       <div className="card" style={{ width: 440, maxWidth: '90vw' }}>
         <div className="card__header">
@@ -482,7 +484,7 @@ function BudgetModal({ isOpen, budget, onClose, onSave }) {
 
 // ── Budget Section ──
 
-function BudgetSection() {
+function _BudgetSection() {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -554,7 +556,7 @@ function BudgetSection() {
       ) : (
         <div role="list" aria-label="Budget list">
           {budgets.map((budget) => (
-            <BudgetRow
+            <_BudgetRow
               key={budget.id}
               budget={budget}
               onEdit={openEdit}
@@ -563,7 +565,7 @@ function BudgetSection() {
           ))}
         </div>
       )}
-      <BudgetModal
+      <_BudgetModal
         isOpen={modalOpen}
         budget={editingBudget}
         onClose={() => { setModalOpen(false); setEditingBudget(null); }}
@@ -575,7 +577,7 @@ function BudgetSection() {
 
 // ── Software Update Section ──
 
-function SoftwareUpdateSection() {
+function _SoftwareUpdateSection() {
   const version = window.agentOps?.version || '0.1.0';
   const [status, setStatus] = useState('idle'); // idle | checking | available | downloading | downloaded | not-available | error
   const [updateInfo, setUpdateInfo] = useState(null);
@@ -746,7 +748,7 @@ function formatBytes(bytes) {
 
 // ── Telemetry Section ──
 
-function TelemetrySection() {
+function _TelemetrySection() {
   const [enabled, setEnabled] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -811,7 +813,7 @@ function TelemetrySection() {
             id="setting-telemetry"
             className={`btn btn--sm ${enabled ? 'btn--primary' : 'btn--secondary'}`}
             onClick={handleToggle}
-            aria-pressed={enabled}
+            aria-checked={enabled}
             role="switch"
           >
             {enabled ? 'Enabled' : 'Disabled'}
@@ -893,24 +895,24 @@ export default function SettingsPage() {
 
       <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
         <div className="card">
-          <GeneralSection settings={settings} onChange={handleChange} />
-          <AgentPreferencesSection settings={settings} onChange={handleChange} />
+          <_GeneralSection settings={settings} onChange={handleChange} />
+          <_AgentPreferencesSection settings={settings} onChange={handleChange} />
         </div>
 
         <div className="card">
-          <AdapterSection />
+          <_AdapterSection />
         </div>
 
         <div className="card">
-          <BudgetSection />
+          <_BudgetSection />
         </div>
 
         <div className="card">
-          <SoftwareUpdateSection />
+          <_SoftwareUpdateSection />
         </div>
 
         <div className="card">
-          <TelemetrySection />
+          <_TelemetrySection />
         </div>
       </div>
     </>

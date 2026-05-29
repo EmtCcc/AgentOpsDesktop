@@ -849,7 +849,7 @@ class TaskOrchestrator extends EventEmitter {
    * Finds all runtime agents for the budget-exceeded DB agent and kills them.
    */
   _onBudgetHardStop(data) {
-    const { agentId: dbAgentId, action, budget, pct, reason } = data;
+    const { agentId: dbAgentId, action, budget, pct: _pct, reason: _reason } = data;
 
     // Find all runtime agents mapped to this DB agent
     for (const [runtimeAgentId, mapping] of this._agentTaskMap) {

@@ -3,67 +3,67 @@ import { createRoot } from 'react-dom/client';
 
 // ── Icons ──
 
-const IconPlus = () => (
+const _IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconPlay = () => (
+const _IconPlay = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="5 3 19 12 5 21 5 3" />
   </svg>
 );
 
-const IconPause = () => (
+const _IconPause = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
   </svg>
 );
 
-const IconX = () => (
+const _IconX = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
 
-const IconRefresh = () => (
+const _IconRefresh = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   </svg>
 );
 
-const IconWorkflow = () => (
+const _IconWorkflow = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" />
   </svg>
 );
 
-const IconTrash = () => (
+const _IconTrash = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconCheck = () => (
+const _IconCheck = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
-const IconZoomIn = () => (
+const _IconZoomIn = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" />
   </svg>
 );
 
-const IconZoomOut = () => (
+const _IconZoomOut = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" />
   </svg>
 );
 
-const IconFitView = () => (
+const _IconFitView = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
   </svg>
@@ -205,7 +205,7 @@ function layoutDag(tasks, edges) {
 
 // ── SVG DAG Canvas ──
 
-function DagCanvas({ dag, selectedTask, onSelectTask }) {
+function _DagCanvas({ dag, selectedTask, onSelectTask }) {
   const svgRef = useRef(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
@@ -281,9 +281,9 @@ function DagCanvas({ dag, selectedTask, onSelectTask }) {
   return (
     <div className="dag-canvas-container">
       <div className="dag-canvas-toolbar">
-        <button className="btn btn--ghost btn--sm" onClick={() => setTransform(t => ({ ...t, scale: Math.min(3, t.scale * 1.2) }))} title="Zoom in"><IconZoomIn /></button>
-        <button className="btn btn--ghost btn--sm" onClick={() => setTransform(t => ({ ...t, scale: Math.max(0.2, t.scale * 0.8) }))} title="Zoom out"><IconZoomOut /></button>
-        <button className="btn btn--ghost btn--sm" onClick={fitView} title="Fit to view"><IconFitView /></button>
+        <button className="btn btn--ghost btn--sm" onClick={() => setTransform(t => ({ ...t, scale: Math.min(3, t.scale * 1.2) }))} title="Zoom in"><_IconZoomIn /></button>
+        <button className="btn btn--ghost btn--sm" onClick={() => setTransform(t => ({ ...t, scale: Math.max(0.2, t.scale * 0.8) }))} title="Zoom out"><_IconZoomOut /></button>
+        <button className="btn btn--ghost btn--sm" onClick={fitView} title="Fit to view"><_IconFitView /></button>
         <span className="dag-canvas-toolbar__label">{Math.round(transform.scale * 100)}%</span>
       </div>
 
@@ -385,7 +385,7 @@ function DagCanvas({ dag, selectedTask, onSelectTask }) {
 
 // ── Task Detail Panel ──
 
-function TaskDetailPanel({ dag, taskId, onClose }) {
+function _TaskDetailPanel({ dag, taskId, onClose }) {
   const task = (dag?.tasks || []).find(t => t.id === taskId);
   if (!task) return null;
 
@@ -399,7 +399,7 @@ function TaskDetailPanel({ dag, taskId, onClose }) {
           <span style={{ fontSize: '16px' }}>{task.taskType === 'noop' ? '⚡' : task.taskType === 'manual' ? '✋' : '🤖'}</span>
           <span>{task.title}</span>
         </div>
-        <button className="btn btn--ghost btn--sm" onClick={onClose}><IconX /></button>
+        <button className="btn btn--ghost btn--sm" onClick={onClose}><_IconX /></button>
       </div>
       <div className="card__body">
         <div className="dag-detail-panel__row">
@@ -451,7 +451,7 @@ function TaskDetailPanel({ dag, taskId, onClose }) {
 
 // ── Create DAG Modal ──
 
-function CreateDagModal({ isOpen, onClose, onCreate }) {
+function _CreateDagModal({ isOpen, onClose, onCreate }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [taskRows, setTaskRows] = useState([{ id: `t${Date.now()}`, title: '', taskType: 'agent', agentId: '' }]);
@@ -521,7 +521,7 @@ function CreateDagModal({ isOpen, onClose, onCreate }) {
         <div className="card">
           <div className="card__header">
             <h2 className="card__title">Create Workflow</h2>
-            <button className="btn btn--ghost btn--sm" onClick={onClose}><IconX /></button>
+            <button className="btn btn--ghost btn--sm" onClick={onClose}><_IconX /></button>
           </div>
           <div className="card__body">
             {error && <div className="alert alert--danger" style={{ marginBottom: 'var(--space-4)' }}>{error}</div>}
@@ -554,7 +554,7 @@ function CreateDagModal({ isOpen, onClose, onCreate }) {
             <div className="dag-form-section">
               <div className="dag-form-section__header">
                 <h3 className="dag-form-section__title">Tasks</h3>
-                <button className="btn btn--ghost btn--sm" onClick={addTask}><IconPlus /> Add Task</button>
+                <button className="btn btn--ghost btn--sm" onClick={addTask}><_IconPlus /> Add Task</button>
               </div>
               {taskRows.map((task, idx) => (
                 <div key={task.id} className="dag-task-row">
@@ -565,7 +565,7 @@ function CreateDagModal({ isOpen, onClose, onCreate }) {
                     <option value="manual">Manual</option>
                   </select>
                   <input className="form-input dag-task-row__agent" value={task.agentId} onChange={(e) => updateTask(idx, 'agentId', e.target.value)} placeholder="Agent ID (optional)" />
-                  <button className="btn btn--danger btn--sm" onClick={() => removeTask(idx)} disabled={taskRows.length <= 1}><IconTrash /></button>
+                  <button className="btn btn--danger btn--sm" onClick={() => removeTask(idx)} disabled={taskRows.length <= 1}><_IconTrash /></button>
                 </div>
               ))}
             </div>
@@ -574,7 +574,7 @@ function CreateDagModal({ isOpen, onClose, onCreate }) {
             <div className="dag-form-section">
               <div className="dag-form-section__header">
                 <h3 className="dag-form-section__title">Dependencies</h3>
-                <button className="btn btn--ghost btn--sm" onClick={addEdge} disabled={taskRows.length < 2}><IconPlus /> Add Edge</button>
+                <button className="btn btn--ghost btn--sm" onClick={addEdge} disabled={taskRows.length < 2}><_IconPlus /> Add Edge</button>
               </div>
               {edgeRows.length === 0 && <p className="dag-form-section__empty">No dependencies. Tasks will run in parallel.</p>}
               {edgeRows.map((edge, idx) => (
@@ -587,7 +587,7 @@ function CreateDagModal({ isOpen, onClose, onCreate }) {
                     {taskRows.filter(t => t.title.trim()).map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
                   </select>
                   <input className="form-input dag-edge-row__label" value={edge.label} onChange={(e) => updateEdge(idx, 'label', e.target.value)} placeholder="Label (optional)" />
-                  <button className="btn btn--danger btn--sm" onClick={() => removeEdge(idx)}><IconTrash /></button>
+                  <button className="btn btn--danger btn--sm" onClick={() => removeEdge(idx)}><_IconTrash /></button>
                 </div>
               ))}
             </div>
@@ -611,7 +611,7 @@ export default function WorkflowsPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
 
   // Load DAG list
@@ -714,8 +714,8 @@ export default function WorkflowsPage() {
           <p className="page-header__desc">Visual DAG editor for orchestrating agent task pipelines</p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn--ghost btn--sm" onClick={loadDags}><IconRefresh /></button>
-          <button className="btn btn--primary" onClick={() => setShowCreate(true)}><IconPlus /> Create Workflow</button>
+          <button className="btn btn--ghost btn--sm" onClick={loadDags}><_IconRefresh /></button>
+          <button className="btn btn--primary" onClick={() => setShowCreate(true)}><_IconPlus /> Create Workflow</button>
         </div>
       </div>
 
@@ -769,7 +769,7 @@ export default function WorkflowsPage() {
         <div className="workflow-main">
           {!selectedDagId ? (
             <div className="empty-state">
-              <div className="empty-state__icon"><IconWorkflow /></div>
+              <div className="empty-state__icon"><_IconWorkflow /></div>
               <div className="empty-state__title">No workflow selected</div>
               <div className="empty-state__desc">Select a workflow from the sidebar or create a new one.</div>
             </div>
@@ -792,36 +792,36 @@ export default function WorkflowsPage() {
                     </span>
                   )}
                   {dagStatus === 'pending' && (
-                    <button className="btn btn--primary btn--sm" onClick={handleStart}><IconPlay /> Start</button>
+                    <button className="btn btn--primary btn--sm" onClick={handleStart}><_IconPlay /> Start</button>
                   )}
                   {dagStatus === 'running' && (
                     <>
-                      <button className="btn btn--secondary btn--sm" onClick={handlePause}><IconPause /> Pause</button>
-                      <button className="btn btn--danger btn--sm" onClick={handleCancel}><IconX /> Cancel</button>
+                      <button className="btn btn--secondary btn--sm" onClick={handlePause}><_IconPause /> Pause</button>
+                      <button className="btn btn--danger btn--sm" onClick={handleCancel}><_IconX /> Cancel</button>
                     </>
                   )}
                   {dagStatus === 'paused' && (
                     <>
-                      <button className="btn btn--primary btn--sm" onClick={handleResume}><IconPlay /> Resume</button>
-                      <button className="btn btn--danger btn--sm" onClick={handleCancel}><IconX /> Cancel</button>
+                      <button className="btn btn--primary btn--sm" onClick={handleResume}><_IconPlay /> Resume</button>
+                      <button className="btn btn--danger btn--sm" onClick={handleCancel}><_IconX /> Cancel</button>
                     </>
                   )}
                 </div>
               </div>
 
               {/* DAG Canvas */}
-              <DagCanvas dag={selectedDag} selectedTask={selectedTask} onSelectTask={setSelectedTask} />
+              <_DagCanvas dag={selectedDag} selectedTask={selectedTask} onSelectTask={setSelectedTask} />
 
               {/* Task detail panel */}
               {selectedTask && (
-                <TaskDetailPanel dag={selectedDag} taskId={selectedTask} onClose={() => setSelectedTask(null)} />
+                <_TaskDetailPanel dag={selectedDag} taskId={selectedTask} onClose={() => setSelectedTask(null)} />
               )}
             </>
           )}
         </div>
       </div>
 
-      <CreateDagModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      <_CreateDagModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
     </>
   );
 }

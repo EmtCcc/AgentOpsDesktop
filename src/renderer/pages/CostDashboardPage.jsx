@@ -3,38 +3,38 @@ import { createRoot } from 'react-dom/client';
 
 // ── Icons ──
 
-const IconDollar = () => (
+const _IconDollar = () => (
   <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
   </svg>
 );
 
-const IconRefresh = () => (
+const _IconRefresh = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   </svg>
 );
 
-const IconBot = () => (
+const _IconBot = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 8V4H8" /><rect x="2" y="2" width="20" height="8" rx="2" ry="2" /><rect x="6" y="14" width="12" height="8" rx="2" ry="2" /><path d="M12 16v4" />
   </svg>
 );
 
-const IconList = () => (
+const _IconList = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
     <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
   </svg>
 );
 
-const IconTrending = () => (
+const _IconTrending = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
   </svg>
 );
 
-const IconCpu = () => (
+const _IconCpu = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="4" y="4" width="16" height="16" rx="2" ry="2" /><rect x="9" y="9" width="6" height="6" />
     <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
@@ -83,7 +83,7 @@ const PERIODS = [
 
 // ── Sub-components ──
 
-function SummaryCard({ label, value, sub, color, icon }) {
+function _SummaryCard({ label, value, sub, color, icon }) {
   return (
     <div className="cost-summary-card">
       <div className="cost-summary-card__icon" style={{ color }}>{icon}</div>
@@ -96,7 +96,7 @@ function SummaryCard({ label, value, sub, color, icon }) {
   );
 }
 
-function BudgetProgressBar({ budget }) {
+function _BudgetProgressBar({ budget }) {
   if (!budget || !budget.monthlyLimit) return null;
   const pct = (budget.currentSpend / budget.monthlyLimit) * 100;
   const barColor = pct >= budget.stopPct ? 'var(--color-danger)'
@@ -128,7 +128,7 @@ function BudgetProgressBar({ budget }) {
   );
 }
 
-function BarChart({ data, maxVal, labelKey, valueKey, formatFn, color }) {
+function _BarChart({ data, maxVal, labelKey, valueKey, formatFn, color }) {
   if (!data || data.length === 0) {
     return <div className="cost-chart-empty">No data available</div>;
   }
@@ -158,7 +158,7 @@ function BarChart({ data, maxVal, labelKey, valueKey, formatFn, color }) {
   );
 }
 
-function TrendChart({ data }) {
+function _TrendChart({ data }) {
   if (!data || data.length === 0) {
     return <div className="cost-chart-empty">No trend data available</div>;
   }
@@ -200,7 +200,7 @@ function TrendChart({ data }) {
 
 // ── Main Page ──
 
-function CostDashboardPage() {
+function _CostDashboardPage() {
   const [period, setPeriod] = useState(PERIODS[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -266,7 +266,7 @@ function CostDashboardPage() {
             ))}
           </div>
           <button className="btn btn--ghost btn--sm" onClick={loadAll} disabled={loading}>
-            <IconRefresh /> Refresh
+            <_IconRefresh /> Refresh
           </button>
         </div>
       </div>
@@ -277,33 +277,33 @@ function CostDashboardPage() {
 
       {/* Summary Cards */}
       <div className="cost-summary-grid" role="region" aria-label="Cost summary">
-        <SummaryCard
+        <_SummaryCard
           label="Total Spend"
           value={formatUsd(totalSpend)}
           sub={period.label}
           color="var(--color-primary)"
-          icon={<IconDollar />}
+          icon={<_IconDollar />}
         />
-        <SummaryCard
+        <_SummaryCard
           label="Total Tokens"
           value={formatTokens(totalTokens)}
           sub={formatTokens(agentTokens.reduce((s, a) => s + (a.totalInputTokens || 0), 0)) + ' input / ' + formatTokens(agentTokens.reduce((s, a) => s + (a.totalOutputTokens || 0), 0)) + ' output'}
           color="var(--color-info)"
-          icon={<IconCpu />}
+          icon={<_IconCpu />}
         />
-        <SummaryCard
+        <_SummaryCard
           label="Total Requests"
           value={totalRequests.toLocaleString()}
           sub={'Avg ' + formatUsd(avgCostPerRequest) + ' / request'}
           color="var(--color-success)"
-          icon={<IconList />}
+          icon={<_IconList />}
         />
-        <SummaryCard
+        <_SummaryCard
           label="Active Budgets"
           value={budgets.filter((b) => b.status === 'active').length}
           sub={budgets.length + ' total'}
           color="var(--color-warning)"
-          icon={<IconTrending />}
+          icon={<_IconTrending />}
         />
       </div>
 
@@ -312,7 +312,7 @@ function CostDashboardPage() {
         <div className="cost-section">
           <h2 className="cost-section__title">Budget Utilization</h2>
           <div className="cost-budgets-grid">
-            {budgets.map((b) => <BudgetProgressBar key={b.id} budget={b} />)}
+            {budgets.map((b) => <_BudgetProgressBar key={b.id} budget={b} />)}
           </div>
         </div>
       )}
@@ -322,10 +322,10 @@ function CostDashboardPage() {
         {/* Per-Agent Token Usage */}
         <div className="card">
           <div className="card__header">
-            <h3 className="card__title"><IconBot /> Per-Agent Token Usage</h3>
+            <h3 className="card__title"><_IconBot /> Per-Agent Token Usage</h3>
           </div>
           <div className="card__body">
-            <BarChart
+            <_BarChart
               data={agentTokens.map((a) => ({
                 _label: a.agentName || a.agentId || 'Unknown',
                 _tokens: a.totalTokens || 0,
@@ -358,10 +358,10 @@ function CostDashboardPage() {
         {/* Cost per Model */}
         <div className="card">
           <div className="card__header">
-            <h3 className="card__title"><IconCpu /> Cost per Model</h3>
+            <h3 className="card__title"><_IconCpu /> Cost per Model</h3>
           </div>
           <div className="card__body">
-            <BarChart
+            <_BarChart
               data={modelSpend.map((m) => ({
                 _label: m.model || 'Unknown',
                 _cost: m.total_cost || 0,
@@ -392,17 +392,17 @@ function CostDashboardPage() {
 
       {/* Daily/Weekly/Monthly Trends */}
       <div className="cost-section">
-        <h2 className="cost-section__title"><IconTrending /> Spending Trends</h2>
+        <h2 className="cost-section__title"><_IconTrending /> Spending Trends</h2>
         <div className="card">
           <div className="card__body">
-            <TrendChart data={trends} />
+            <_TrendChart data={trends} />
           </div>
         </div>
       </div>
 
       {/* Per-Task Cost Breakdown */}
       <div className="cost-section">
-        <h2 className="cost-section__title"><IconList /> Per-Task Cost Breakdown</h2>
+        <h2 className="cost-section__title"><_IconList /> Per-Task Cost Breakdown</h2>
         <div className="card">
           <div className="card__body">
             {taskSpend.length === 0 ? (
@@ -437,8 +437,8 @@ function CostDashboardPage() {
   );
 }
 
-export function mountCostDashboardPage(container) {
+export function mount_CostDashboardPage(container) {
   const root = createRoot(container);
-  root.render(<CostDashboardPage />);
+  root.render(<_CostDashboardPage />);
   return () => root.unmount();
 }

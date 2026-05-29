@@ -96,7 +96,7 @@ class SocketBusServer extends EventEmitter {
 
     // Close server
     if (this._server) {
-      await new Promise((resolve) => this._server.close(resolve));
+      await new Promise((resolve) => { this._server.close(resolve); });
     }
 
     // Remove socket file

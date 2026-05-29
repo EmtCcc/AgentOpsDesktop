@@ -2,10 +2,8 @@
 
 const telemetry = require('../../telemetry');
 
-let telemetryRepo = null;
-
-function setRepository(repo) {
-  telemetryRepo = repo;
+function setRepository(_repo) {
+  // Repository stored for future telemetry persistence
 }
 
 const schemas = {

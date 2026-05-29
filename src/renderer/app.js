@@ -85,6 +85,11 @@ const landingIcons = {
 let _currentPage = 'landing';
 let sidebarCollapsed = false;
 
+// ── Dashboard State (declared early; used in navigate()) ──
+let _dashLogUnsub = null;
+let _dashOrchUnsub = null;
+let _dashRefreshTimer = null;
+
 // ── Navigation ──
 
 function navigate(page) {
@@ -198,10 +203,7 @@ function renderLanding(container) {
 
 // ── Dashboard Page (v2) ──
 
-let _dashLogUnsub = null;
-let _dashOrchUnsub = null;
 let _dashLogPaused = false;
-let _dashRefreshTimer = null;
 
 function renderDashboard(container) {
   container.innerHTML = `
@@ -597,7 +599,7 @@ function showToast(message, type = 'error') {
   }, 4000);
 }
 
-function formatTime(ts) {
+function _formatTime(ts) {
   if (!ts) return '';
   const d = new Date(ts);
   const now = Date.now();

@@ -52,7 +52,7 @@ const adapterRegistryController = {
     return registryService.update(name, { version });
   },
 
-  async checkUpdates(event) {
+  async checkUpdates(_event) {
     if (!registryService) throw IpcError.internal('Adapter registry service not initialized');
     return registryService.checkUpdates();
   },
@@ -62,7 +62,7 @@ const adapterRegistryController = {
     return registryService.getFeatured({ limit });
   },
 
-  async scanLocal(event) {
+  async scanLocal(_event) {
     if (!registryService) throw IpcError.internal('Adapter registry service not initialized');
     return registryService.scanLocal();
   },

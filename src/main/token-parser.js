@@ -88,7 +88,7 @@ function _parseJsonLine(obj) {
   // Codex / OpenAI format: usage in response
   if (obj.usage && typeof obj.usage === 'object') {
     const u = obj.usage;
-    if (u.input_tokens != null || u.prompt_tokens != null) {
+    if (u.input_tokens !== null || u.prompt_tokens !== null) {
       return {
         inputTokens: u.input_tokens || u.prompt_tokens || 0,
         outputTokens: u.output_tokens || u.completion_tokens || 0,
@@ -100,7 +100,7 @@ function _parseJsonLine(obj) {
   }
 
   // Generic: top-level input_tokens/output_tokens
-  if (obj.input_tokens != null || obj.output_tokens != null) {
+  if (obj.input_tokens !== null || obj.output_tokens !== null) {
     return {
       inputTokens: obj.input_tokens || 0,
       outputTokens: obj.output_tokens || 0,
@@ -152,7 +152,7 @@ function parseTokenUsage(stdout) {
   if (!lastUsage) return null;
 
   // Calculate cost if not already provided
-  if (lastUsage.costUsd == null || lastUsage.costUsd === 0) {
+  if (lastUsage.costUsd !== null || lastUsage.costUsd === 0) {
     lastUsage.costUsd = calculateCost(lastUsage.inputTokens, lastUsage.outputTokens, lastUsage.model);
   }
 

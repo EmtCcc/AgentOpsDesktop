@@ -104,7 +104,7 @@ class Scheduler extends EventEmitter {
 
       // Auto-disable if max executions reached
       const updated = this.scheduleRepo.getById(schedule.id);
-      if (updated.maxExecutions != null && updated.executionCount >= updated.maxExecutions) {
+      if (updated.maxExecutions !== null && updated.executionCount >= updated.maxExecutions) {
         this.scheduleRepo.toggleEnabled(schedule.id, false);
         this.scheduleRepo.addLog({
           scheduleId: schedule.id,

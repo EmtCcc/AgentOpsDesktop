@@ -2,26 +2,26 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // SVG icons matching existing design
-const IconPlus = () => (
+export const IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconRefresh = () => (
+export const IconRefresh = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 );
 
-const IconTrash = () => (
+export const IconTrash = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconBot = () => (
+export const IconBot = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 8V4H8" /><rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
     <rect x="6" y="14" width="12" height="8" rx="2" ry="2" /><path d="M12 16v4" />
@@ -73,7 +73,7 @@ function useFocusTrap(isOpen, onClose) {
   return modalRef;
 }
 
-function AgentRow({ agent, onHealthCheck, onDelete }) {
+export function AgentRow({ agent, onHealthCheck, onDelete }) {
   const statusLabels = { running: 'Running', idle: 'Idle', error: 'Error', spawning: 'Spawning' };
   return (
     <div className="agent-row" data-agent-id={agent.id} role="listitem" tabIndex={0} aria-label={`Agent: ${agent.name}, Status: ${agent.status}`}>
@@ -110,7 +110,7 @@ function AgentRow({ agent, onHealthCheck, onDelete }) {
   );
 }
 
-function AddAgentModal({ isOpen, onClose, onSave }) {
+export function AddAgentModal({ isOpen, onClose, onSave }) {
   const [name, setName] = useState('');
   const [type, setType] = useState('claude');
   const [execPath, setExecPath] = useState('');
@@ -143,6 +143,7 @@ function AddAgentModal({ isOpen, onClose, onSave }) {
       aria-modal="true"
       aria-labelledby="modal-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
     >
       <div className="card" style={{ width: 440, maxWidth: '90vw' }}>
         <div className="card__header">
@@ -215,6 +216,10 @@ function AddAgentModal({ isOpen, onClose, onSave }) {
       </div>
     </div>
   );
+}
+
+function showToast(message, type = 'info') {
+  try { window.showToast?.(message, type); } catch { /* noop */ }
 }
 
 export default function AgentsPage() {

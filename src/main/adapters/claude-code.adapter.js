@@ -1,7 +1,6 @@
 'use strict';
 
 const { spawn } = require('child_process');
-const { randomUUID } = require('crypto');
 const { AgentAdapter } = require('../adapter-registry');
 const ClaudeCodeStreamParser = require('../parsers/claude-code-stream.parser');
 
@@ -69,7 +68,7 @@ class ClaudeCodeAdapter extends AgentAdapter {
 
     // Max turns
     const maxTurns = params.maxTurns ?? this.maxTurns;
-    if (maxTurns != null) args.push('--max-turns', String(maxTurns));
+    if (maxTurns !== null) args.push('--max-turns', String(maxTurns));
 
     // Session resumption
     const sessionId = params.sessionId || this.sessionId;
@@ -186,10 +185,10 @@ class ClaudeCodeAdapter extends AgentAdapter {
       });
 
       const parser = new ClaudeCodeStreamParser();
-      let stderr = '';
+      let _stderr = '';
 
       proc.stdout.on('data', (d) => { parser.parse(d.toString()); });
-      proc.stderr.on('data', (d) => { stderr += d; });
+      proc.stderr.on('data', (d) => { _stderr += d; });
 
       proc.on('close', (code) => {
         parser.flush();

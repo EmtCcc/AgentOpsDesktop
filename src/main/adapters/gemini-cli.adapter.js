@@ -92,8 +92,8 @@ class GeminiCliAdapter extends AgentAdapter {
   async healthCheck() {
     return new Promise((resolve) => {
       const proc = spawn('which', [this.execPath], { stdio: ['ignore', 'pipe', 'pipe'] });
-      let stderr = '';
-      proc.stderr.on('data', (d) => { stderr += d; });
+      let _stderr = '';
+      proc.stderr.on('data', (d) => { _stderr += d; });
       proc.on('close', (code) => {
         if (code === 0) resolve({ ok: true });
         else resolve({ ok: false, error: `Gemini CLI not found: ${this.execPath}` });

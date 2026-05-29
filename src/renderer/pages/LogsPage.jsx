@@ -1,26 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const IconSearch = () => (
+const _IconSearch = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
   </svg>
 );
 
-const IconRefresh = () => (
+const _IconRefresh = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 );
 
-const IconTrash = () => (
+const _IconTrash = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconTerminal = () => (
+const _IconTerminal = () => (
   <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
   </svg>
@@ -31,7 +31,7 @@ function formatTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
-function LogLine({ entry }) {
+function _LogLine({ entry }) {
   const levelClass = entry.level === 'error' ? 'log-line--error' : entry.level === 'warn' ? 'log-line--warn' : '';
   return (
     <div className={`log-line ${levelClass}`} data-level={entry.level} data-agent={entry.agentId || ''}>
@@ -132,7 +132,7 @@ export default function LogsPage() {
         <div className="page-header__actions">
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
-              <IconSearch />
+              <_IconSearch />
             </span>
             <input
               type="text"
@@ -171,10 +171,10 @@ export default function LogsPage() {
             <option value="error">Error</option>
           </select>
           <button className="btn btn--ghost btn--sm" id="btn-logs-clear" onClick={handleClear}>
-            <IconTrash /> Clear
+            <_IconTrash /> Clear
           </button>
           <button className="btn btn--secondary btn--sm" id="btn-logs-refresh" onClick={handleRefresh}>
-            <IconRefresh /> Refresh
+            <_IconRefresh /> Refresh
           </button>
         </div>
       </div>
@@ -190,12 +190,12 @@ export default function LogsPage() {
         >
           {filteredLogs.length === 0 ? (
             <div className="empty-state" style={{ padding: 'var(--space-12) 0' }}>
-              <div style={{ color: 'var(--color-text-tertiary)', marginBottom: 'var(--space-2)' }}><IconTerminal /></div>
+              <div style={{ color: 'var(--color-text-tertiary)', marginBottom: 'var(--space-2)' }}><_IconTerminal /></div>
               <div className="empty-state__title" style={{ fontSize: 'var(--text-sm)' }}>No logs yet</div>
               <div className="empty-state__desc">Logs from agent sessions will appear here in real time.</div>
             </div>
           ) : (
-            filteredLogs.map((entry, i) => <LogLine key={entry.id || i} entry={entry} />)
+            filteredLogs.map((entry, i) => <_LogLine key={entry.id || i} entry={entry} />)
           )}
         </div>
       </div>

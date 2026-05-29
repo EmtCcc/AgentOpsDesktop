@@ -1,44 +1,44 @@
-import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const IconPlus = () => (
+export const IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconPlay = () => (
+export const IconPlay = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="5 3 19 12 5 21 5 3" />
   </svg>
 );
 
-const IconPause = () => (
+export const IconPause = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
   </svg>
 );
 
-const IconActivity = () => (
+export const IconActivity = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
 );
 
-const IconTrash = () => (
+export const IconTrash = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const IconUsers = () => (
+export const IconUsers = () => (
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
     <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
 
-const IconRefresh = () => (
+export const IconRefresh = () => (
   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -81,7 +81,13 @@ function useFocusTrap(isOpen, onClose) {
   return modalRef;
 }
 
-function SquadCard({ squad, onStart, onStop, onStatus, onDelete, reactivating, memberProgress }) {
+const DEFAULT_TRIGGER_RULES = {
+  on_member_complete: 'continue',
+  on_error: 'fail-fast',
+  on_all_complete: 'idle',
+};
+
+export function SquadCard({ squad, onStart, onStop, onStatus, onDelete, reactivating, memberProgress }) {
   const members = squad.members || [];
   const memberCount = members.length;
   const statusClass = squad.status === 'running' ? 'squad-card--running' : squad.status === 'error' ? 'squad-card--error' : '';
@@ -172,19 +178,13 @@ function SquadCard({ squad, onStart, onStop, onStatus, onDelete, reactivating, m
   );
 }
 
-const DEFAULT_TRIGGER_RULES = {
-  on_member_complete: 'continue',
-  on_error: 'fail-fast',
-  on_all_complete: 'idle',
-};
-
-function TriggerRulesEditor({ rules, onChange }) {
+export function TriggerRulesEditor({ rules, onChange }) {
   const set = (key, value) => onChange({ ...rules, [key]: value });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
         On member complete
-        <select style={{ width: '100%', marginTop: 4 }} value={rules.on_member_complete} onChange={(e) => set('on_member_complete', e.target.value)}>
+        <select id="trigger-rules-member-complete" style={{ width: '100%', marginTop: 4 }} value={rules.on_member_complete} onChange={(e) => set('on_member_complete', e.target.value)}>
           <option value="continue">Continue</option>
           <option value="pause">Pause squad</option>
           <option value="notify">Notify only</option>
@@ -210,7 +210,7 @@ function TriggerRulesEditor({ rules, onChange }) {
   );
 }
 
-function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
+export function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [leaderId, setLeaderId] = useState('');
@@ -264,6 +264,7 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
       aria-modal="true"
       aria-labelledby="squad-modal-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
     >
       <div className="card" style={{ width: 520, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
         <div className="card__header">
@@ -326,19 +327,18 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
+            <label htmlFor="trigger-rules-member-complete" style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
               Trigger Rules
+              <TriggerRulesEditor rules={triggerRules} onChange={setTriggerRules} />
             </label>
-            <TriggerRulesEditor rules={triggerRules} onChange={setTriggerRules} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-1)' }}>
               Members
-            </label>
-            <div
-              id="squad-member-checkboxes"
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: 160, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)' }}
-            >
+              <div
+                id="squad-member-checkboxes"
+                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: 160, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)' }}
+              >
               {agents.length === 0 ? (
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
                   No agents available. Add agents first.
@@ -358,6 +358,7 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
                 ))
               )}
             </div>
+            </label>
           </div>
         </div>
         <div className="card__footer">
@@ -369,6 +370,10 @@ function CreateSquadModal({ isOpen, onClose, onSave, agents }) {
       </div>
     </div>
   );
+}
+
+function showToast(message, type = 'info') {
+  try { window.showToast?.(message, type); } catch { /* noop */ }
 }
 
 export default function SquadsPage() {

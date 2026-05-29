@@ -122,7 +122,7 @@ class NotificationService {
   // ── Event handlers ──
 
   _onAgentExit = (data) => {
-    const { agentId, code, signal } = data;
+    const { agentId, code, signal: _signal } = data;
     if (code === 0) {
       const label = this._getAgentLabel(agentId);
       this._notify('taskCompleted', agentId, `${label} — Task Completed`, `Agent finished successfully.`);

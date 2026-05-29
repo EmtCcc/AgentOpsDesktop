@@ -10,32 +10,32 @@ const COLUMNS = [
 
 // ── Icons ──
 
-const IconPlus = () => (
+const _IconPlus = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
-const IconRefresh = () => (
+const _IconRefresh = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 );
 
-const IconSearch = () => (
+const _IconSearch = () => (
   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
   </svg>
 );
 
-const IconClock = () => (
+const _IconClock = () => (
   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
   </svg>
 );
 
-const IconUser = () => (
+const _IconUser = () => (
   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
   </svg>
@@ -106,7 +106,7 @@ function getStatusColor(status) {
 
 // ── Task Card ──
 
-function TaskCard({ task, onDragStart }) {
+function _TaskCard({ task, onDragStart }) {
   return (
     <div
       className="task-card"
@@ -129,11 +129,11 @@ function TaskCard({ task, onDragStart }) {
       <div className="task-card__title">{task.title}</div>
       <div className="task-card__meta">
         <span className="task-card__agent" title={task.assigneeAgentId || 'Unassigned'}>
-          <IconUser />
+          <_IconUser />
           {task.assigneeAgentId ? task.assigneeAgentId.slice(0, 8) : 'unassigned'}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-          <IconClock />
+          <_IconClock />
           {formatTime(task.createdAt)}
         </span>
       </div>
@@ -150,7 +150,7 @@ function TaskCard({ task, onDragStart }) {
 
 // ── Kanban Column ──
 
-function KanbanColumn({ column, tasks, draggedId, onDrop, onDragOver, onDragLeave, isOver }) {
+function _KanbanColumn({ column, tasks, _draggedId, onDrop, onDragOver, onDragLeave, isOver }) {
   return (
     <div
       className="task-column"
@@ -179,7 +179,7 @@ function KanbanColumn({ column, tasks, draggedId, onDrop, onDragOver, onDragLeav
           </div>
         ) : (
           tasks.map((t) => (
-            <TaskCard key={t.id} task={t} onDragStart={() => {}} />
+            <_TaskCard key={t.id} task={t} onDragStart={() => {}} />
           ))
         )}
       </div>
@@ -189,7 +189,7 @@ function KanbanColumn({ column, tasks, draggedId, onDrop, onDragOver, onDragLeav
 
 // ── Create Task Modal ──
 
-function CreateTaskModal({ isOpen, onClose, onSave, agents, goals }) {
+function _CreateTaskModal({ isOpen, onClose, onSave, agents, goals }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [agentId, setAgentId] = useState('');
@@ -226,7 +226,9 @@ function CreateTaskModal({ isOpen, onClose, onSave, agents, goals }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="task-modal-title"
+      tabIndex={0}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (e.target === e.currentTarget) onClose(); } }}
     >
       <div className="card" style={{ width: 480, maxWidth: '90vw' }}>
         <div className="card__header">
@@ -393,7 +395,7 @@ export default function TasksPage() {
         <div className="page-header__actions" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
-              <IconSearch />
+              <_IconSearch />
             </span>
             <input
               type="text"
@@ -412,10 +414,10 @@ export default function TasksPage() {
             {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <button className="btn btn--ghost btn--sm" onClick={loadTasks} title="Refresh">
-            <IconRefresh /> Refresh
+            <_IconRefresh /> Refresh
           </button>
           <button className="btn btn--primary btn--sm" onClick={() => setModalOpen(true)}>
-            <IconPlus /> New task
+            <_IconPlus /> New task
           </button>
         </div>
       </div>
@@ -427,7 +429,7 @@ export default function TasksPage() {
       ) : (
         <div className="task-columns">
           {COLUMNS.map((col) => (
-            <KanbanColumn
+            <_KanbanColumn
               key={col.key}
               column={col}
               tasks={columnTasks[col.key]}
@@ -441,7 +443,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      <CreateTaskModal
+      <_CreateTaskModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={handleCreate}
