@@ -22,7 +22,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const SRC_DIR = path.resolve(__dirname, '..', 'src');
 const RENDERER_DIR = path.resolve(SRC_DIR, 'renderer');
 const TIMEOUT_MS = 10000;
-const CONCURRENCY = 5;
+const CONCURRENCY = 3;
 
 // Old URL -> expected redirect target (populate when legacy URLs exist)
 const REDIRECT_MAP = {};
@@ -99,24 +99,31 @@ function resolveInternalLink(url, sourceFile) {
   return { ok: false };
 }
 
-async function checkExternalUrl(url) {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: 'manual',
-      headers: { 'User-Agent': 'AgentOpsDocs-LinkChecker/1.0' },
-    });
-    clearTimeout(timer);
+async function checkExternalUrl(url, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: { 'User-Agent': 'AgentOpsDocs-LinkChecker/1.0' },
+      });
+      clearTimeout(timer);
 
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
-      return { ok: true, status: res.status, redirect: location };
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('location');
+        return { ok: true, status: res.status, redirect: location };
+      }
+      return { ok: res.status >= 200 && res.status < 400, status: res.status };
+    } catch (err) {
+      const isTransient = err.name === 'AbortError' || (err.cause && err.cause.code === 'UND_ERR_CONNECT_TIMEOUT');
+      if (attempt < retries && isTransient) {
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+      return { ok: false, error: err.name === 'AbortError' ? 'timeout' : err.message };
     }
-    return { ok: res.status >= 200 && res.status < 400, status: res.status };
-  } catch (err) {
-    return { ok: false, error: err.name === 'AbortError' ? 'timeout' : err.message };
   }
 }
 
@@ -143,6 +150,10 @@ async function checkExternalLinks(links) {
           results.external.broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}`, networkError: !!result.networkError });
         }
       }
+    }
+    // Small delay between batches to avoid connection pool exhaustion
+    if (i + CONCURRENCY < urls.length) {
+      await new Promise(r => setTimeout(r, 500));
     }
   }
 }
@@ -378,9 +389,10 @@ async function checkAppExternalLinks(hasNetwork) {
     let match;
     while ((match = urlRegex.exec(content)) !== null) {
       let url = match[0].replace(/[.,;:!?)]+$/, ''); // strip trailing punctuation
-      // Skip data: URLs, SVGs, localhost, XML namespaces, template params
+      // Skip data: URLs, SVGs, localhost, XML namespaces, template params, internal services
       if (url.startsWith('data:') || url.includes('localhost') || url.includes('127.0.0.1')) continue;
       if (url.includes('w3.org/2000') || url.includes('w3.org/2001') || url.includes('schemas.')) continue;
+      if (url.includes('registry.agentops.dev')) continue; // internal service, only reachable from AgentOps infra
       if (/\/:[a-z]/.test(url)) continue; // template params like :path, :id
       if (!externalUrls.has(url)) externalUrls.set(url, []);
       const line = content.substring(0, match.index).split('\n').length;
