@@ -1,4 +1,4 @@
-# CMPAAA-744 — API Health Check Verification
+# CMPAAA-745 — API Health Check Verification
 
 **Date**: 2026-05-30
 **Status**: ✅ Complete — all 139 health-related tests pass
@@ -50,6 +50,10 @@
 - Records status transitions with timestamps
 - Health loop runs every 30s with telemetry tracking
 - Global error handlers for uncaughtException/unhandledRejection
+
+## Note on Test Count
+
+CMPAAA-744 documented 151 tests (claiming health.test.js had 44). The actual count is 32 tests in health.test.js, yielding 139 total. The previous doc overcounted; no tests were removed or regressed.
 
 ## Key Files
 
