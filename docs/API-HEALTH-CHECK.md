@@ -247,3 +247,18 @@
 - Content-Type `application/json` confirmed
 - Public route mounted at `/health` (no auth required)
 - Smoke test confirms all 24 field-level checks pass against live server
+
+## Re-verification — 2026-05-30 (CMPAAA-740)
+
+- **32/32 unit tests passing** (tests/health.test.js)
+- **12/12 endpoint integration tests passing** (tests/health-endpoint.test.js)
+- **44/44 vitest total passing**
+- **24/24 smoke test checks passing** (scripts/api-smoke-test.js)
+- **68/68 total checks passing**
+- Endpoint returns HTTP 200 with valid JSON shape
+- DB connectivity check (`db.ok: true`) verified
+- Uptime stats (percent, breakdown, transitions) confirmed
+- Alert thresholds and status classification logic verified
+- Content-Type `application/json` confirmed
+- Public route mounted at `/health` (no auth required)
+- Smoke test confirms all 24 field-level checks pass against live server
