@@ -57,7 +57,7 @@ class PaperclipClient {
       return this._apiAvailable;
     }
     try {
-      await this._fetch('/api/health', { timeout: 2000 });
+      await this._fetch('/health', { timeout: 2000 });
       this._apiAvailable = true;
     } catch {
       this._apiAvailable = false;
