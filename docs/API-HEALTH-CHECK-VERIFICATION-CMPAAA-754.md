@@ -1,7 +1,7 @@
-# API Health Check Verification — CMPAAA-754
+# API Health Check Verification — CMPAAA-754 / CMPAAA-772
 
 **Date**: 2026-05-30
-**Status**: ✅ Verified
+**Status**: ✅ Verified (re-verified for CMPAAA-772)
 
 ## Summary
 
