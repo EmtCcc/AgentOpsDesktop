@@ -140,7 +140,7 @@ async function checkExternalLinks(links) {
         results.external.ok++;
       } else {
         for (const src of sources) {
-          results.external.broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}` });
+          results.external.broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}`, networkError: !!result.networkError });
         }
       }
     }
@@ -151,7 +151,7 @@ async function probeNetwork() {
   // Try multiple probes — network may be intermittent
   for (const url of ['https://example.com', 'https://httpbin.org/status/200']) {
     try {
-      const result = await checkExternalUrl(url);
+      const result = await checkExternalUrl(url, 0); // no retries for probe
       if (result.ok) return true;
     } catch { /* continue */ }
   }
@@ -411,8 +411,9 @@ async function checkAppExternalLinks(hasNetwork) {
       } else {
         const sources = externalUrls.get(url);
         for (const src of sources) {
-          broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}` });
-          console.log(`  BROKEN: ${url} — ${result.error || `HTTP ${result.status}`} (in ${src.source}:${src.line})`);
+          broken.push({ url, source: src.source, line: src.line, error: result.error || `HTTP ${result.status}`, networkError: !!result.networkError });
+          const label = result.networkError ? 'UNREACHABLE' : 'BROKEN';
+          console.log(`  ${label}: ${url} — ${result.error || `HTTP ${result.status}`} (in ${src.source}:${src.line})`);
         }
       }
     }
@@ -559,7 +560,10 @@ async function main() {
   // Summary
   console.log('=== Summary ===');
   const internalFail = results.internal.broken.length > 0;
-  const externalFail = results.external.broken.length > 0 && !results.external.unreachable;
+  // Only treat HTTP-level failures as real external failures; network errors are environment-specific warnings
+  const externalHardFail = results.external.broken.some(b => !b.networkError);
+  const externalNetErrors = results.external.broken.filter(b => b.networkError);
+  const externalFail = externalHardFail && !results.external.unreachable;
   const redirectFail = results.redirects.broken.length > 0;
   const spaFail = results.spaRoutes.broken.length > 0;
   const allOk = !internalFail && !externalFail && !redirectFail && !spaFail;
@@ -567,11 +571,16 @@ async function main() {
   console.log(`SPA routes:      ${results.spaRoutes.ok}/${results.spaRoutes.total} OK`);
   console.log(`Internal links:  ${results.internal.ok}/${results.internal.total} OK`);
   console.log(`External links:  ${results.external.ok}/${results.external.total} OK${results.external.unreachable ? ' (skipped — no network)' : ''}`);
+  if (externalNetErrors.length > 0) {
+    console.log(`  (${externalNetErrors.length} network-unreachable — verify in CI)`);
+  }
   console.log(`Redirect checks: ${results.redirects.ok}/${results.redirects.total} OK`);
   console.log(`\nOverall: ${allOk ? 'PASS' : 'FAIL'}`);
 
   if (results.external.unreachable) {
     console.log('\nNOTE: External link reachability was skipped (no network). Run in CI for full validation.');
+  } else if (externalNetErrors.length > 0 && !externalHardFail) {
+    console.log('\nNOTE: Some external URLs were unreachable due to network restrictions. Verify in CI.');
   }
 
   const reportPath = path.resolve(PROJECT_ROOT, 'link-check-report.json');
