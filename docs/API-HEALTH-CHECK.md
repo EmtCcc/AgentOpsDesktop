@@ -1,4 +1,4 @@
-# API Health Check Verification — CMPAAA-718
+# API Health Check Verification — CMPAAA-722
 
 **Date**: 2026-05-30
 **Status**: ✅ Verified
@@ -53,9 +53,11 @@
 
 ## Test Results
 
-- **42/42 tests passing**
-- `tests/health.test.js` — 30 tests (monitor module: getHealth, checkAlerts, classifyStatus, recordIpcCall, uptime tracking)
+- **76/76 tests passing**
+- `tests/health.test.js` — 32 tests (monitor module: getHealth, checkAlerts, classifyStatus, recordIpcCall, uptime tracking)
 - `tests/health-endpoint.test.js` — 12 tests (HTTP endpoint: status codes, response shape, DB failure, auth bypass)
+- `tests/monitor.test.js` — 30 tests (Electron-aware monitor unit tests)
+- `tests/integration/monitor.integration.test.js` — 2 tests (IPC health channel)
 
 ## Uptime Tracking
 
@@ -163,3 +165,21 @@
 - Alert thresholds and status classification logic verified
 - Content-Type `application/json` confirmed
 - Public route mounted at `/health` (no auth required)
+
+## Re-verification — 2026-05-30 (CMPAAA-722)
+
+- **32/32 unit tests passing** (tests/health.test.js)
+- **12/12 endpoint integration tests passing** (tests/health-endpoint.test.js)
+- **30/30 monitor unit tests passing** (tests/monitor.test.js)
+- **2/2 monitor integration tests passing** (tests/integration/monitor.integration.test.js)
+- **76/76 total vitest passing**
+- **24/24 smoke test checks passing** (scripts/api-smoke-test.js)
+- **100/100 total checks passing**
+- Endpoint returns HTTP 200 with valid JSON shape
+- DB connectivity check (`db.ok: true`) verified
+- Uptime stats (percent, breakdown, transitions) confirmed
+- Alert thresholds and status classification logic verified
+- Content-Type `application/json` confirmed
+- Public route mounted at `/health` (no auth required)
+- Smoke test confirms all 24 field-level checks pass against live server
+- IPC health channel verified via integration test
