@@ -1,8 +1,8 @@
-# API Health Check Verification (CMPAAA-694, CMPAAA-704, CMPAAA-705)
+# API Health Check Verification (CMPAAA-694, CMPAAA-704, CMPAAA-705, CMPAAA-748)
 
 **Date:** 2026-05-30
 **Status:** ✅ Verified
-**Last verified:** 2026-05-30 by CMPAAA-705
+**Last verified:** 2026-05-30 by CMPAAA-748
 
 ## Endpoints
 
@@ -58,7 +58,7 @@
 - **degraded**: warnings only (counts as uptime)
 - **unhealthy**: any error-level alert → HTTP 503
 
-## Test Results (141/141 pass)
+## Test Results (1462/1462 pass, full suite)
 
 | Suite | Tests | Status |
 |---|---|---|
@@ -67,3 +67,11 @@
 | `tests/monitor.test.js` | 30 | ✅ |
 | `tests/integration/monitor.integration.test.js` | 2 | ✅ |
 | `tests/integration/http-api.integration.test.js` | 65 | ✅ |
+| `scripts/api-smoke-test.js` (real HTTP) | 23 checks | ✅ |
+| Full vitest suite | 1462 | ✅ |
+
+### CMPAAA-748 Verification (2026-05-30)
+
+- Smoke test: all 23 HTTP checks pass against live server
+- Unit + integration: 44/44 health-specific tests pass
+- Full regression: 1462/1462 pass across 60 test files
